@@ -3602,12 +3602,14 @@
           // RevenueCat'i bu kullanıcıya bağla + PRO (entitlement) durumunu eşitle
           if (typeof KM_RC !== "undefined") {
             // DEBUG yalnızca geliştiriciye (kendi UID'in) — testçiler uyarı GÖRMEZ
-            KM_RC.dbg =
-              KM_RC.inApp() && user.uid === "gq8uRlcr4TOwe41qWnKk1bDZ0Wt1";
+            // GEÇİCİ TEŞHİS: native'de DAİMA panel aç (uid kontrolü kaldırıldı).
+            // inApp false dönerse panel hiç çıkmaz -> o zaman sorun Capacitor bridge.
+            KM_RC.dbg = KM_RC.inApp();
             KM_RC.log(
               "auth: uid=" + user.uid +
-                " inApp=" + KM_RC.inApp() +
-                " plugin=" + !!KM_RC.plugin()
+                "\n  inApp=" + KM_RC.inApp() +
+                " plugin=" + !!KM_RC.plugin() +
+                " dev?=" + (user.uid === "gq8uRlcr4TOwe41qWnKk1bDZ0Wt1")
             ); // GEÇİCİ
             KM_RC.configure(user.uid);
           }
