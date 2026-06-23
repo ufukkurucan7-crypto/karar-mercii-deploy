@@ -3600,10 +3600,15 @@
         if (user) {
           // RevenueCat'i bu kullanıcıya bağla + PRO (entitlement) durumunu eşitle
           if (typeof KM_RC !== "undefined") {
-            alert("RC: configure çağrılıyor (uid=" + user.uid + ")"); // GEÇİCİ
+            if (KM_RC.inApp())
+              alert("RC: configure çağrılıyor (uid=" + user.uid + ")"); // GEÇİCİ (sadece app)
             KM_RC.configure(user.uid);
-          } else {
-            alert("RC: KM_RC TANIMSIZ!"); // GEÇİCİ
+          } else if (
+            window.Capacitor &&
+            window.Capacitor.isNativePlatform &&
+            window.Capacitor.isNativePlatform()
+          ) {
+            alert("RC: KM_RC TANIMSIZ!"); // GEÇİCİ (sadece app)
           }
           // Firestore'dan bu kullanıcının pro durumunu kontrol et
           db.collection("users")
@@ -4004,7 +4009,7 @@
         // Kullanıcı giriş yapınca çağrılır: SDK'yı yapılandır + premium durumunu eşitle
         configure: function (uid) {
           if (!this.inApp()) {
-            alert("RC: inApp DEĞİL (uygulama içinde değil)");
+            // Web'de (uygulama dışı) RevenueCat yok — sessizce çık (normal)
             return;
           }
           var P = this.plugin();
@@ -5432,6 +5437,21 @@
       }
 
       // ═══════════════════ WHEEL ═══════════════════
+      // Çark/canvas etiketi: emojileri çıkar (iOS WebKit canvas'ta varyasyon
+      // seçicili emojiyi —❤️ 🏖️ 🏞️ gibi— çizemeyip yazının tamamını siler) +
+      // kod-noktasına göre güvenli kısalt (surrogate ortadan bölmeyi önler).
+      function wheelLabel(t, max) {
+        var s = String(t == null ? "" : t)
+          .replace(
+            /[\p{Extended_Pictographic}\u{FE00}-\u{FE0F}\u{200D}\u{20E3}\u{1F1E6}-\u{1F1FF}]/gu,
+            "",
+          )
+          .replace(/\s+/g, " ")
+          .trim();
+        var arr = Array.from(s);
+        if (max && arr.length > max) s = arr.slice(0, max).join("") + "…";
+        return s;
+      }
       function drawW(cid, items, angle, hi) {
         if (hi === undefined) hi = -1;
         var c = document.getElementById(cid);
@@ -5473,20 +5493,19 @@
           ctx.strokeStyle = gold ? "#f5a623" : "#fff";
           ctx.lineWidth = gold ? 5 : 2.5;
           ctx.stroke();
+          var mid = a + sl / 2;
           ctx.translate(cx, cy);
-          ctx.rotate(a + sl / 2);
+          ctx.rotate(mid);
+          var flip = Math.cos(mid) < 0; // alt yarıdaki yazı baş aşağı olmasın
+          if (flip) ctx.rotate(Math.PI);
           ctx.fillStyle = "#fff";
           ctx.font =
             "bold " +
             (n > 8 ? (gold ? 12 : 11) : gold ? 15 : 13) +
             "px Nunito,sans-serif";
-          ctx.textAlign = "right";
           ctx.textBaseline = "middle";
-          ctx.fillText(
-            items[i].length > 11 ? items[i].slice(0, 11) + "…" : items[i],
-            r - 9,
-            0,
-          );
+          ctx.textAlign = flip ? "left" : "right";
+          ctx.fillText(wheelLabel(items[i], 12), flip ? -(r - 9) : r - 9, 0);
           ctx.restore();
         }
         for (var i = 0; i < n; i++) slice(i, false);
@@ -6252,11 +6271,7 @@
             ctx.font = "bold 13px Nunito,sans-serif";
             ctx.textAlign = "center";
             ctx.textBaseline = "middle";
-            ctx.fillText(
-              winner.length > 14 ? winner.slice(0, 14) + "…" : winner,
-              90,
-              90,
-            );
+            ctx.fillText(wheelLabel(winner, 14), 90, 90);
             tbDone(winner);
           }
         })();
