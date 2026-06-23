@@ -3604,8 +3604,11 @@
             // DEBUG yalnızca geliştiriciye (kendi UID'in) — testçiler uyarı GÖRMEZ
             KM_RC.dbg =
               KM_RC.inApp() && user.uid === "gq8uRlcr4TOwe41qWnKk1bDZ0Wt1";
-            if (KM_RC.dbg)
-              alert("RC: configure çağrılıyor (uid=" + user.uid + ")"); // GEÇİCİ
+            KM_RC.log(
+              "auth: uid=" + user.uid +
+                " inApp=" + KM_RC.inApp() +
+                " plugin=" + !!KM_RC.plugin()
+            ); // GEÇİCİ
             KM_RC.configure(user.uid);
           }
           // Firestore'dan bu kullanıcının pro durumunu kontrol et
@@ -4005,6 +4008,32 @@
             window.Capacitor.Plugins.Purchases
           );
         },
+        // Ekranda kalıcı debug paneli (yalnız dev UID — testçiler görmez)
+        log: function (msg) {
+          if (!this.dbg) return;
+          try {
+            var p = document.getElementById("rc-dbg-panel");
+            if (!p) {
+              p = document.createElement("div");
+              p.id = "rc-dbg-panel";
+              p.style.cssText =
+                "position:fixed;top:0;left:0;right:0;max-height:45%;overflow:auto;z-index:2147483647;background:rgba(0,0,0,.9);color:#0f0;font:11px/1.4 monospace;padding:6px 8px;white-space:pre-wrap;border-bottom:2px solid #0f0";
+              var x = document.createElement("button");
+              x.textContent = "RC DEBUG  ✕ kapat";
+              x.style.cssText =
+                "display:block;width:100%;margin-bottom:4px;background:#0f0;color:#000;font:bold 12px monospace;border:0;padding:5px";
+              x.onclick = function () {
+                if (p.parentNode) p.parentNode.removeChild(p);
+              };
+              p.appendChild(x);
+              (document.body || document.documentElement).appendChild(p);
+            }
+            var line = document.createElement("div");
+            line.textContent = "• " + msg;
+            p.appendChild(line);
+            p.scrollTop = p.scrollHeight;
+          } catch (e) {}
+        },
         // Kullanıcı giriş yapınca çağrılır: SDK'yı yapılandır + premium durumunu eşitle
         configure: function (uid) {
           if (!this.inApp()) {
@@ -4013,8 +4042,7 @@
           }
           var P = this.plugin();
           if (!P) {
-            if (this.dbg)
-              alert("RC: Purchases plugin YOK — eski build (vc26 değil)");
+            this.log("Purchases plugin YOK — eski build (vc26 değil)");
             return;
           }
           var self = this;
@@ -4022,23 +4050,29 @@
           if (!this.configured) {
             var opts = { apiKey: this.API_KEY };
             if (uid) opts.appUserID = uid;
+            self.log("P.configure() çağrılıyor (ilk kez) uid=" + uid);
             start = P.configure(opts);
           } else if (uid) {
+            self.log("P.logIn() çağrılıyor uid=" + uid);
             start = P.logIn({ appUserID: uid });
           } else {
             start = Promise.resolve();
           }
-          start
+          Promise.resolve(start)
             .then(function () {
               self.configured = true;
+              self.log("configure/logIn OK → offerings yükleniyor");
               return self.loadOfferings();
             })
             .then(function () {
+              self.log(
+                "offerings bitti (m=" + !!self.pkgs.monthly +
+                  " y=" + !!self.pkgs.yearly + ") → syncEntitlement"
+              );
               return self.syncEntitlement();
             })
             .catch(function (e) {
-              if (self.dbg)
-                alert("RC configure HATA: " + (e && (e.message || e.code || e)));
+              self.log("configure ZİNCİR HATA: " + (e && (e.message || e.code || e)));
             });
         },
         loadOfferings: function () {
@@ -4064,7 +4098,7 @@
               });
             })
             .catch(function (e) {
-              console.log("RC offerings hata", e);
+              self.log("offerings HATA: " + (e && (e.message || e.code || e)));
             });
         },
         hasPremium: function (info) {
@@ -4091,13 +4125,13 @@
               info && info.entitlements && info.entitlements.all
                 ? Object.keys(info.entitlements.all)
                 : [];
-            alert(
+            this.log(
               "RC DEBUG (" + where + ")\n" +
-                "user: " + (info && info.originalAppUserId) + "\n" +
-                "aktif: [" + ents.join(", ") + "]\n" +
-                "tümü: [" + allEnts.join(", ") + "]\n" +
-                "premium? " + this.hasPremium(info) + "\n" +
-                "paket m=" + !!this.pkgs.monthly + " y=" + !!this.pkgs.yearly
+                "  user: " + (info && info.originalAppUserId) + "\n" +
+                "  aktif: [" + ents.join(", ") + "]\n" +
+                "  tümü: [" + allEnts.join(", ") + "]\n" +
+                "  premium? " + this.hasPremium(info) + "\n" +
+                "  paket m=" + !!this.pkgs.monthly + " y=" + !!this.pkgs.yearly
             );
           } catch (e) {}
         },
@@ -4105,36 +4139,43 @@
           var P = this.plugin();
           if (!P) return Promise.resolve();
           var self = this;
+          self.log("getCustomerInfo() çağrılıyor");
           return P.getCustomerInfo()
             .then(function (res) {
               var info = res && res.customerInfo ? res.customerInfo : res;
               self._dbg(info, "getCustomerInfo"); // GEÇİCİ TEŞHİS
               if (self.hasPremium(info)) {
+                self.log("premium AKTİF → uygulanıyor (reklamlar kapanır)");
                 self.applyPremium();
               } else {
                 // Yeni giriş/cihazda entitlement görünmüyorsa Google Play
                 // satın almalarını SESSİZCE geri yükleyip tekrar dene
+                self.log("premium YOK → silentRestore deneniyor");
                 return self.silentRestore();
               }
             })
             .catch(function (e) {
-              if (self.dbg)
-                alert("RC getCustomerInfo HATA: " + (e && (e.message || e.code || e)));
+              self.log("getCustomerInfo HATA: " + (e && (e.message || e.code || e)));
             });
         },
         silentRestore: function () {
           var P = this.plugin();
           if (!P) return Promise.resolve();
           var self = this;
+          self.log("restorePurchases() çağrılıyor");
           return P.restorePurchases()
             .then(function (res) {
               var info = res && res.customerInfo ? res.customerInfo : res;
               self._dbg(info, "restore"); // GEÇİCİ TEŞHİS
-              if (self.hasPremium(info)) self.applyPremium();
+              if (self.hasPremium(info)) {
+                self.log("restore sonrası premium AKTİF → uygulanıyor");
+                self.applyPremium();
+              } else {
+                self.log("restore sonrası da premium YOK");
+              }
             })
             .catch(function (e) {
-              if (self.dbg)
-                alert("RC restore HATA: " + (e && (e.message || e.code || e)));
+              self.log("restore HATA: " + (e && (e.message || e.code || e)));
             });
         },
         purchase: function (plan) {
