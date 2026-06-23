@@ -3175,6 +3175,7 @@
               </button>
               <button
                 class="btn ghost"
+                id="vr-new-vote-btn"
                 style="
                   margin-top: 8px;
                   font-size: 13px;
@@ -3600,15 +3601,12 @@
         if (user) {
           // RevenueCat'i bu kullanıcıya bağla + PRO (entitlement) durumunu eşitle
           if (typeof KM_RC !== "undefined") {
-            if (KM_RC.inApp())
-              alert("RC: configure çağrılıyor (uid=" + user.uid + ")"); // GEÇİCİ (sadece app)
+            // DEBUG yalnızca geliştiriciye (kendi UID'in) — testçiler uyarı GÖRMEZ
+            KM_RC.dbg =
+              KM_RC.inApp() && user.uid === "gq8uRlcr4TOwe41qWnKk1bDZ0Wt1";
+            if (KM_RC.dbg)
+              alert("RC: configure çağrılıyor (uid=" + user.uid + ")"); // GEÇİCİ
             KM_RC.configure(user.uid);
-          } else if (
-            window.Capacitor &&
-            window.Capacitor.isNativePlatform &&
-            window.Capacitor.isNativePlatform()
-          ) {
-            alert("RC: KM_RC TANIMSIZ!"); // GEÇİCİ (sadece app)
           }
           // Firestore'dan bu kullanıcının pro durumunu kontrol et
           db.collection("users")
@@ -3991,6 +3989,7 @@
         API_KEY: "goog_PBWwciuubvPHAShpGIlLqPHSgGI",
         ENTITLEMENT: "premium",
         configured: false,
+        dbg: false,
         pkgs: { monthly: null, yearly: null },
         inApp: function () {
           return !!(
@@ -4014,7 +4013,8 @@
           }
           var P = this.plugin();
           if (!P) {
-            alert("RC: Purchases plugin YOK — muhtemelen eski build kurulu (vc26 değil)");
+            if (this.dbg)
+              alert("RC: Purchases plugin YOK — eski build (vc26 değil)");
             return;
           }
           var self = this;
@@ -4037,7 +4037,8 @@
               return self.syncEntitlement();
             })
             .catch(function (e) {
-              alert("RC configure HATA: " + (e && (e.message || e.code || e)));
+              if (self.dbg)
+                alert("RC configure HATA: " + (e && (e.message || e.code || e)));
             });
         },
         loadOfferings: function () {
@@ -4080,6 +4081,7 @@
           if (pw && pw.parentNode) pw.parentNode.removeChild(pw);
         },
         _dbg: function (info, where) {
+          if (!this.dbg) return;
           try {
             var ents =
               info && info.entitlements && info.entitlements.active
@@ -4116,7 +4118,8 @@
               }
             })
             .catch(function (e) {
-              alert("RC getCustomerInfo HATA: " + (e && (e.message || e.code || e)));
+              if (self.dbg)
+                alert("RC getCustomerInfo HATA: " + (e && (e.message || e.code || e)));
             });
         },
         silentRestore: function () {
@@ -4130,7 +4133,8 @@
               if (self.hasPremium(info)) self.applyPremium();
             })
             .catch(function (e) {
-              alert("RC restore HATA: " + (e && (e.message || e.code || e)));
+              if (self.dbg)
+                alert("RC restore HATA: " + (e && (e.message || e.code || e)));
             });
         },
         purchase: function (plan) {
@@ -4857,8 +4861,8 @@
 
       function _eyesHappy() {
         return `
-  <path d="M276 242 Q302 222 328 242" fill="none" stroke="#26215C" stroke-width="5" stroke-linecap="round"/>
-  <path d="M352 242 Q378 222 404 242" fill="none" stroke="#26215C" stroke-width="5" stroke-linecap="round"/>`;
+  <path d="M276 244 Q302 218 328 244" fill="none" stroke="#26215C" stroke-width="9" stroke-linecap="round"/>
+  <path d="M352 244 Q378 218 404 244" fill="none" stroke="#26215C" stroke-width="9" stroke-linecap="round"/>`;
       }
 
       function _eyesSad(uid) {
@@ -6072,6 +6076,9 @@
         }
         var vr = document.getElementById("vr");
         vr.style.display = "";
+        // Yerel/masa modunda "Yeni Oylama" (resetVoteScreen) doğru çalışır → göster
+        var _vnvBtn = document.getElementById("vr-new-vote-btn");
+        if (_vnvBtn) _vnvBtn.style.display = "";
         var card = vr.querySelector(".rcard");
         card.style.animation = "none";
         void card.offsetWidth;
@@ -7089,11 +7096,15 @@
         // Oylama bitti — share-box (kod/link) gizle
         var shareBox = document.querySelector("#online-host .share-box");
         if (shareBox) shareBox.style.display = "none";
-        // Yeni oylama başlat butonunu gizle, sadece sıfırla butonu kalsın
+        // Online'da host için çalışan "Yeni Oylama Başlat" (aynı oda) + "Yeni Oda"
+        // gösterilir. #vr kartındaki yerel "Yeni Oylama" (resetVoteScreen) online
+        // odayı bozduğu için online modda GİZLENİR (gereksiz/bozuk buton kalkar).
         var nrb = document.getElementById("new-round-btn");
-        if (nrb) nrb.style.display = "none";
+        if (nrb) nrb.style.display = amHost ? "" : "none";
         var rstBtn = document.getElementById("reset-online-btn");
         if (rstBtn) rstBtn.style.display = "";
+        var vnvBtn = document.getElementById("vr-new-vote-btn");
+        if (vnvBtn) vnvBtn.style.display = "none";
         // Hide stale voting UI
         var hv = document.getElementById("host-vote-section");
         if (hv) hv.style.display = "none";
