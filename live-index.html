@@ -2038,10 +2038,23 @@
         left: 50%;
         transform: translate(-50%, -50%);
         z-index: 6;
-        width: 54px;
+        width: 58px;
+        height: 58px;
+        border-radius: 50%;
+        background: radial-gradient(circle at 38% 30%, #ffffff, #efe9ff);
+        border: 3px solid #fff;
+        box-shadow:
+          0 3px 12px rgba(76, 29, 149, 0.3),
+          inset 0 0 0 1.5px rgba(124, 58, 237, 0.15);
         display: flex;
+        align-items: center;
         justify-content: center;
         pointer-events: none;
+        overflow: hidden;
+      }
+      #wheel-center-merci svg {
+        width: 40px;
+        height: auto;
       }
       /* Konum chip'leri + mekan kartları */
       .loc-chips {
@@ -2863,7 +2876,7 @@
             <div class="wcap">
               <div id="merci-wheel"></div>
               <div class="cap-txt" id="wheel-cap-txt">
-                Çarkı parmağınla çevir 👆 ya da ortadaki ↻ tuşuna bas!
+                Çarkı saat yönünde çevir 👆 ya da ortadaki ↻ tuşuna bas!
               </div>
             </div>
           </div>
@@ -6165,16 +6178,15 @@
           }
 
           drawW("wcanvas", S.wheel, wAngle, -1);
+          var _cm = document.getElementById("wheel-center-merci");
+          if (_cm)
+            _cm.style.transform =
+              "translate(-50%,-50%) rotate(" + wAngle + "rad)";
 
           if (p < 1) {
             requestAnimationFrame(fr);
           } else {
             wAngle = target;
-            if (spinBtn) {
-              spinBtn.classList.remove("spinning");
-              spinBtn.style.opacity = "1";
-              spinBtn.style.pointerEvents = "";
-            }
             settle(target, wi);
           }
         })(t0);
@@ -6201,12 +6213,6 @@
       }
 
       function settle(target, wi) {
-        var spinBtn = document.getElementById("wspin-btn");
-        if (spinBtn) {
-          spinBtn.classList.remove("spinning");
-          spinBtn.style.opacity = "1";
-          spinBtn.style.pointerEvents = "";
-        }
         // Son anında hafifçe titreme (kenar yakınsa) sonra dur
         var edgeDist = edgeClose(target, S.wheel.length);
         var doWobble = edgeDist < 0.16;
@@ -6221,6 +6227,10 @@
             target +
             Math.sin(t * Math.PI * 2.2) * amp * dir * Math.pow(1 - t, 1.8);
           drawW("wcanvas", S.wheel, wAngle, -1);
+          var _cm = document.getElementById("wheel-center-merci");
+          if (_cm)
+            _cm.style.transform =
+              "translate(-50%,-50%) rotate(" + wAngle + "rad)";
           if (t < 1) requestAnimationFrame(fr);
           else {
             wAngle = target;
@@ -6233,6 +6243,13 @@
       function finishW(wi) {
         wheelHi = wi;
         drawW("wcanvas", S.wheel, wAngle, wi);
+        // Kazanan belli olunca döndür butonunu geri getir (önceden DEĞİL)
+        var _sb = document.getElementById("wspin-btn");
+        if (_sb) {
+          _sb.classList.remove("spinning");
+          _sb.style.opacity = "1";
+          _sb.style.pointerEvents = "";
+        }
         var _wst = document.querySelector("#s-wheel .wstage");
         if (_wst) {
           _wst.classList.remove("win-pop");
