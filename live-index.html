@@ -2255,6 +2255,10 @@
       #wcanvas:active {
         cursor: grabbing;
       }
+      /* Çark pasifken (2'den az seçenek) sayfa çark üstünden de kaydırılabilsin */
+      #wcanvas.km-scroll {
+        touch-action: auto;
+      }
       .spin-hint {
         position: absolute;
         inset: 0;
@@ -2799,6 +2803,33 @@
       html.dark .auth-box {
         background: #1e1733 !important;
         color: #ece8f7;
+      }
+      /* İnline açık-mor (#f5f0ff/#f0eeff) yüzeyleri toplu dark'a çevir:
+         chat başlık butonları (Yeni Sohbet/Geçmiş/?), Ayarlar butonları, çeşitli çipler */
+      html.dark [style*="#f5f0ff"],
+      html.dark [style*="#f0eeff"],
+      html.dark [style*="#f0eff"],
+      html.dark [style*="#faf7ff"] {
+        background: #271d3f !important;
+        color: #ece8f7 !important;
+        border-color: #3a2f55 !important;
+      }
+      html.dark .vote-mode-btn,
+      html.dark .paywall-btn-ad,
+      html.dark .cat,
+      html.dark .cats button,
+      html.dark .chip-ai {
+        background: #271d3f !important;
+        color: #ece8f7 !important;
+        border-color: #3a2f55 !important;
+      }
+      html.dark .fb-btn {
+        background: #271d3f;
+        color: #ece8f7;
+        border-color: #3a2f55;
+      }
+      html.dark .tab.on {
+        background: #271d3f;
       }
     </style>
     <script>
@@ -6265,6 +6296,9 @@
         ctx.restore();
       }
       function updW() {
+        // Çark 2'den az seçenekle pasif → canvas üstünden sayfa kaydırılabilsin
+        var _cv = document.getElementById("wcanvas");
+        if (_cv) _cv.classList.toggle("km-scroll", S.wheel.length < 2);
         var cm = document.getElementById("wheel-center-merci");
         if (cm && !cm.innerHTML && typeof merciSVG === "function")
           cm.innerHTML = merciSVG(46);
@@ -6284,6 +6318,7 @@
       function drawWEmpty(id) {
         var cv = document.getElementById(id);
         if (!cv) return;
+        if (id === "wcanvas") cv.classList.add("km-scroll"); // boş çark → kaydırılabilir
         var ctx = cv.getContext("2d");
         // Retina + transform sıfırla (drawW'den miras kalan dpr ölçeğini ezme)
         var dpr = Math.min(window.devicePixelRatio || 1, 3);
@@ -7876,8 +7911,14 @@
             aiThinking = false;
             document.getElementById("ath").style.display = "none";
             document.getElementById("ask-merci").disabled = false;
-            // Sunucu günlük limiti aştıysa paywall göster
+            // Sunucu günlük limiti aştıysa: cevapsız soruyu geri al (orphan kalmasın) +
+            // reklam/PRO sonrası otomatik tekrar gönderilmek üzere sakla
             if (status === 429) {
+              if (aiMessages.length && aiMessages[aiMessages.length - 1].role === "user")
+                aiMessages.pop();
+              var _mEl = document.getElementById("chat-messages");
+              if (_mEl && _mEl.lastElementChild) _mEl.lastElementChild.remove();
+              window._pendingQ = text;
               showPaywall();
               return;
             }
@@ -9540,19 +9581,6 @@
         _doSw(m);
       }
       function _doSw(m) {
-        // Sekme geçiş reklamı: her 5 geçişte bir, non-PRO (tur sırasında gösterme)
-        window._tabSwitches = (window._tabSwitches || 0) + 1;
-        if (
-          !isPremium &&
-          window._tabSwitches % 5 === 0 &&
-          typeof KM_AD !== "undefined" &&
-          KM_AD.showInterstitial &&
-          !document.getElementById("km-tour")
-        ) {
-          setTimeout(function () {
-            KM_AD.showInterstitial();
-          }, 350);
-        }
         ["wheel", "vote", "cekilis", "ai"].forEach((x) => {
           document.getElementById("s-" + x).classList.toggle("on", x === m);
           document
@@ -10165,7 +10193,27 @@
       })();
       document
         .querySelectorAll(".tab")
-        .forEach((b) => b.addEventListener("click", () => sw(b.dataset.tab)));
+        .forEach((b) =>
+          b.addEventListener("click", () => {
+            // Sadece KULLANICI sekme tıklamasında, her 5 geçişte 1 reklam.
+            // Çark dönerken / çekiliş animasyonunda / tur sırasında ASLA gösterme.
+            if (
+              !isPremium &&
+              !spinning &&
+              !cekilisSpinning &&
+              !document.getElementById("km-tour") &&
+              typeof KM_AD !== "undefined" &&
+              KM_AD.showInterstitial
+            ) {
+              window._tabSwitches = (window._tabSwitches || 0) + 1;
+              if (window._tabSwitches % 5 === 0)
+                setTimeout(function () {
+                  if (!spinning && !cekilisSpinning) KM_AD.showInterstitial();
+                }, 400);
+            }
+            sw(b.dataset.tab);
+          }),
+        );
       document
         .querySelectorAll(".abtn[data-add]")
         .forEach((b) =>
