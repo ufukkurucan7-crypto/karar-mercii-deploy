@@ -3508,23 +3508,8 @@
               </div>
             </div>
 
-            <!-- Konum: yakındaki yerler (OSM, ücretsiz) -->
-            <p class="lbl">📍 Yakınımda ne var?</p>
-            <div class="loc-chips">
-              <button class="loc-chip" onclick="merciNearby('food')">
-                🍽️ Yemek
-              </button>
-              <button class="loc-chip" onclick="merciNearby('cafe')">
-                ☕ Kafe
-              </button>
-              <button class="loc-chip" onclick="merciNearby('dessert')">
-                🍰 Tatlı
-              </button>
-              <button class="loc-chip" onclick="merciNearby('bar')">🍹 Bar</button>
-              <button class="loc-chip" onclick="merciNearby('activity')">
-                🎯 Aktivite
-              </button>
-            </div>
+            <!-- Konum artık sohbete entegre: "yakınımda kafe var mı?" yazınca
+                 Merci onay butonu çıkarır (loc-consent-btn) → taze konum + öneri -->
 
             <!-- Hızlı başla grid -->
             <p class="lbl">Hızlı Başla</p>
@@ -3940,12 +3925,8 @@
             statusEl.className =
               "menu-profile-status" + (isPremium ? " premium" : "");
           }
-          // Konum iznini iste + cache (Capacitor plugin → native izin penceresi).
-          // kmUserLocation yoksa her açılışta dene (eski kmLocationAsked tuzağı:
-          // navigator.geolocation native'de prompt çıkarmadan sessizce patlıyordu).
-          if (!localStorage.getItem("kmUserLocation")) {
-            captureLocation();
-          }
+          // Konum artık açılışta İSTENMEZ — sadece sohbette mekan sorulunca,
+          // kullanıcı onay butonuna basınca taze konum alınır (merciNearby).
         } else {
           profileWrap.style.display = "none";
           if (signInItem) signInItem.style.display = "flex";
@@ -6845,38 +6826,37 @@
           reject(new Error("no geo"));
         });
       }
-      // Konumu Capacitor plugin (native izin) / web ile al → şehir-semt çöz → cache.
-      function captureLocation() {
-        if (typeof getGeo !== "function") return;
-        getGeo()
-          .then(function (pos) {
-            try {
-              localStorage.setItem(
-                "kmUserGeo",
-                JSON.stringify({ lat: pos.lat, lng: pos.lng }),
-              );
-            } catch (e) {}
-            return fetch(
-              "https://nominatim.openstreetmap.org/reverse?lat=" +
-                pos.lat +
-                "&lon=" +
-                pos.lng +
-                "&format=json&accept-language=tr",
-              { headers: { Accept: "application/json" } },
-            )
-              .then(function (r) {
-                return r.json();
-              })
-              .then(function (d) {
-                var a = (d && d.address) || {};
-                var city = a.city || a.town || a.province || a.state || "";
-                var district =
-                  a.suburb || a.district || a.neighbourhood || a.county || "";
-                var loc = district ? district + ", " + city : city;
-                if (loc) localStorage.setItem("kmUserLocation", loc);
-              });
-          })
-          .catch(function () {});
+      // Sohbette konum-onay butonu: kullanıcı "yakınımda kafe?" deyince Merci bunu
+      // gösterir; basınca TAZE konum alınır (bayat cache yok) → /nearby önerisi.
+      function appendLocationConsent(type) {
+        var msgs = document.getElementById("chat-messages");
+        if (!msgs) return;
+        var labels = {
+          food: "🍽️ yemek",
+          cafe: "☕ kafe",
+          dessert: "🍰 tatlı",
+          bar: "🍹 mekan",
+          activity: "🎯 aktivite",
+        };
+        var lbl = labels[type] || "📍 yakındaki yer";
+        var wrap = document.createElement("div");
+        wrap.className = "msg-merci";
+        var btn = document.createElement("button");
+        btn.className = "loc-consent-btn";
+        btn.style.cssText =
+          "display:inline-flex;align-items:center;gap:6px;background:linear-gradient(135deg,#7c3aed,#a855f7);" +
+          "color:#fff;border:none;padding:12px 18px;border-radius:14px;font-size:15px;font-weight:700;" +
+          "cursor:pointer;box-shadow:0 4px 14px rgba(124,58,237,.35)";
+        btn.innerHTML = "📍 Konumu aç, " + lbl + " öner";
+        btn.onclick = function () {
+          wrap.remove();
+          merciNearby(type);
+        };
+        wrap.appendChild(btn);
+        msgs.appendChild(wrap);
+        setTimeout(function () {
+          wrap.scrollIntoView({ behavior: "smooth", block: "start" });
+        }, 50);
       }
       function appendPlaceCards(places) {
         var msgs = document.getElementById("chat-messages");
@@ -6893,13 +6873,26 @@
           var dist =
             p.dist >= 1000 ? (p.dist / 1000).toFixed(1) + " km" : p.dist + " m";
           var nm = String(p.name).replace(/</g, "&lt;").replace(/>/g, "&gt;");
+          var telRaw = p.phone ? String(p.phone).replace(/[^+\d]/g, "") : "";
+          var telDisp = p.phone
+            ? String(p.phone).replace(/</g, "&lt;").replace(/>/g, "&gt;")
+            : "";
+          var phoneHtml = telRaw
+            ? '<a class="place-phone" href="tel:' +
+              telRaw +
+              '" style="color:#7c3aed;font-weight:600;text-decoration:none">📞 ' +
+              telDisp +
+              "</a>"
+            : "";
           html +=
             '<div class="place-card"><div><div class="place-name">' +
             nm +
             '</div><div class="place-meta">📍 ' +
             dist +
             (p.kind ? " · " + p.kind : "") +
-            '</div></div><button class="place-dir" onclick="window.open(\'' +
+            "</div>" +
+            phoneHtml +
+            '</div><button class="place-dir" onclick="window.open(\'' +
             maps +
             "','_blank')\">🧭 Yol tarifi</button></div>";
         });
@@ -7023,7 +7016,8 @@
                 messages: aiMessages,
                 groupCount: S.count,
                 history: S.history.slice(0, 15),
-                location: localStorage.getItem("kmUserLocation") || null,
+                // Konum BİLEREK gönderilmiyor: bayat cache yerine sohbette taze
+                // onay akışı kullanılıyor (NEED_LOCATION işareti → merciNearby).
                 resultContext: rc,
               }),
             }),
@@ -7039,8 +7033,17 @@
               return;
             }
             var reply = data.error || data.text || "Bir hata oluştu!";
-            aiMessages.push({ role: "assistant", content: reply });
-            appendMsg("merci", reply, true);
+            // Konum-onay işareti: [[NEED_LOCATION:type]] → metinden temizle, butonla iste
+            var locMatch = reply.match(/\[\[NEED_LOCATION:([a-z]+)\]\]/i);
+            var cleanReply =
+              reply.replace(/\[\[NEED_LOCATION:[a-z]+\]\]/gi, "").trim() ||
+              "Civarındaki gerçek mekanları telefonlarıyla önerebilirim — konumunu açar mısın? 🐙";
+            // Modelin kendi işaretini sonraki turda görmemesi için temiz hali sakla
+            aiMessages.push({ role: "assistant", content: cleanReply });
+            appendMsg("merci", cleanReply, true);
+            if (locMatch) {
+              appendLocationConsent(locMatch[1].toLowerCase());
+            }
             // MSN hissiyatı: belirgin ses + titreşim
             msnSound();
             vib(60);
