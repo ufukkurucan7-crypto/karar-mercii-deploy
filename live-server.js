@@ -318,6 +318,71 @@ app.post("/dev-upload", express.text({ limit: "50mb", type: "text/plain" }), (re
   res.send(`✅ ${fname} başarıyla yüklendi! (${(req.body.length / 1024).toFixed(1)} KB)`);
 });
 
+// ── MERCİ SEÇENEK ÜRETİCİSİ (çark/oylama için hızlı + ucuz: Haiku, web_search yok) ──
+app.post("/options", rateLimit, authAndQuota, async (req, res) => {
+  try {
+    const theme = (req.body && req.body.theme ? String(req.body.theme) : "")
+      .trim()
+      .slice(0, 120);
+    const count = Math.min(Math.max(parseInt(req.body && req.body.count) || 6, 3), 8);
+
+    const sys =
+      "Sen Merci — karar yardımcısı sevimli bir ahtapot. Görevin: verilen konu için " +
+      "bir karar çarkına konacak KISA seçenekler üretmek. SADECE geçerli bir JSON dizisi " +
+      'döndür, başka HİÇBİR şey yazma. Örnek çıktı: ["Pizza","Burger","Döner"]. ' +
+      "Kurallar: tam olarak " +
+      count +
+      " seçenek; her biri 1-3 kelime; Türkçe; konuya uygun, çeşitli ve gerçekçi; " +
+      "tekrar yok; emoji yok; başına numara/tire koyma.";
+    const userMsg = theme
+      ? "Konu: " + theme
+      : "Konu verilmedi — günlük, eğlenceli bir karar için rastgele ve çeşitli seçenekler üret (ne yenir, nereye gidilir, ne izlenir gibi).";
+
+    const resp = await anthropic.messages.create({
+      model: "claude-haiku-4-5-20251001",
+      max_tokens: 220,
+      system: sys,
+      messages: [{ role: "user", content: userMsg }],
+    });
+
+    let text = "";
+    resp.content.forEach((b) => {
+      if (b.type === "text") text += b.text;
+    });
+
+    let opts = [];
+    try {
+      const m = text.match(/\[[\s\S]*\]/);
+      if (m) opts = JSON.parse(m[0]);
+    } catch (e) {}
+
+    const seen = {};
+    opts = (Array.isArray(opts) ? opts : [])
+      .map((x) =>
+        String(x)
+          .trim()
+          .replace(/^["'\-\d.\)\s]+/, "")
+          .slice(0, 40),
+      )
+      .filter((x) => {
+        if (!x) return false;
+        const k = x.toLowerCase();
+        if (seen[k]) return false;
+        seen[k] = 1;
+        return true;
+      })
+      .slice(0, count);
+
+    if (!opts.length) {
+      return res.status(502).json({ error: "Seçenek üretilemedi, tekrar dene." });
+    }
+    res.json({ options: opts });
+  } catch (e) {
+    console.error("Options Error:", e.message);
+    res.status(500).json({ error: "Merci şu an seçenek üretemiyor, tekrar dene!" });
+  }
+});
+
 // ── REVENUECAT WEBHOOK → Firestore isPro ──
 // RC, satın alma/yenileme/iptal/bitiş olaylarını buraya POST eder. appUserID =
 // Firebase UID olarak configure ettiğimiz için event.app_user_id = users doc id.
