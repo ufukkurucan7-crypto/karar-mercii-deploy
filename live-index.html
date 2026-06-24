@@ -6191,19 +6191,28 @@
       }
 
       function settle(target, wi) {
-        // Son anında hafifçe titreme (kenar yakınsa) sonra dur
-        var edgeDist = edgeClose(target, S.wheel.length);
-        var doWobble = edgeDist < 0.16;
-        var amp = doWobble ? 0.05 + Math.random() * 0.03 : 0;
+        // Gerçekçi yerine oturma: kenara yakınsa ÇOK küçük, yavaş, TEK yumuşak
+        // nudge (fırlatma/zıplama yok). Eskiden sin(2.2π) iki tam salınım yapıp
+        // sert atıyordu. Genlik slice genişliğine oranlı → her seçenek sayısında dengeli.
+        var n = S.wheel.length;
+        var sl = (Math.PI * 2) / n;
+        var edgeDist = edgeClose(target, n);
+        var doWobble = edgeDist < 0.18;
+        var amp = doWobble ? sl * (0.08 + Math.random() * 0.04) : 0;
         var dir = Math.random() < 0.5 ? 1 : -1;
         var t0 = performance.now(),
-          dur = doWobble ? 1150 : 150;
+          dur = doWobble ? 950 : 130;
+        var vibbed = false;
         (function fr(now) {
           var t = Math.min((now - t0) / dur, 1);
-          // Kenara/beraberliğe yakınsa yavaşça sönen sallanmayla yerine otursun
-          wAngle =
-            target +
-            Math.sin(t * Math.PI * 2.2) * amp * dir * Math.pow(1 - t, 1.8);
+          // sin(π·t): tek tepe (0→1→0); (1-t)^1.4 ile asimetrik sönüm →
+          // hafifçe kenara doğru kayar, yumuşakça olduğu dilime geri oturur.
+          wAngle = target + Math.sin(t * Math.PI) * amp * dir * Math.pow(1 - t, 1.4);
+          // O son ufak harekette de titreşim (bir kez)
+          if (doWobble && !vibbed && t > 0.04) {
+            vib(16);
+            vibbed = true;
+          }
           drawW("wcanvas", S.wheel, wAngle, -1);
           var _cm = document.getElementById("wheel-center-merci");
           if (_cm)
