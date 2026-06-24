@@ -3814,10 +3814,15 @@
       // ── AUTH STATE ──
       var currentUser = null;
       var isPremium = false;
-      // PRO durumu (Firestore isPro / RC entitlement) ÇÖZÜLDÜ mü? Giriş sonrası bu
-      // asenkron çözülene kadar ücretsiz kota kapısı UYGULANMAZ → PRO kullanıcı
-      // yarış durumu yüzünden yanlışlıkla bloklanmasın.
+      // PRO durumu çözüldü mü? HEM RevenueCat (app) HEM Firestore (isPro) okuması
+      // BİTENE KADAR ücretsiz kota kapısı UYGULANMAZ → hangi kaynak yavaşsa o yüzden
+      // PRO kullanıcı yarış durumunda yanlışlıkla bloklanmasın. İkisi de bitince true.
       var premiumResolved = false;
+      var _rcDone = false;
+      var _fsDone = false;
+      function _markResolved() {
+        if (_rcDone && _fsDone) premiumResolved = true;
+      }
       var selectedPlan = "yearly";
 
       // Oturumu cihazda KALICI tut → uygulama yeniden açılınca giriş hatırlansın
@@ -3833,6 +3838,8 @@
         currentUser = user;
         isPremium = false;
         premiumResolved = false;
+        _rcDone = false;
+        _fsDone = false;
 
         if (user) {
           // RevenueCat'i bu kullanıcıya bağla + PRO (entitlement) durumunu eşitle
@@ -3860,10 +3867,9 @@
                   .catch(function () {});
                 isPremium = false;
               }
-              // Web'de (uygulama dışı) RC yok → PRO kaynağı yalnız Firestore;
-              // bu okuma bitince durum çözülmüş sayılır. Uygulamada RC çözer.
-              if (!(typeof KM_RC !== "undefined" && KM_RC.inApp()))
-                premiumResolved = true;
+              // Firestore okuması bitti (PRO kaynaklarından biri) → çözülmeye katkı
+              _fsDone = true;
+              _markResolved();
               // isPremium belli olduktan SONRA UI güncelle
               updateAuthUI();
               // PRO ise banner'ı gizle (Firestore yolundan gelen premium için de)
@@ -3872,8 +3878,8 @@
               loadHistory();
             })
             .catch(function () {
-              if (!(typeof KM_RC !== "undefined" && KM_RC.inApp()))
-                premiumResolved = true;
+              _fsDone = true;
+              _markResolved();
               // Hata olursa yine de UI'ı güncelle
               updateAuthUI();
               loadHistory();
@@ -3898,6 +3904,8 @@
           }
         } else {
           // Çıkış/anonim: PRO durumu net (ücretsiz) → kota kapısı uygulanabilir
+          _rcDone = true;
+          _fsDone = true;
           premiumResolved = true;
           updateAuthUI();
           if (typeof S !== "undefined") {
@@ -4216,13 +4224,16 @@
         // Kullanıcı giriş yapınca çağrılır: SDK'yı yapılandır + premium durumunu eşitle
         configure: function (uid) {
           if (!this.inApp()) {
-            // Web'de (uygulama dışı) RevenueCat yok — sessizce çık (normal)
+            // Web'de RC yok → RC tarafı "bitti" say; PRO yalnız Firestore'dan gelir
+            _rcDone = true;
+            _markResolved();
             return;
           }
           var P = this.plugin();
           if (!P) {
-            // Purchases plugin yok (eski build) → PRO kaynağı yalnız Firestore
-            premiumResolved = true;
+            // Purchases plugin yok (eski build) → RC tarafı bitti say
+            _rcDone = true;
+            _markResolved();
             return;
           }
           var self = this;
@@ -4248,11 +4259,13 @@
               return self.syncEntitlement();
             })
             .then(function () {
-              // RC entitlement senkronu bitti → PRO durumu çözüldü (app yolu)
-              premiumResolved = true;
+              // RC entitlement senkronu bitti → RC tarafı tamam
+              _rcDone = true;
+              _markResolved();
             })
             .catch(function (e) {
-              premiumResolved = true;
+              _rcDone = true;
+              _markResolved();
               console.log("RC configure hata", e);
             });
         },
