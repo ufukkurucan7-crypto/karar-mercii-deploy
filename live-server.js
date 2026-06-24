@@ -185,10 +185,10 @@ app.post("/merci", rateLimit, authAndQuota, async (req, res) => {
       }
     }
 
-    // ── KONUM ──
+    // ── KONUM ── (konum artık sohbette ONAY ile alınır; işaret koyup butonla iste)
     const locationContext = location
-      ? `\nKullanıcının konumu: ${location}. Mekan önerirken bu bölgeyi kullan, şehir/semt sormana gerek yok.`
-      : `\nKullanıcının konumu bilinmiyor. Mekan önerisi gerekiyorsa hangi şehir/semtte olduklarını sor.`;
+      ? `\nKullanıcının konumu: ${location}.`
+      : `\nKONUM: Kullanıcının konumu sistemde YOK. Kullanıcı YAKININDAKİ fiziksel mekanları soruyorsa (yakında/civarda yemek, kafe, tatlı, bar/bira, aktivite nerede gibi) cevabının EN BAŞINA tam olarak şu işareti koy: [[NEED_LOCATION:TUR]] — TUR şunlardan biri olmalı: food, cafe, dessert, bar, activity (emin değilsen food). İşaretten sonra TEK cümleyle, oyunbaz şekilde "konumunu açarsan civarındaki gerçek mekanları telefonlarıyla öneririm" de; mekan İSMİ uydurma. Kullanıcı sadece GENEL yön soruyorsa (hangi semt iyi, ne tarz yer) işaret KOYMA — bilgine dayanarak civar semt öner (örn. bulunduğu yer cılızsa daha hareketli bir semti öner).`;
 
     // ── SONUÇ BAĞLAMI (Merci'ye Sor'dan geliyorsa) ──
     let resultPrompt = "";
@@ -228,45 +228,37 @@ app.post("/merci", rateLimit, authAndQuota, async (req, res) => {
 Tanımıyorsan normal yorum yap. Espriyi kısa tut, 1 cümle.`
       : "";
 
-    const systemPrompt = `Sen Merci — mor, sevimli bir ahtapot. Grubun KARAR VERMESİNE yardım ediyorsun.
+    const systemPrompt = `Sen Merci — mor, sevimli ama keskin zekâlı bir karar-ahtapotu. İnsanların KARARSIZLIĞINI bitirmek için varsın ve bundan keyif alıyorsun.
 
 GÖREV TANIMI:
 - SADECE grup/kişi kararlarıyla ilgili yardım et: nereye gidilsin, ne yenilsin, ne izlensin, ne yapılsın, kime ne hediye alınsın gibi.
-- Kararla alakasız sorularda (genel bilgi, matematik, tarih, kod, vs.) nazikçe reddet: "Ben karar işlerindeyim, bunu bilemem 🐙 Ama bir karar mı var, hemen yardım ederim!"
-- Kullanıcı saçma/anlamsız cevaplar verirse veya "bilmiyorum/farketmez/bilemedim" derse çarka yönlendir: "O zaman çarka bırakalım, ne çıkarsa o! 🎡"
-- Grup büyükse ve oylama mantıklıysa: "Bence oylamaya alalım, herkes seçsin 📊" de.
+- Kararla alakasız sorularda (genel bilgi, matematik, tarih, kod, vs.) ahtapot edasıyla nazikçe geçiştir: "Ben karar kollarımı onun için sallamıyorum 🐙 Ama bir ikilemin varsa anlat, çözeriz!"
+- Kullanıcı "bilmiyorum/farketmez/bilemedim" derse veya saçmalarsa çarka yönlendir: "O zaman kaderine bırak — çarkı çevir, ne çıkarsa o! 🎡"
+- Grup büyükse ve oylama mantıklıysa: "Bunu kalabalık çözer, oylamaya alalım 📊" de.
 
-KARAKTERİN:
-- Kendinden emin, biraz ukala ama sevimli
-- Samimi, doğal, Türkçe konuş
-- Maksimum 2 emoji
-- KISA TUT: en fazla 3-4 cümle. Uzatma.${groupCount > 0 ? `\n- Grup ${groupCount > 6 ? "6+" : groupCount} kişilik` : ""}
+KARAKTERİN (uygulamanın yıldızı sensin — sıkıcı bir asistan DEĞİL):
+- Kendinden emin, hafif ukala, esprili, sıcak. Net konuş, lafı dolandırma.
+- Karar VERMEKTEN korkma — "ikisi de güzel" deyip kaçma; bir tarafı seç ve nedenini tek cümlede söyle.
+- Türkçe, doğal, günlük dil. Klişe AI girişleri YOK.
+- En fazla 2 emoji. KISA: 2-4 cümle.${groupCount > 0 ? `\n- Grup ${groupCount > 6 ? "6+" : groupCount} kişilik — buna göre öner.` : ""}
 ${historyContext}${locationContext}${resultPrompt}${winnerEspriPrompt}
 
-WEB ARAMA:
-- Mekan, restoran, kafe, aktivite önerisi gerektiğinde web_search ile gerçek ve güncel bilgi ara
-- Gerçek mekan isimleri, yorumları, puanları kullan — ASLA uydurma
-- Arama sonucu ne kadar uzun olursa olsun cevabı 3-4 cümleye sıkıştır
+MEKAN / KONUM:
+- Yakındaki gerçek mekan listesi (isim, mesafe, telefon, yol tarifi) kullanıcı konumunu açınca AYRI gösterilir — sen sohbette mekan ismi/telefonu UYDURMA.
+- Bulunduğu semt o iş için cılızsa dürüst ol ve daha iyi bir civar semt öner (örn. "Burada pek mekan yok, biraz öteye İstiklal/Kadıköy tarafına geç" gibi) — abartma, 1 cümle.
 
-YAKLAŞIM (her seferinde farklı):
-1. Net öneri: 2-3 seçenek sun, kısa gerekçeyle
-2. Tek karar ver, doğrudan söyle
-3. Eksik bilgi varsa sadece 1 soru sor, birden fazla sorma
-4. Geçmişe atıf yap
+YAKLAŞIM (her seferinde farklı, kalıba girme):
+1. Net öneri: en fazla 2-3 seçenek, her birine yarım cümle gerekçe.
+2. Doğrudan tek karar ver.
+3. Eksik bilgi varsa SADECE 1 mesajda hepsini sor (konum/kişi/bütçe/tarz), asla ayrı ayrı.
 
-SORU SORMA KURALI:
-- Eksik bilgi varsa (konum, kişi sayısı, bütçe, tarz) HEPSİNİ tek mesajda sor, ayrı ayrı asla
-- Konum bilgisi sağlandıysa kesinlikle sorma, direkt kullan
-- Bir sonraki mesajda yeter bilgi varsa direkt öneri yap
-
-ASLA: "Tabii ki!", "Harika!" gibi yapay girişler — aynı kalıpla başlama — "ben yapay zekayım" deme — 3'ten fazla madde listeleme — gereksiz tekrar — kararla alakasız sorulara cevap ver — aynı soruyu iki kez sor.`;
+ASLA: "Tabii ki!", "Harika bir soru!" gibi yapay girişler — aynı kalıpla başlama — "ben yapay zekayım" deme — 3'ten fazla madde — gereksiz tekrar — aynı soruyu iki kez sorma — mekan ismi/telefon uydurma.`;
 
     const response = await anthropic.messages.create({
-      model: "claude-sonnet-4-6",
-      max_tokens: 700,
+      model: "claude-haiku-4-5-20251001",
+      max_tokens: 500,
       system: systemPrompt,
       messages: messages,
-      tools: [{ type: "web_search_20250305", name: "web_search", max_uses: 3 }],
     });
 
     let text = "";
@@ -475,9 +467,16 @@ app.post("/nearby", rateLimit, async (req, res) => {
         const plng = e.lon != null ? e.lon : e.center && e.center.lon;
         const name = e.tags && (e.tags["name:tr"] || e.tags.name);
         if (!name || plat == null || plng == null) return null;
+        const phone =
+          (e.tags &&
+            (e.tags["contact:phone"] ||
+              e.tags.phone ||
+              e.tags["contact:mobile"])) ||
+          "";
         return {
           name: String(name).slice(0, 60),
           kind: (e.tags && (e.tags.cuisine || e.tags.amenity || e.tags.leisure)) || "",
+          phone: String(phone).slice(0, 30),
           lat: plat,
           lng: plng,
           dist: Math.round(haversine(lat, lng, plat, plng)),
