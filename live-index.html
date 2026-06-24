@@ -2924,9 +2924,9 @@
             ></div>
             <div
               style="
-                font-family: Fredoka, Nunito, sans-serif;
+                font-family: 'Nunito', sans-serif;
                 font-size: 20px;
-                font-weight: 700;
+                font-weight: 900;
                 color: #6d28d9;
                 margin-top: 4px;
               "
@@ -2952,14 +2952,14 @@
           <button
             id="cekilis-start"
             onclick="startCekilis()"
-            style="width: 100%; margin: 10px 0 4px; padding: 14px; border: none; border-radius: 16px; background: linear-gradient(135deg, #7c3aed, #ec4899); color: #fff; font-family: Fredoka, Nunito, sans-serif; font-weight: 700; font-size: 16px; cursor: pointer; box-shadow: 0 4px 14px rgba(124, 58, 237, 0.32)"
+            style="width: 100%; margin: 10px 0 4px; padding: 14px; border: none; border-radius: 16px; background: linear-gradient(135deg, #7c3aed, #ec4899); color: #fff; font-family: 'Nunito', sans-serif; font-weight: 900; font-size: 16px; cursor: pointer; box-shadow: 0 4px 14px rgba(124, 58, 237, 0.32)"
           >
             🎉 Çekilişi Başlat
           </button>
           <div id="cekilis-stage" style="display: none; text-align: center; margin: 18px 0">
             <div
               id="cekilis-display"
-              style="font-family: Fredoka, Nunito, sans-serif; font-size: 30px; font-weight: 800; color: #5b21b6; min-height: 44px; padding: 18px 10px; border-radius: 18px; background: #f5f0ff; border: 2px solid #c4b5fd"
+              style="font-family: 'Nunito', sans-serif; font-size: 30px; font-weight: 900; color: #5b21b6; min-height: 44px; padding: 18px 10px; border-radius: 18px; background: #f5f0ff; border: 2px solid #c4b5fd"
             ></div>
           </div>
           <div id="cr" style="display: none">
@@ -6123,7 +6123,7 @@
           ctx.globalAlpha = hi >= 0 && j !== hi ? 0.38 : 1;
           ctx.fillStyle = _textOn(COLS[j % COLS.length]);
           var fs = Math.max(10, Math.round(r * (n > 8 ? 0.085 : 0.105)));
-          ctx.font = "700 " + fs + "px Fredoka,Nunito,sans-serif";
+          ctx.font = "700 " + fs + "px Nunito,sans-serif";
           ctx.textBaseline = "middle";
           ctx.textAlign = "right";
           ctx.fillText(wheelLabel(items[j], 12), r - 12, 0);
@@ -6752,6 +6752,9 @@
       }
       function finishCekilis(winner) {
         cekilisSpinning = false;
+        // Duplike "🎉 talihli" alanını gizle — talihli sadece alttaki kartta çıksın
+        var stg = document.getElementById("cekilis-stage");
+        if (stg) stg.style.display = "none";
         var say =
           (typeof getSaying === "function" ? getSaying(winner) : "") ||
           "Talihli belli oldu!";
