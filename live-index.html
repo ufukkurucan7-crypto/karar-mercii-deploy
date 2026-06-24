@@ -2716,6 +2716,13 @@
               +
             </button>
           </div>
+          <button
+            id="merci-fill-btn"
+            onclick="merciFillWheel()"
+            style="width: 100%; margin: 8px 0 4px; padding: 11px; border: none; border-radius: 14px; background: linear-gradient(135deg, #7c3aed, #ec4899); color: #fff; font-family: Fredoka, Nunito, sans-serif; font-weight: 700; font-size: 14px; cursor: pointer; box-shadow: 0 4px 14px rgba(124, 58, 237, 0.32)"
+          >
+            ✨ Merci doldursun
+          </button>
           <div class="ogrid" id="wl"></div>
           <div class="wscene" id="wscene">
             <div class="wstage">
@@ -8045,6 +8052,73 @@
         render(mode);
         if (mode === "wheel") updW();
         snd("add");
+      }
+      // ── MERCİ SEÇENEK ÜRETİCİSİ — çarkı AI ile doldur ──
+      function merciFillWheel() {
+        if (!currentUser) {
+          signInWithGoogle();
+          return;
+        }
+        var btn = document.getElementById("merci-fill-btn");
+        var theme = (document.getElementById("ri").value || "").trim();
+        var orig = btn ? btn.textContent : "";
+        if (btn) {
+          btn.disabled = true;
+          btn.style.opacity = "0.7";
+          btn.textContent = "🐙 Merci düşünüyor…";
+        }
+        currentUser
+          .getIdToken()
+          .then((token) =>
+            fetch("/options", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: "Bearer " + token,
+              },
+              body: JSON.stringify({ theme: theme, count: 6 }),
+            }),
+          )
+          .then((r) => r.json().then((data) => ({ status: r.status, data })))
+          .then(({ status, data }) => {
+            if (status === 429) {
+              showPaywall();
+              return;
+            }
+            if (status === 401) {
+              signInWithGoogle();
+              return;
+            }
+            if (data.options && data.options.length) {
+              var added = 0;
+              data.options.forEach(function (o) {
+                if (S.wheel.indexOf(o) < 0 && S.wheel.length < 14) {
+                  S.wheel.push(o);
+                  added++;
+                }
+              });
+              document.getElementById("ri").value = "";
+              wheelHi = -1;
+              render("wheel");
+              updW();
+              if (added) {
+                snd("add");
+                vib(25);
+              }
+            } else {
+              alert(data.error || "Merci seçenek üretemedi, tekrar dene.");
+            }
+          })
+          .catch(function () {
+            alert("Bağlantı hatası, tekrar dene.");
+          })
+          .finally(function () {
+            if (btn) {
+              btn.disabled = false;
+              btn.style.opacity = "";
+              btn.textContent = orig || "✨ Merci doldursun";
+            }
+          });
       }
       function removeOpt(mode, val) {
         if (mode === "vote") {
