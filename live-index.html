@@ -3512,7 +3512,7 @@
                  Merci onay butonu çıkarır (loc-consent-btn) → taze konum + öneri -->
 
             <!-- Hızlı başla grid -->
-            <p class="lbl">Hızlı Başla</p>
+            <p class="lbl" id="ai-chips-label">Hızlı Başla</p>
             <div class="ai-quick-grid" id="ai-chips"></div>
 
             <!-- Chat alanı -->
@@ -3905,6 +3905,9 @@
           // Onboarding ekranındaysa ana sayfaya geç
           var ob1 = document.getElementById("scr-ob1");
           var ob2 = document.getElementById("scr-ob2");
+          var wasOnboarding =
+            (ob1 && ob1.classList.contains("on")) ||
+            (ob2 && ob2.classList.contains("on"));
           if (ob1 && ob1.classList.contains("on")) {
             if (typeof setCount === "function") setCount(0);
             else
@@ -3919,6 +3922,8 @@
                 setCount(0);
               }, 300);
           }
+          // İlk kez onboarding/login'den ana ekrana ULAŞINCA interaktif tur (kmTutDone yoksa)
+          if (wasOnboarding) setTimeout(showTutorialIfNeeded, 1400);
         } else {
           // Çıkış/anonim: PRO durumu net (ücretsiz) → kota kapısı uygulanabilir
           _rcDone = true;
@@ -4136,6 +4141,7 @@
             '<div class="msg-merci"><div class="chat-av-merci">' +
             merciSVGChat(28) +
             '</div><div class="chat-bubble">Yeni konu! Ne konuda yardım edeyim? 🐙</div></div>';
+        updateChipsVisibility();
         var ctx = document.getElementById("ai-ctx");
         if (ctx) {
           ctx.value = "";
@@ -4770,7 +4776,7 @@
         },
         // Ekranda açık bir popup/modal var mı?
         modalSelectors:
-          ".menu-overlay.on, .info-modal.on, .pro-modal.on, .auth-modal.on, .confirm-modal.on, .modal-overlay.on, .online-popup-overlay.on, #online-setup-popup.on, #paywall-wrap",
+          ".menu-overlay.on, .info-modal.on, .pro-modal.on, .auth-modal.on, .confirm-modal.on, .modal-overlay.on, .online-popup-overlay.on, #online-setup-popup.on, #paywall-wrap, #chat-hist-overlay, #km-tour",
         anyModalOpen: function () {
           try {
             return !!document.querySelector(this.modalSelectors);
@@ -4874,10 +4880,17 @@
           usage.extraFromAd = (usage.extraFromAd || 0) + AD_MSG_BONUS;
           saveTopicUsage(usage);
           hidePaywall();
-          appendMsg(
-            "merci",
-            "Teşekkürler! +6 mesaj kazandın, devam edelim 🐙",
-          );
+          var pq = window._pendingQ;
+          window._pendingQ = null;
+          if (pq) {
+            // Reklam öncesi cevapsız kalan soruyu OTOMATİK gönder → cevabı gelsin
+            appendMsg("merci", "Teşekkürler! +6 mesaj 🐙 Sorunu yanıtlıyorum...", false);
+            setTimeout(function () {
+              sendAI(pq);
+            }, 300);
+          } else {
+            appendMsg("merci", "Teşekkürler! +6 mesaj kazandın, devam edelim 🐙");
+          }
         }
         function fail() {
           if (btn) {
@@ -5517,37 +5530,54 @@
 
       // ═══════════════════ TUTORIAL ═══════════════════
       // ══════════ İNTERAKTİF TUR (maskot + balon + spotlight, sekmeleri gezdirir) ══════════
-      function startInteractiveTour() {
+      function startInteractiveTour(force) {
+        // Sadece ANA EKRAN (sekmeler görünür) durumunda çalış — login/onboarding'de DEĞİL.
+        var firstTab = document.querySelector('.tab[data-tab="wheel"]');
+        if (!firstTab || !firstTab.offsetParent) {
+          // Otomatik çağrı + ana ekran hazır değil → hiç başlatma (kmTutDone'a dokunma)
+          if (!force) return;
+        }
         localStorage.setItem("kmTutDone", "1");
         var ex = document.getElementById("km-tour");
         if (ex) ex.remove();
         var exOld = document.getElementById("tutorial-overlay");
         if (exOld) exOld.remove();
+        function poseSvg(p, w) {
+          try {
+            if (p === "chat") return merciSVGChat(w);
+            if (p === "think") return merciSVGThink(w);
+            if (p === "celebrate") return merciSVGCelebrate(w);
+            if (p === "glasses") return merciSVGGlasses(w);
+            return merciSVG(w);
+          } catch (e) {
+            return '<div style="font-size:46px">🐙</div>';
+          }
+        }
         var steps = [
           {
-            icon: "🐙",
-            title: "Selam, ben Merci!",
+            pose: "chat",
+            title: "Selam, ben Merci! 🐙",
             body: "Kararsız kaldığında ben buradayım. 15 saniyede gezdireyim 👇",
           },
           {
             tab: "wheel",
             sel: '.tab[data-tab="wheel"]',
-            icon: "🎡",
-            title: "Çark",
+            pose: "celebrate",
+            title: "🎡 Çark",
             body: "Seçenekleri yaz, çarkı saat yönünde çevir — kader karar versin! En az 2 seçenek yeter.",
           },
           {
             tab: "vote",
             sel: '.tab[data-tab="vote"]',
-            icon: "⭐",
-            title: "Oylama",
+            pose: "default",
+            title: "⭐ Oylama",
             body: "Kalabalıksanız oylayın: tek cihaz, elden ele Masa modu ya da herkesin telefonundan Online oda.",
           },
           {
             tab: "ai",
             sel: '.tab[data-tab="ai"]',
-            icon: "🧠",
-            title: "Merci'ye Danış",
+            pose: "glasses",
+            title: "🧠 Merci'ye Danış",
             body: "Ne yesek, nereye gidelim diye sor; öneririm, hatta seçeneklerimi tek tuşla çarka/oylamaya atarım!",
           },
         ];
@@ -5592,7 +5622,7 @@
           });
           dots += "</div>";
           bub.innerHTML =
-            '<div style="font-size:46px;margin-bottom:4px">' + s.icon + "</div>" +
+            '<div style="margin-bottom:6px;display:flex;justify-content:center">' + poseSvg(s.pose, 66) + "</div>" +
             '<div style="font-size:17px;font-weight:900;color:#6d28d9;margin-bottom:8px">' + s.title + "</div>" +
             '<div style="font-size:13.5px;font-weight:700;color:#3b0764;line-height:1.6">' + s.body + "</div>" + dots;
           var btns = document.createElement("div");
@@ -6975,12 +7005,21 @@
           appendMsg(m.role === "user" ? "user" : "merci", m.content, false);
         });
       }
+      // Taslaklar (Hızlı Başla) sadece BOŞ sohbette görünsün; konuşma başlayınca gizlen
+      function updateChipsVisibility() {
+        var has = aiMessages && aiMessages.length > 0;
+        var grid = document.getElementById("ai-chips");
+        var lbl = document.getElementById("ai-chips-label");
+        if (grid) grid.style.display = has ? "none" : "";
+        if (lbl) lbl.style.display = has ? "none" : "";
+      }
       function openChat(chat) {
         aiMessages = (chat.msgs || []).slice();
         currentTopicId = chat.id;
         lastMsgTime = Date.now(); // 30dk idle sıfırlaması bu sohbeti silmesin
         hidePaywall();
         renderChatMessages();
+        updateChipsVisibility();
         var ov = document.getElementById("chat-hist-overlay");
         if (ov) ov.remove();
       }
@@ -7456,6 +7495,7 @@
           var usage = getTopicUsage();
           var allowed = FREE_MSG_PER_DAY + (usage.extraFromAd || 0);
           if (usage.count >= allowed) {
+            window._pendingQ = text; // reklam/PRO sonrası bu soruyu otomatik gönder
             showPaywall();
             return;
           }
@@ -7465,6 +7505,7 @@
 
         aiMessages.push({ role: "user", content: text });
         appendMsg("user", text, false);
+        updateChipsVisibility();
         document.getElementById("ai-ctx").value = "";
         aiThinking = true;
         document.getElementById("ath").style.display = "flex";
@@ -9181,6 +9222,8 @@
           }
           // Girişliyse ve konum henüz yoksa açıklamalı izin iste (bir kez)
           setTimeout(maybeAskLocation, 400);
+          // Taslaklar sadece boş sohbette görünsün
+          updateChipsVisibility();
         }
         if (m === "vote") {
           var vh = document.getElementById("vote-hero-merci");
@@ -9855,6 +9898,21 @@
             }, 200);
         });
       })();
+      // Klavye açılınca visualViewport küçülür → banner'ı gizle (ortaya kaymasın),
+      // klavye kapanınca geri getir. focus/blur'dan daha güvenilir sinyal.
+      if (window.visualViewport) {
+        var _baseVH = window.visualViewport.height;
+        window.visualViewport.addEventListener("resize", function () {
+          var h = window.visualViewport.height;
+          if (h < _baseVH - 120) {
+            if (typeof KM_AD !== "undefined" && KM_AD.hideBanner) KM_AD.hideBanner();
+          } else {
+            _baseVH = Math.max(_baseVH, h);
+            if (typeof KM_AD !== "undefined" && KM_AD.refreshBanner)
+              KM_AD.refreshBanner();
+          }
+        });
+      }
       // iOS: birkaç farklı zamanda çalıştır
       setTimeout(resizeWheel, 0);
       setTimeout(resizeWheel, 200);
@@ -10030,7 +10088,9 @@
         if (miTut)
           miTut.addEventListener("click", function () {
             closeMenu();
-            setTimeout(startInteractiveTour, 250);
+            setTimeout(function () {
+              startInteractiveTour(true);
+            }, 250);
           });
 
         // ── LOGOUT ──
