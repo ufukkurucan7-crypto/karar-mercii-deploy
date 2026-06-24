@@ -2043,6 +2043,75 @@
         justify-content: center;
         pointer-events: none;
       }
+      /* Konum chip'leri + mekan kartları */
+      .loc-chips {
+        display: flex;
+        gap: 7px;
+        overflow-x: auto;
+        padding-bottom: 4px;
+        padding-right: 14px;
+        margin-bottom: 14px;
+        scrollbar-width: none;
+        -webkit-mask-image: linear-gradient(to right, #000 88%, transparent);
+        mask-image: linear-gradient(to right, #000 88%, transparent);
+      }
+      .loc-chips::-webkit-scrollbar {
+        display: none;
+      }
+      .loc-chip {
+        flex-shrink: 0;
+        padding: 10px 14px;
+        border-radius: 12px;
+        font-size: 12.5px;
+        font-weight: 800;
+        background: #f0eeff;
+        border: 2px solid #c4b5fd;
+        color: #5b21b6;
+        cursor: pointer;
+        font-family: "Nunito", sans-serif;
+        white-space: nowrap;
+      }
+      .place-cards {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        margin: 4px 0;
+        width: 100%;
+      }
+      .place-card {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        background: #f7f5ff;
+        border: 1.5px solid #e3dcff;
+        border-radius: 14px;
+        padding: 10px 12px;
+      }
+      .place-name {
+        font-weight: 800;
+        font-size: 13.5px;
+        color: #4c1d95;
+      }
+      .place-meta {
+        font-size: 11px;
+        font-weight: 700;
+        color: #7c3aed;
+        margin-top: 2px;
+      }
+      .place-dir {
+        flex-shrink: 0;
+        background: linear-gradient(135deg, #7c3aed, #a855f7);
+        color: #fff;
+        border: none;
+        border-radius: 10px;
+        padding: 8px 11px;
+        font-size: 11.5px;
+        font-weight: 800;
+        font-family: "Nunito", sans-serif;
+        cursor: pointer;
+        white-space: nowrap;
+      }
       /* Çark dönerken: etrafı gölgele + kontrolleri kilitle, dikkat çarka odaklansın */
       body.wheel-spinning .hdr,
       body.wheel-spinning .tabs,
@@ -3426,6 +3495,24 @@
               </div>
             </div>
 
+            <!-- Konum: yakındaki yerler (OSM, ücretsiz) -->
+            <p class="lbl">📍 Yakınımda ne var?</p>
+            <div class="loc-chips">
+              <button class="loc-chip" onclick="merciNearby('food')">
+                🍽️ Yemek
+              </button>
+              <button class="loc-chip" onclick="merciNearby('cafe')">
+                ☕ Kafe
+              </button>
+              <button class="loc-chip" onclick="merciNearby('dessert')">
+                🍰 Tatlı
+              </button>
+              <button class="loc-chip" onclick="merciNearby('bar')">🍹 Bar</button>
+              <button class="loc-chip" onclick="merciNearby('activity')">
+                🎯 Aktivite
+              </button>
+            </div>
+
             <!-- Hızlı başla grid -->
             <p class="lbl">Hızlı Başla</p>
             <div class="ai-quick-grid" id="ai-chips"></div>
@@ -4503,8 +4590,7 @@
         IDS: {
           rewardedReal: "ca-app-pub-2604503622179334/1618922749",
           bannerReal: "ca-app-pub-2604503622179334/6815409104",
-          // TODO: AdMob'da "geçiş reklamı" oluştur, ID'yi buraya yapıştır (production için)
-          interstitialReal: "ca-app-pub-2604503622179334/0000000000",
+          interstitialReal: "ca-app-pub-2604503622179334/9140927760",
           rewardedTest: "ca-app-pub-3940256099942544/5224354917",
           bannerTest: "ca-app-pub-3940256099942544/6300978111",
           interstitialTest: "ca-app-pub-3940256099942544/1033173712",
@@ -6711,6 +6797,125 @@
           }, 50);
         } else {
           msgs.scrollTop = msgs.scrollHeight;
+        }
+      }
+      // ── KONUM: yakındaki yerler (OSM/Overpass — ücretsiz) ──
+      function getGeo() {
+        return new Promise(function (resolve, reject) {
+          var Geo =
+            window.Capacitor &&
+            window.Capacitor.Plugins &&
+            window.Capacitor.Plugins.Geolocation;
+          if (Geo && Geo.getCurrentPosition) {
+            var go = function () {
+              Geo.getCurrentPosition({ enableHighAccuracy: false, timeout: 10000 })
+                .then(function (p) {
+                  resolve({ lat: p.coords.latitude, lng: p.coords.longitude });
+                })
+                .catch(reject);
+            };
+            if (Geo.requestPermissions) Geo.requestPermissions().then(go).catch(go);
+            else go();
+            return;
+          }
+          if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(
+              function (p) {
+                resolve({ lat: p.coords.latitude, lng: p.coords.longitude });
+              },
+              reject,
+              { enableHighAccuracy: false, timeout: 10000 },
+            );
+            return;
+          }
+          reject(new Error("no geo"));
+        });
+      }
+      function appendPlaceCards(places) {
+        var msgs = document.getElementById("chat-messages");
+        if (!msgs) return;
+        var wrap = document.createElement("div");
+        wrap.className = "msg-merci";
+        var html = '<div class="place-cards">';
+        places.slice(0, 8).forEach(function (p) {
+          var maps =
+            "https://www.google.com/maps/dir/?api=1&destination=" +
+            p.lat +
+            "," +
+            p.lng;
+          var dist =
+            p.dist >= 1000 ? (p.dist / 1000).toFixed(1) + " km" : p.dist + " m";
+          var nm = String(p.name).replace(/</g, "&lt;").replace(/>/g, "&gt;");
+          html +=
+            '<div class="place-card"><div><div class="place-name">' +
+            nm +
+            '</div><div class="place-meta">📍 ' +
+            dist +
+            (p.kind ? " · " + p.kind : "") +
+            '</div></div><button class="place-dir" onclick="window.open(\'' +
+            maps +
+            "','_blank')\">🧭 Yol tarifi</button></div>";
+        });
+        html += "</div>";
+        wrap.innerHTML = html;
+        msgs.appendChild(wrap);
+        setTimeout(function () {
+          wrap.scrollIntoView({ behavior: "smooth", block: "start" });
+        }, 50);
+      }
+      async function merciNearby(type) {
+        if (!currentUser) {
+          signInWithGoogle();
+          return;
+        }
+        appendMsg("merci", "📍 Konumuna bakıyorum...", false);
+        var pos;
+        try {
+          pos = await getGeo();
+        } catch (e) {
+          appendMsg(
+            "merci",
+            "Konumuna ulaşamadım — konum iznini açman gerek 📍",
+            false,
+          );
+          return;
+        }
+        try {
+          var token = await currentUser.getIdToken();
+          var r = await fetch("/nearby", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: "Bearer " + token,
+            },
+            body: JSON.stringify({ lat: pos.lat, lng: pos.lng, type: type }),
+          });
+          var data = await r.json();
+          if (r.status === 401) {
+            signInWithGoogle();
+            return;
+          }
+          if (r.status === 429) {
+            appendMsg(
+              "merci",
+              (data.error || "Günlük hakkın doldu.") + " PRO ile sınırsız! ✨",
+              false,
+            );
+            return;
+          }
+          if (!data.places || !data.places.length) {
+            appendMsg(
+              "merci",
+              "Yakınında uygun bir yer bulamadım, başka tür dene 🐙",
+              false,
+            );
+            return;
+          }
+          if (data.merciComment) appendMsg("merci", data.merciComment, false);
+          appendPlaceCards(data.places);
+          vib(30);
+        } catch (e) {
+          appendMsg("merci", "Bağlantı sorunu, tekrar dene.", false);
         }
       }
       var lastMsgTime = 0; // son mesaj zamanı (30dk sessizlik takibi)
