@@ -423,7 +423,7 @@ app.post("/nearby", rateLimit, async (req, res) => {
       return res.status(400).json({ error: "Konum geçersiz." });
     const typeKey = String((req.body && req.body.type) || "food");
     const radius = Math.min(
-      Math.max(parseInt(req.body && req.body.radius) || 1500, 300),
+      Math.max(parseInt(req.body && req.body.radius) || 2500, 300),
       5000,
     );
 
@@ -447,18 +447,28 @@ app.post("/nearby", rateLimit, async (req, res) => {
         .status(429)
         .json({ error: "Günlük konum önerisi hakkın doldu!", limitReached: true });
 
-    // Overpass sorgusu
+    // Overpass sorgusu (boş dönerse radius'u büyütüp 1 kez daha dene → "bulamadım" azalır)
     const sel = OVERPASS_FILTERS[typeKey] || OVERPASS_FILTERS.food;
-    const q =
-      `[out:json][timeout:20];(node${sel}(around:${radius},${lat},${lng});` +
-      `way${sel}(around:${radius},${lat},${lng}););out center 60;`;
-    const ovr = await fetch("https://overpass-api.de/api/interpreter", {
-      method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body: "data=" + encodeURIComponent(q),
-    });
-    const data = await ovr.json();
-    const els = (data && data.elements) || [];
+    async function runOverpass(r) {
+      const q =
+        `[out:json][timeout:20];(node${sel}(around:${r},${lat},${lng});` +
+        `way${sel}(around:${r},${lat},${lng}););out center 60;`;
+      try {
+        const ovr = await fetch("https://overpass-api.de/api/interpreter", {
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          body: "data=" + encodeURIComponent(q),
+        });
+        const d = await ovr.json();
+        return (d && d.elements) || [];
+      } catch (e) {
+        return [];
+      }
+    }
+    let els = await runOverpass(radius);
+    if (!els.length && radius < 5000) {
+      els = await runOverpass(5000); // geniş alanda tekrar dene
+    }
 
     const seen = {};
     const places = els
