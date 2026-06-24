@@ -205,11 +205,11 @@
 
       /* Header */
       .hdr {
-        padding: 14px 18px 10px;
+        padding: 14px 16px 10px 22px;
         border-bottom: 2px solid #f0eeff;
         display: flex;
         align-items: center;
-        gap: 12px;
+        gap: 10px;
         position: sticky;
         top: 0;
         background: #fff;
@@ -228,13 +228,14 @@
         margin-top: 2px;
       }
       .hdr-home {
-        width: 38px;
-        height: 38px;
+        width: 40px;
+        height: 40px;
+        margin-left: auto; /* home + menü butonlarını en sağa it */
         background: #f0eeff;
         border: 2px solid #c4b5fd;
         border-radius: 12px;
         color: #5b21b6;
-        font-size: 16px;
+        font-size: 17px;
         cursor: pointer;
         display: flex;
         align-items: center;
@@ -258,19 +259,20 @@
       }
       /* ── HAMBURGER MENU ── */
       .menu-btn {
-        width: 38px;
-        height: 38px;
-        background: #f0eeff;
-        border: 2px solid #c4b5fd;
+        width: 40px;
+        height: 40px;
+        background: linear-gradient(135deg, #7c3aed, #a855f7);
+        border: 2px solid #6d28d9;
         border-radius: 12px;
-        color: #5b21b6;
-        font-size: 22px;
+        color: #fff;
+        font-size: 21px;
         cursor: pointer;
         display: flex;
         align-items: center;
         justify-content: center;
         font-family: "Nunito", sans-serif;
         line-height: 1;
+        box-shadow: 0 3px 10px rgba(124, 58, 237, 0.3);
       }
       .menu-overlay {
         display: none;
@@ -2845,6 +2847,11 @@
       html.dark .oname {
         color: #f2eefc;
       }
+      html.dark .hdr-home {
+        background: #271d3f;
+        color: #d8cef5;
+        border-color: #3a2f55;
+      }
     </style>
     <script>
       // Dark mode'u boya ÖNCESİ uygula (açılışta beyaz flash olmasın)
@@ -3108,6 +3115,13 @@
             </button>
           </div>
           <div class="ogrid" id="cl"></div>
+          <div
+            id="cekilis-empty"
+            class="empty"
+            style="font-size: 12px; margin: 2px 0 8px; text-align: center"
+          >
+            ☝️ Yukarıdan en az 2 isim/seçenek ekle
+          </div>
           <button
             id="cekilis-start"
             onclick="startCekilis()"
@@ -6877,6 +6891,8 @@
         });
         var sb = document.getElementById("cekilis-start");
         if (sb) sb.style.opacity = S.cekilis.length >= 2 ? "1" : "0.5";
+        var emp = document.getElementById("cekilis-empty");
+        if (emp) emp.style.display = S.cekilis.length ? "none" : "";
       }
       function startCekilis() {
         if (cekilisSpinning) return;
@@ -10405,6 +10421,17 @@
             vib(20);
           });
         }
+        var miSettings = document.getElementById("mi-settings");
+        if (miSettings)
+          miSettings.addEventListener("click", function () {
+            var p = document.getElementById("settings-panel");
+            var ar = document.getElementById("mi-settings-arrow");
+            if (p) {
+              var open = p.style.display === "none";
+              p.style.display = open ? "" : "none";
+              if (ar) ar.textContent = open ? "▾" : "▸";
+            }
+          });
 
         // ── PRO MODAL backdrop + skip ──
         var proModal = document.getElementById("modal-pro");
@@ -10734,17 +10761,18 @@
         <button class="menu-item" id="mi-rate">
           <span class="menu-item-icon">⭐</span> Bizi Puanla
         </button>
+        <button class="menu-item" id="mi-settings">
+          <span class="menu-item-icon">⚙️</span> Ayarlar
+          <span
+            id="mi-settings-arrow"
+            style="margin-left: auto; color: #a78bfa; font-size: 16px"
+            >▸</span
+          >
+        </button>
         <div
-          style="
-            padding: 12px 20px 4px;
-            font-size: 11px;
-            font-weight: 900;
-            color: #a78bfa;
-            letter-spacing: 0.6px;
-          "
+          id="settings-panel"
+          style="display: none; background: #faf8ff; border-bottom: 1px solid #f0eeff"
         >
-          AYARLAR
-        </div>
         <div style="display: flex; gap: 8px; padding: 2px 16px 12px">
           <button
             id="sound-btn"
@@ -10795,6 +10823,7 @@
             >Kapalı</span
           >
         </button>
+        </div>
         <button
           class="menu-item"
           id="mi-logout"
