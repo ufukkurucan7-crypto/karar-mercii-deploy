@@ -4517,6 +4517,7 @@
 
       // ═══════════════════ STATE ═══════════════════
       var soundEnabled = localStorage.getItem("kmSound") !== "false";
+      var vibEnabled = localStorage.getItem("kmVib") !== "false";
       var S = { wheel: [], vote: {}, count: 0, history: [] };
       var COLS = [
         "#7C3AED",
@@ -5228,13 +5229,28 @@
       // Kutlama (kollar havada, mutlu gözler)
       function merciSVGCelebrate(w) {
         mc++;
+        var uid = "c" + mc;
+        // _eyesHappy (ince eğri) küçük boyutta görünmüyordu → dolu gözler (net)
         return _makeSVG(
           w,
-          "c" + mc,
-          _merciBodyArmsUp("c" + mc),
-          _eyesHappy(),
+          uid,
+          _merciBodyArmsUp(uid),
+          _eyesNormal(uid),
           '<path d="M305 305Q340 338 375 305Q368 325 340 332Q312 325 305 305Z" fill="#7c3aed" stroke="#26215C" stroke-width="2"/>',
           '<text x="480" y="140" font-size="28" font-family="sans-serif">🎉</text><text x="145" y="130" font-size="22" font-family="sans-serif">✨</text>',
+        );
+      }
+      // Aşık poz (normal net gözler + uçuşan kalpler — küçük boyutta da belli)
+      function merciSVGLove(w) {
+        mc++;
+        var uid = "lv" + mc;
+        return _makeSVG(
+          w,
+          uid,
+          _merciBody(uid),
+          _eyesNormal(uid),
+          '<path d="M318 308Q340 332 362 308" fill="none" stroke="#26215C" stroke-width="4" stroke-linecap="round"/>',
+          '<text x="468" y="152" font-size="30" font-family="sans-serif">💕</text><text x="150" y="138" font-size="22" font-family="sans-serif">❤️</text>',
         );
       }
 
@@ -5350,6 +5366,7 @@
         el.classList.add("cele");
       }
       function vib(ms) {
+        if (!vibEnabled) return; // titreşim kapalıysa hiç titretme
         try {
           var H =
             window.Capacitor &&
@@ -6567,9 +6584,16 @@
 
       function merciPoseForWinner(winner) {
         var w = (winner || "").toLowerCase();
-        // Korku temaları
-        if (/korku|horror|kabus|zombie|hayalet/.test(w)) return merciSVGScared;
-        // Kutlama (default kazanan için)
+        // Korku → korkmuş Merci
+        if (/korku|horror|kabus|zombi|hayalet|gerilim/.test(w))
+          return merciSVGScared;
+        // Aşk/romantik → aşık Merci
+        if (/aşk|ask|roman|sevgili|kalp|öpüş|flört|randevu|valentine/.test(w))
+          return merciSVGLove;
+        // Aksiyon/macera/spor → havalı (gözlüklü) Merci
+        if (/aksiyon|action|savaş|savas|dövüş|dovus|macera|spor|futbol|basket|kavga/.test(w))
+          return merciSVGGlasses;
+        // Varsayılan → kutlama
         return merciSVGCelebrate;
       }
       function resetVoteScreen() {
@@ -9203,6 +9227,19 @@
         _doSw(m);
       }
       function _doSw(m) {
+        // Sekme geçiş reklamı: her 5 geçişte bir, non-PRO (tur sırasında gösterme)
+        window._tabSwitches = (window._tabSwitches || 0) + 1;
+        if (
+          !isPremium &&
+          window._tabSwitches % 5 === 0 &&
+          typeof KM_AD !== "undefined" &&
+          KM_AD.showInterstitial &&
+          !document.getElementById("km-tour")
+        ) {
+          setTimeout(function () {
+            KM_AD.showInterstitial();
+          }, 350);
+        }
         ["wheel", "vote", "ai"].forEach((x) => {
           document.getElementById("s-" + x).classList.toggle("on", x === m);
           document
@@ -9332,7 +9369,7 @@
         if (top[1] === 1) {
           msg0 =
             n +
-            " karar verildi. Her seferinde farklı bir seçim — maceracı bir grubsunuz! 🎲";
+            " karar verildi. Her seferinde farklı bir seçim — maceracı bir grupsunuz! 🎲";
         } else if (tied.length >= 2) {
           msg0 =
             n +
@@ -9942,20 +9979,35 @@
       // window load sonrası bağlanmalı
       window.addEventListener("load", function () {
         // ── SES BUTONU ──
+        function _applyToggleStyle(btn, on) {
+          if (!btn) return;
+          btn.style.opacity = on ? "1" : "0.45";
+          btn.style.borderColor = on ? "#a855f7" : "#e0d5ff";
+        }
         var soundBtn = document.getElementById("sound-btn");
         if (soundBtn) {
+          var sIcon = document.getElementById("sound-icon");
+          if (sIcon) sIcon.textContent = soundEnabled ? "🔊" : "🔇";
+          _applyToggleStyle(soundBtn, soundEnabled);
           soundBtn.addEventListener("click", function () {
             soundEnabled = !soundEnabled;
             localStorage.setItem("kmSound", soundEnabled ? "true" : "false");
-            var icon = document.getElementById("sound-icon");
-            var label = document.getElementById("sound-label");
-            if (icon) icon.textContent = soundEnabled ? "🔊" : "🔇";
-            if (label)
-              label.textContent = soundEnabled ? "Ses Açık" : "Ses Kapalı";
+            if (sIcon) sIcon.textContent = soundEnabled ? "🔊" : "🔇";
+            _applyToggleStyle(soundBtn, soundEnabled);
             if (soundEnabled)
               setTimeout(function () {
                 snd("ding");
               }, 50);
+          });
+        }
+        var vibBtn = document.getElementById("vib-btn");
+        if (vibBtn) {
+          _applyToggleStyle(vibBtn, vibEnabled);
+          vibBtn.addEventListener("click", function () {
+            vibEnabled = !vibEnabled;
+            localStorage.setItem("kmVib", vibEnabled ? "true" : "false");
+            _applyToggleStyle(vibBtn, vibEnabled);
+            if (vibEnabled) vib(40); // açınca kısa geri bildirim
           });
         }
 
@@ -10287,10 +10339,59 @@
         <button class="menu-item" id="mi-rate">
           <span class="menu-item-icon">⭐</span> Bizi Puanla
         </button>
-        <button class="menu-item" id="sound-btn">
-          <span class="menu-item-icon" id="sound-icon">🔊</span>
-          <span id="sound-label">Ses Açık</span>
-        </button>
+        <div
+          style="
+            padding: 12px 20px 4px;
+            font-size: 11px;
+            font-weight: 900;
+            color: #a78bfa;
+            letter-spacing: 0.6px;
+          "
+        >
+          AYARLAR
+        </div>
+        <div style="display: flex; gap: 8px; padding: 2px 16px 12px">
+          <button
+            id="sound-btn"
+            style="
+              flex: 1;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              gap: 6px;
+              padding: 11px;
+              background: #f5f0ff;
+              border: 1.5px solid #e0d5ff;
+              border-radius: 12px;
+              font-weight: 800;
+              color: #5b21b6;
+              font-family: 'Nunito', sans-serif;
+              cursor: pointer;
+            "
+          >
+            <span id="sound-icon">🔊</span> Ses
+          </button>
+          <button
+            id="vib-btn"
+            style="
+              flex: 1;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              gap: 6px;
+              padding: 11px;
+              background: #f5f0ff;
+              border: 1.5px solid #e0d5ff;
+              border-radius: 12px;
+              font-weight: 800;
+              color: #5b21b6;
+              font-family: 'Nunito', sans-serif;
+              cursor: pointer;
+            "
+          >
+            <span id="vib-icon">📳</span> Titreşim
+          </button>
+        </div>
         <button
           class="menu-item"
           id="mi-logout"
