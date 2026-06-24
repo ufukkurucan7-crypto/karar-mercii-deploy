@@ -3814,6 +3814,10 @@
       // ── AUTH STATE ──
       var currentUser = null;
       var isPremium = false;
+      // PRO durumu (Firestore isPro / RC entitlement) ÇÖZÜLDÜ mü? Giriş sonrası bu
+      // asenkron çözülene kadar ücretsiz kota kapısı UYGULANMAZ → PRO kullanıcı
+      // yarış durumu yüzünden yanlışlıkla bloklanmasın.
+      var premiumResolved = false;
       var selectedPlan = "yearly";
 
       // Oturumu cihazda KALICI tut → uygulama yeniden açılınca giriş hatırlansın
@@ -3828,6 +3832,7 @@
       auth.onAuthStateChanged(function (user) {
         currentUser = user;
         isPremium = false;
+        premiumResolved = false;
 
         if (user) {
           // RevenueCat'i bu kullanıcıya bağla + PRO (entitlement) durumunu eşitle
@@ -3855,6 +3860,10 @@
                   .catch(function () {});
                 isPremium = false;
               }
+              // Web'de (uygulama dışı) RC yok → PRO kaynağı yalnız Firestore;
+              // bu okuma bitince durum çözülmüş sayılır. Uygulamada RC çözer.
+              if (!(typeof KM_RC !== "undefined" && KM_RC.inApp()))
+                premiumResolved = true;
               // isPremium belli olduktan SONRA UI güncelle
               updateAuthUI();
               // PRO ise banner'ı gizle (Firestore yolundan gelen premium için de)
@@ -3863,6 +3872,8 @@
               loadHistory();
             })
             .catch(function () {
+              if (!(typeof KM_RC !== "undefined" && KM_RC.inApp()))
+                premiumResolved = true;
               // Hata olursa yine de UI'ı güncelle
               updateAuthUI();
               loadHistory();
@@ -3886,6 +3897,8 @@
               }, 300);
           }
         } else {
+          // Çıkış/anonim: PRO durumu net (ücretsiz) → kota kapısı uygulanabilir
+          premiumResolved = true;
           updateAuthUI();
           if (typeof S !== "undefined") {
             S.history = [];
@@ -4207,7 +4220,11 @@
             return;
           }
           var P = this.plugin();
-          if (!P) return; // Purchases plugin yok (eski build)
+          if (!P) {
+            // Purchases plugin yok (eski build) → PRO kaynağı yalnız Firestore
+            premiumResolved = true;
+            return;
+          }
           var self = this;
           var start;
           if (!this.configured) {
@@ -4230,7 +4247,12 @@
             .then(function () {
               return self.syncEntitlement();
             })
+            .then(function () {
+              // RC entitlement senkronu bitti → PRO durumu çözüldü (app yolu)
+              premiumResolved = true;
+            })
             .catch(function (e) {
+              premiumResolved = true;
               console.log("RC configure hata", e);
             });
         },
@@ -4534,10 +4556,8 @@
         chatWrap.parentNode.insertBefore(wrap, chatWrap.nextSibling);
         document.getElementById("ask-merci").disabled = true;
         document.getElementById("ai-ctx").disabled = true;
-        // 800ms sonra pro modal otomatik aç
-        setTimeout(function () {
-          openProModal();
-        }, 800);
+        // Not: PRO satış modalını otomatik AÇMIYORUZ — kutudaki "Pro'ya Geç" ve
+        // "Reklam İzle" butonları kullanıcının seçimine bırakılır (zorlama yok).
       }
       function hidePaywall() {
         var existing = document.getElementById("paywall-wrap");
@@ -6980,7 +7000,10 @@
         // İlk mesajsa → yeni konu başlıyor, limit kontrolü yap
         var isNewTopic = aiMessages.length === 0;
         if (isNewTopic) {
-          if (!isPremium) {
+          // Ücretsiz "1 konu/gün" kapısı SADECE PRO durumu çözülünce uygulanır.
+          // Çözülmeden (giriş sonrası yarış) bloklarsak PRO kullanıcı takılır;
+          // server zaten kendi kotasını denetliyor (backstop).
+          if (!isPremium && premiumResolved) {
             var usage = getTopicUsage();
             var allowed = 1 + (usage.extraFromAd || 0);
             if (usage.count >= allowed) {
@@ -10346,35 +10369,20 @@
         <div class="auth-logo" id="modal-auth-merci"></div>
         <div class="auth-title">Merci'ye Danışmak İçin</div>
         <div class="auth-sub">
-          Pro üye ol — AI analizleri kullan, reklamsız karar ver!
+          Google ile giriş yap — her gün 1 ücretsiz Merci sorusu senin! 🐙
         </div>
         <div class="auth-perks">
           <div class="auth-perk">
             <span class="auth-perk-icon">💾</span> Karar geçmişin güvende kalır
           </div>
           <div class="auth-perk">
-            <span class="auth-perk-icon">🧠</span>
-            <span
-              >Merci AI
-              <span
-                style="
-                  background: linear-gradient(135deg, #7c3aed, #a855f7);
-                  color: #fff;
-                  font-size: 9px;
-                  font-weight: 900;
-                  padding: 2px 6px;
-                  border-radius: 20px;
-                  letter-spacing: 0.5px;
-                  vertical-align: middle;
-                "
-                >PRO</span
-              ></span
-            >
+            <span class="auth-perk-icon">🎁</span>
+            <span>Her gün 1 ücretsiz Merci sorusu</span>
           </div>
           <div class="auth-perk">
-            <span class="auth-perk-icon">🚫</span>
+            <span class="auth-perk-icon">⭐</span>
             <span
-              >Reklamsız deneyim
+              >Sınırsız soru + reklamsız
               <span
                 style="
                   background: linear-gradient(135deg, #7c3aed, #a855f7);
