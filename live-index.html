@@ -2031,6 +2031,18 @@
       .wstage.win-pop {
         animation: wWinPop 0.55s ease;
       }
+      /* Çark göbeğindeki maskot (dönerken buton kaybolunca görünür) */
+      #wheel-center-merci {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        z-index: 6;
+        width: 54px;
+        display: flex;
+        justify-content: center;
+        pointer-events: none;
+      }
       /* Çark dönerken: etrafı gölgele + kontrolleri kilitle, dikkat çarka odaklansın */
       body.wheel-spinning .hdr,
       body.wheel-spinning .tabs,
@@ -2760,6 +2772,7 @@
             <div class="wstage">
               <div class="wptr"></div>
               <canvas id="wcanvas" width="300" height="300"></canvas>
+              <div id="wheel-center-merci"></div>
               <div class="spin-hint" id="spin-hint">
                 <div class="orbit-wrap"><div class="hand">👆</div></div>
               </div>
@@ -5707,6 +5720,9 @@
         ctx.restore();
       }
       function updW() {
+        var cm = document.getElementById("wheel-center-merci");
+        if (cm && !cm.innerHTML && typeof merciSVG === "function")
+          cm.innerHTML = merciSVG(46);
         var has = S.wheel.length > 0;
         // Çark her zaman görünür (boş da olsa)
         document.getElementById("wscene").style.display = "block";
@@ -6905,15 +6921,7 @@
               ? "Mod değiştirirsen açık oda kapanacak ve katılımcılar bağlantıyı kaybedecek. Emin misin?"
               : "Devam eden oylama sıfırlanacak. Emin misin?",
             function () {
-              if (hasActiveOnline) {
-                if (shareUnsub) {
-                  shareUnsub();
-                  shareUnsub = null;
-                }
-                shareCode = "";
-                amHost = false;
-                clearTimerInterval();
-              }
+              if (hasActiveOnline) resetOnlineUI();
               _doSetVoteMode(mode);
             },
           );
@@ -7906,6 +7914,49 @@
           if (el && !el.innerHTML) setM("about-merci-svg", 72);
         }
       }
+      // Online oylamadan ayrılırken TÜM state + UI'ı temizle (zombi oda kalmasın)
+      function resetOnlineUI() {
+        try {
+          if (shareUnsub) shareUnsub();
+        } catch (e) {}
+        try {
+          if (roOverlayUnsub) roOverlayUnsub();
+        } catch (e) {}
+        shareUnsub = null;
+        roOverlayUnsub = null;
+        shareCode = "";
+        amHost = false;
+        roCode = "";
+        roVotes = {};
+        hostVotes = {};
+        participantVotes = {};
+        try {
+          clearTimerInterval();
+        } catch (e) {}
+        voteMode = "";
+        [
+          "online-host",
+          "online-setup",
+          "online-join",
+          "online-name-input",
+          "online-participant",
+          "online-role-row",
+          "ro-name-step",
+          "ro-vote-step",
+          "vote-online",
+          "vote-local",
+        ].forEach(function (id) {
+          var el = document.getElementById(id);
+          if (el) el.style.display = "none";
+        });
+        var ms = document.getElementById("vote-mode-select");
+        if (ms) ms.style.display = "";
+        document
+          .querySelectorAll(".vote-mode-btn")
+          .forEach(function (b) {
+            b.classList.remove("on");
+          });
+      }
       function leaveRoom() {
         if (!confirm("Oylamadan ayrılmak istediğine emin misin?")) return;
         if (roOverlayUnsub) roOverlayUnsub();
@@ -8271,14 +8322,7 @@
               "Oylama devam ediyor",
               "Başka sekmeye geçersen mevcut oylama kaybolacak. Devam etmek istiyor musun?",
               function () {
-                if (hasActiveOnline) {
-                  if (shareUnsub) {
-                    shareUnsub();
-                    shareUnsub = null;
-                  }
-                  shareCode = "";
-                  amHost = false;
-                }
+                if (hasActiveOnline) resetOnlineUI();
                 if (hasActiveMasa) {
                   masaOn = false;
                   masaPeopleConfirmed = false;
