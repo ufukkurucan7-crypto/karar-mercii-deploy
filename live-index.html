@@ -4503,8 +4503,11 @@
         IDS: {
           rewardedReal: "ca-app-pub-2604503622179334/1618922749",
           bannerReal: "ca-app-pub-2604503622179334/6815409104",
+          // TODO: AdMob'da "geçiş reklamı" oluştur, ID'yi buraya yapıştır (production için)
+          interstitialReal: "ca-app-pub-2604503622179334/0000000000",
           rewardedTest: "ca-app-pub-3940256099942544/5224354917",
           bannerTest: "ca-app-pub-3940256099942544/6300978111",
+          interstitialTest: "ca-app-pub-3940256099942544/1033173712",
         },
         inApp: function () {
           return !!(
@@ -4527,6 +4530,66 @@
         },
         bannerId: function () {
           return this.AD_TESTING ? this.IDS.bannerTest : this.IDS.bannerReal;
+        },
+        interstitialId: function () {
+          return this.AD_TESTING
+            ? this.IDS.interstitialTest
+            : this.IDS.interstitialReal;
+        },
+        // Geçiş reklamı (oylama sonucu / 2. çark). PRO'da hiç gösterilmez.
+        showInterstitial: function () {
+          var self = this;
+          return new Promise(function (resolve) {
+            var AdMob = self.plugin();
+            if (!self.inApp() || !AdMob || isPremium) {
+              resolve(false);
+              return;
+            }
+            var done = false,
+              subs = [];
+            function cleanup() {
+              subs.forEach(function (s) {
+                try {
+                  s.remove();
+                } catch (e) {}
+              });
+              subs = [];
+            }
+            function finish(v) {
+              if (done) return;
+              done = true;
+              cleanup();
+              resolve(v);
+            }
+            function on(ev, fn) {
+              var h = AdMob.addListener(ev, fn);
+              if (h && typeof h.then === "function") {
+                h.then(function (hh) {
+                  if (hh) subs.push(hh);
+                });
+              } else if (h) subs.push(h);
+            }
+            on("interstitialAdDismissed", function () {
+              finish(true);
+            });
+            on("interstitialAdFailedToShow", function () {
+              finish(false);
+            });
+            on("interstitialAdFailedToLoad", function () {
+              finish(false);
+            });
+            AdMob.prepareInterstitial({
+              adId: self.interstitialId(),
+              isTesting: self.AD_TESTING,
+            })
+              .then(function () {
+                return AdMob.showInterstitial();
+              })
+              .catch(function (e) {
+                console.log("Interstitial hata", e);
+                finish(false);
+              });
+          });
         },
         init: async function () {
           if (!this.inApp()) return; // web'de hiçbir şey yapma
@@ -6129,6 +6192,17 @@
         winSound();
         vib(90);
         confetti();
+        // Her 2. çark sonucunda non-PRO'ya geçiş reklamı
+        window._wheelResults = (window._wheelResults || 0) + 1;
+        if (
+          !isPremium &&
+          window._wheelResults % 2 === 0 &&
+          typeof KM_AD !== "undefined" &&
+          KM_AD.showInterstitial
+        )
+          setTimeout(function () {
+            KM_AD.showInterstitial();
+          }, 1600);
         setTimeout(() => {
           burstAt(card);
           card.scrollIntoView({ behavior: "smooth", block: "center" });
@@ -6329,6 +6403,11 @@
         winSound();
         vib(90);
         confetti();
+        // Oylama sonucunda non-PRO'ya geçiş reklamı
+        if (!isPremium && typeof KM_AD !== "undefined" && KM_AD.showInterstitial)
+          setTimeout(function () {
+            KM_AD.showInterstitial();
+          }, 1400);
         setTimeout(() => {
           burstAt(card);
           card.scrollIntoView({ behavior: "smooth", block: "center" });
@@ -7368,6 +7447,11 @@
         vib(90);
         confetti();
         navigator.vibrate && navigator.vibrate([200, 100, 200]);
+        // Online oylama sonucunda non-PRO'ya geçiş reklamı
+        if (!isPremium && typeof KM_AD !== "undefined" && KM_AD.showInterstitial)
+          setTimeout(function () {
+            KM_AD.showInterstitial();
+          }, 1400);
         setTimeout(() => {
           burstAt(card);
           card.scrollIntoView({ behavior: "smooth", block: "center" });
