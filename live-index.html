@@ -3940,40 +3940,11 @@
             statusEl.className =
               "menu-profile-status" + (isPremium ? " premium" : "");
           }
-          // Konum iznini bir kez iste
-          if (
-            !localStorage.getItem("kmLocationAsked") &&
-            navigator.geolocation
-          ) {
-            localStorage.setItem("kmLocationAsked", "1");
-            navigator.geolocation.getCurrentPosition(
-              function (pos) {
-                fetch(
-                  "https://nominatim.openstreetmap.org/reverse?lat=" +
-                    pos.coords.latitude +
-                    "&lon=" +
-                    pos.coords.longitude +
-                    "&format=json&accept-language=tr",
-                )
-                  .then(function (r) {
-                    return r.json();
-                  })
-                  .then(function (d) {
-                    var city =
-                      d.address.city ||
-                      d.address.town ||
-                      d.address.province ||
-                      d.address.state ||
-                      "";
-                    var district = d.address.suburb || d.address.district || "";
-                    var loc = district ? district + ", " + city : city;
-                    if (loc) localStorage.setItem("kmUserLocation", loc);
-                  })
-                  .catch(function () {});
-              },
-              function () {},
-              { timeout: 8000 },
-            );
+          // Konum iznini iste + cache (Capacitor plugin → native izin penceresi).
+          // kmUserLocation yoksa her açılışta dene (eski kmLocationAsked tuzağı:
+          // navigator.geolocation native'de prompt çıkarmadan sessizce patlıyordu).
+          if (!localStorage.getItem("kmUserLocation")) {
+            captureLocation();
           }
         } else {
           profileWrap.style.display = "none";
@@ -6003,7 +5974,7 @@
         if (h) h.style.display = "none";
       }
       function wDown(e) {
-        if (spinning) return;
+        if (spinning || window._adPending) return;
         if (S.wheel.length < 2) {
           // 1 veya 0 seçenek varsa uyarı ver
           if (S.wheel.length === 1) {
@@ -6123,9 +6094,11 @@
       }
 
       function launch(sp) {
-        if (spinning) return;
+        if (spinning || window._adPending) return;
         spinning = true;
         document.body.classList.add("wheel-spinning");
+        // Dönmeye başladığı an belirgin kickoff titreşimi
+        vib(55);
         // Çark dönerken ekranın ortasına kaysın (odak)
         try {
           var _wstC = document.querySelector("#s-wheel .wstage");
@@ -6158,6 +6131,7 @@
         var t0 = performance.now();
         var tickEvery = 0.25;
         var lastTickAngle = base;
+        var lastVib = 0;
 
         // Daha kademeli yavaşlama: cubic ease-out (p^3 yerine özel)
         function easeOutCubic(p) {
@@ -6174,7 +6148,11 @@
             lastTickAngle += tickEvery * Math.floor(angleDiff / tickEvery);
             var speedRatio = 1 - p;
             casinoTickGain(0.3 + speedRatio * 0.5);
-            if (p > 0.4) vib(5);
+            // Spin boyunca (baştan itibaren) tıkır titreşim — ~18/sn ile sınırlı
+            if (now - lastVib > 55) {
+              vib(6);
+              lastVib = now;
+            }
           }
 
           drawW("wcanvas", S.wheel, wAngle, -1);
@@ -6193,7 +6171,7 @@
       }
 
       function spinButtonClick() {
-        if (spinning) return;
+        if (spinning || window._adPending) return;
         if (S.wheel.length < 2) {
           var we = document.getElementById("we");
           if (we) {
@@ -6295,17 +6273,27 @@
         winSound();
         vib(90);
         confetti();
-        // Her 2. çark sonucunda non-PRO'ya geçiş reklamı
+        // Her 2. çark sonucunda non-PRO'ya geçiş reklamı.
+        // _adPending: reklam gösterilene kadar yeni spin engellenir (reklam dönen
+        // çarkın üstüne binmesin diye). Sonuç ekranı görünsün diye 1.6sn bekle.
         window._wheelResults = (window._wheelResults || 0) + 1;
         if (
           !isPremium &&
           window._wheelResults % 2 === 0 &&
           typeof KM_AD !== "undefined" &&
           KM_AD.showInterstitial
-        )
+        ) {
+          window._adPending = true;
           setTimeout(function () {
-            KM_AD.showInterstitial();
+            KM_AD.showInterstitial()
+              .then(function () {
+                window._adPending = false;
+              })
+              .catch(function () {
+                window._adPending = false;
+              });
           }, 1600);
+        }
         setTimeout(() => {
           burstAt(card);
           card.scrollIntoView({ behavior: "smooth", block: "center" });
@@ -6847,6 +6835,39 @@
           }
           reject(new Error("no geo"));
         });
+      }
+      // Konumu Capacitor plugin (native izin) / web ile al → şehir-semt çöz → cache.
+      function captureLocation() {
+        if (typeof getGeo !== "function") return;
+        getGeo()
+          .then(function (pos) {
+            try {
+              localStorage.setItem(
+                "kmUserGeo",
+                JSON.stringify({ lat: pos.lat, lng: pos.lng }),
+              );
+            } catch (e) {}
+            return fetch(
+              "https://nominatim.openstreetmap.org/reverse?lat=" +
+                pos.lat +
+                "&lon=" +
+                pos.lng +
+                "&format=json&accept-language=tr",
+              { headers: { Accept: "application/json" } },
+            )
+              .then(function (r) {
+                return r.json();
+              })
+              .then(function (d) {
+                var a = (d && d.address) || {};
+                var city = a.city || a.town || a.province || a.state || "";
+                var district =
+                  a.suburb || a.district || a.neighbourhood || a.county || "";
+                var loc = district ? district + ", " + city : city;
+                if (loc) localStorage.setItem("kmUserLocation", loc);
+              });
+          })
+          .catch(function () {});
       }
       function appendPlaceCards(places) {
         var msgs = document.getElementById("chat-messages");
