@@ -4526,6 +4526,10 @@
         topicCompleted = false; // konu tamamlandı mı
 
       // ── KONU BAZLI LİMİT ──
+      // Ücretsiz kota MESAJ bazlı: günde N mesaj. "Yeni Konu" ekstra hak yemez,
+      // hepsi aynı günlük bütçeden gider. Reklam başına +AD_MSG_BONUS mesaj.
+      var FREE_MSG_PER_DAY = 6;
+      var AD_MSG_BONUS = 6;
       function getTopicUsage() {
         var today = new Date().toDateString();
         var usage = JSON.parse(localStorage.getItem("kmTopicUsage") || "{}");
@@ -4541,13 +4545,13 @@
       function canStartNewTopic() {
         if (isPremium) return true;
         var usage = getTopicUsage();
-        var total = 1 + (usage.extraFromAd || 0);
+        var total = FREE_MSG_PER_DAY + (usage.extraFromAd || 0);
         return usage.count < total;
       }
       function getRemainingTopics() {
         if (isPremium) return 999;
         var usage = getTopicUsage();
-        var total = 1 + (usage.extraFromAd || 0);
+        var total = FREE_MSG_PER_DAY + (usage.extraFromAd || 0);
         return Math.max(0, total - usage.count);
       }
 
@@ -4560,11 +4564,11 @@
         wrap.className = "paywall-box";
         wrap.innerHTML =
           '<div class="paywall-emoji">🐙</div>' +
-          '<div class="paywall-title">Bugünkü ücretsiz sohbetini kullandın!</div>' +
-          "<div class=\"paywall-sub\">Pro'ya geçince Merci'ye sınırsız danışabilirsin. Ya da bir reklam izle, +1 sohbet kazan.</div>" +
+          '<div class="paywall-title">Bugünkü ücretsiz mesajların bitti!</div>' +
+          "<div class=\"paywall-sub\">Reklam izle, +6 mesaj kazan — ya da PRO ile sınırsız ve reklamsız konuş.</div>" +
           '<button class="paywall-btn-primary" onclick="openProModal()">⭐ Pro\'ya Geç — Sınırsız Kullan</button>' +
-          '<button class="paywall-btn-ad" onclick="watchAdForTopic()">📺 Reklam İzle (+1 konu)</button>' +
-          '<div class="paywall-counter">Yarın 1 yeni hakkın yenilenir 🌙</div>';
+          '<button class="paywall-btn-ad" onclick="watchAdForTopic()">📺 Reklam İzle (+6 mesaj)</button>' +
+          '<div class="paywall-counter">Yarın 6 yeni mesaj hakkın yenilenir 🌙</div>';
         var chatWrap = document.querySelector(".chat-wrap");
         chatWrap.parentNode.insertBefore(wrap, chatWrap.nextSibling);
         document.getElementById("ask-merci").disabled = true;
@@ -4849,17 +4853,17 @@
         var btn = document.querySelector(".paywall-btn-ad");
         function grant() {
           var usage = getTopicUsage();
-          usage.extraFromAd = (usage.extraFromAd || 0) + 1;
+          usage.extraFromAd = (usage.extraFromAd || 0) + AD_MSG_BONUS;
           saveTopicUsage(usage);
           hidePaywall();
           appendMsg(
             "merci",
-            "Teşekkürler! 1 sohbet hakkı daha kazandın. Ne konuda yardım edeyim? 🐙",
+            "Teşekkürler! +6 mesaj kazandın, devam edelim 🐙",
           );
         }
         function fail() {
           if (btn) {
-            btn.textContent = "📺 Reklam İzle (+1 konu)";
+            btn.textContent = "📺 Reklam İzle (+6 mesaj)";
             btn.disabled = false;
           }
           appendMsg(
@@ -5516,7 +5520,7 @@
           {
             icon: "🧠",
             title: "Merci'ye Danış!",
-            body: "Ne yesek, nereye gidelim gibi sorularını Merci'ye sor! Yapay zeka asistanımız grubunun geçmişine bakarak öneri yapar. Günde 1 <b>ücretsiz sohbet</b> (istediğin kadar soru sor), sınırsız için Pro ol! 🐙",
+            body: "Ne yesek, nereye gidelim gibi sorularını Merci'ye sor! Yapay zeka asistanımız grubunun geçmişine bakarak öneri yapar. Günde <b>6 ücretsiz mesaj</b>, sınırsız için Pro ol! 🐙",
             color: "#6d28d9",
           },
         ];
@@ -7079,20 +7083,20 @@
         // İlk mesajsa → yeni konu başlıyor, limit kontrolü yap
         var isNewTopic = aiMessages.length === 0;
         if (isNewTopic) {
-          // Ücretsiz "1 konu/gün" kapısı SADECE PRO durumu çözülünce uygulanır.
-          // Çözülmeden (giriş sonrası yarış) bloklarsak PRO kullanıcı takılır;
-          // server zaten kendi kotasını denetliyor (backstop).
-          if (!isPremium && premiumResolved) {
-            var usage = getTopicUsage();
-            var allowed = 1 + (usage.extraFromAd || 0);
-            if (usage.count >= allowed) {
-              showPaywall();
-              return;
-            }
-            usage.count++;
-            saveTopicUsage(usage);
-          }
           currentTopicId = Date.now().toString();
+        }
+        // Ücretsiz GÜNLÜK MESAJ limiti (her kullanıcı mesajı sayılır). SADECE PRO
+        // durumu çözülünce uygulanır (giriş yarışında PRO bloklanmasın). "Yeni Konu"
+        // ekstra hak yemez — hepsi aynı günlük mesaj bütçesinden gider.
+        if (!isPremium && premiumResolved) {
+          var usage = getTopicUsage();
+          var allowed = FREE_MSG_PER_DAY + (usage.extraFromAd || 0);
+          if (usage.count >= allowed) {
+            showPaywall();
+            return;
+          }
+          usage.count++;
+          saveTopicUsage(usage);
         }
 
         aiMessages.push({ role: "user", content: text });
@@ -10477,8 +10481,7 @@
         <div class="auth-logo" id="modal-auth-merci"></div>
         <div class="auth-title">Merci'ye Danışmak İçin</div>
         <div class="auth-sub">
-          Google ile giriş yap — her gün 1 ücretsiz sohbet senin, istediğin
-          kadar soru sor! 🐙
+          Google ile giriş yap — her gün 6 ücretsiz Merci mesajı senin! 🐙
         </div>
         <div class="auth-perks">
           <div class="auth-perk">
@@ -10486,7 +10489,7 @@
           </div>
           <div class="auth-perk">
             <span class="auth-perk-icon">🎁</span>
-            <span>Her gün 1 ücretsiz sohbet (istediğin kadar soru)</span>
+            <span>Her gün 6 ücretsiz Merci mesajı</span>
           </div>
           <div class="auth-perk">
             <span class="auth-perk-icon">⭐</span>
