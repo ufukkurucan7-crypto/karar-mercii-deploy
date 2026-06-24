@@ -21,7 +21,7 @@ initializeApp({
 const adminDb = getFirestore();
 
 // Günlük Merci mesaj limitleri (kullanıcı başına). Abuse/maliyet tavanı.
-const FREE_DAILY_LIMIT = 25;
+const FREE_DAILY_LIMIT = 60; // abuse tavanı (asıl ücretsiz kapı client'ta: 6/gün + reklam). Yüksek tutuldu ki reklam sonrası soru cevapsız kalmasın.
 const PRO_DAILY_LIMIT = 300;
 
 // ── RATE LIMITING ──
