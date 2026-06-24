@@ -1951,23 +1951,22 @@
       }
       .wstage {
         position: relative;
-        width: min(260px, calc(100vw - 80px));
-        height: min(260px, calc(100vw - 80px));
+        width: min(330px, calc(100vw - 44px));
+        height: min(330px, calc(100vw - 44px));
         margin: 0 auto;
-        overflow: hidden;
+        overflow: visible;
       }
       .wptr {
         position: absolute;
-        top: -4px;
+        top: 0px;
         left: 50%;
         transform: translateX(-50%);
-        width: 0;
-        height: 0;
-        border-left: 13px solid transparent;
-        border-right: 13px solid transparent;
-        border-top: 24px solid #4c1d95;
+        width: 28px;
+        height: 36px;
+        background: linear-gradient(160deg, #fbbf24, #f59e0b);
+        clip-path: polygon(50% 100%, 0 0, 100% 0);
         z-index: 8;
-        filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.2));
+        filter: drop-shadow(0 3px 4px rgba(76, 29, 149, 0.35));
         transform-origin: 50% 0;
       }
       .wptr.tick {
@@ -5434,9 +5433,8 @@
         var L = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
         return L > 0.62 ? "#3b1556" : "#fff";
       }
-      function drawW(cid, items, angle, hi, labelAlpha) {
+      function drawW(cid, items, angle, hi) {
         if (hi === undefined) hi = -1;
-        if (labelAlpha === undefined) labelAlpha = 1;
         var c = document.getElementById(cid);
         if (!c) return;
         var ctx = c.getContext("2d");
@@ -5533,7 +5531,7 @@
           ctx.rotate(mid);
           var flip = Math.cos(mid) < 0;
           if (flip) ctx.rotate(Math.PI);
-          ctx.globalAlpha = (hi >= 0 && j !== hi ? 0.38 : 1) * labelAlpha;
+          ctx.globalAlpha = hi >= 0 && j !== hi ? 0.38 : 1;
           ctx.fillStyle = _textOn(COLS[j % COLS.length]);
           var fs = Math.max(10, Math.round(r * (n > 8 ? 0.085 : 0.105)));
           ctx.font = "700 " + fs + "px Fredoka,Nunito,sans-serif";
@@ -5848,9 +5846,7 @@
             casinoTickGain(0.3 + speedRatio * 0.5);
           }
 
-          // Hızlıyken etiketleri soldur (dönerken flip snap görünmesin), dururken netleşir
-          var labelAlpha = Math.max(0.12, Math.min(1, (p - 0.55) / 0.4));
-          drawW("wcanvas", S.wheel, wAngle, -1, labelAlpha);
+          drawW("wcanvas", S.wheel, wAngle, -1);
 
           if (p < 1) {
             requestAnimationFrame(fr);
