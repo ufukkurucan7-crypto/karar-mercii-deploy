@@ -6878,6 +6878,72 @@
           wrap.scrollIntoView({ behavior: "smooth", block: "start" });
         }, 50);
       }
+      // ── MERCİ → ÇARK / OYLAMA KÖPRÜSÜ ──
+      // Merci 2+ seçenek verince sohbette "Çarka At / Oylamaya At" butonları çıkar;
+      // tıklanınca seçenekler otomatik yüklenir ve ilgili ekrana geçilir.
+      function sendOptionsToWheel(opts) {
+        if (!opts || !opts.length) return;
+        S.wheel = opts.slice(0, 12);
+        wheelHi = -1;
+        render("wheel");
+        if (typeof updW === "function") updW();
+        _doSw("wheel");
+        var hint = document.getElementById("we");
+        if (hint) {
+          hint.style.display = "";
+          hint.textContent = "🎡 Merci'nin seçenekleri hazır — çarkı çevir!";
+          setTimeout(function () {
+            hint.textContent = "☝️ Yukarıdan seçenek ekle — çark dolsun!";
+          }, 3500);
+        }
+        vib(20);
+      }
+      function sendOptionsToVote(opts) {
+        if (!opts || !opts.length) return;
+        S.vote = {};
+        opts.slice(0, 12).forEach(function (o) {
+          S.vote[o] = 0;
+        });
+        var vr = document.getElementById("vr");
+        if (vr) vr.style.display = "none";
+        render("vote");
+        _doSw("vote");
+        vib(20);
+      }
+      function appendDecisionButtons(opts) {
+        var msgs = document.getElementById("chat-messages");
+        if (!msgs || !opts || opts.length < 2) return;
+        var wrap = document.createElement("div");
+        wrap.className = "msg-merci";
+        var box = document.createElement("div");
+        box.style.cssText =
+          "display:flex;gap:8px;flex-wrap:wrap;margin-top:4px";
+        function mk(label, fn) {
+          var b = document.createElement("button");
+          b.style.cssText =
+            "flex:1;min-width:130px;display:inline-flex;align-items:center;justify-content:center;gap:6px;" +
+            "background:linear-gradient(135deg,#7c3aed,#a855f7);color:#fff;border:none;padding:11px 14px;" +
+            "border-radius:14px;font-size:14px;font-weight:800;cursor:pointer;box-shadow:0 4px 12px rgba(124,58,237,.3)";
+          b.innerHTML = label;
+          b.onclick = fn;
+          return b;
+        }
+        box.appendChild(
+          mk("🎡 Çarka At", function () {
+            sendOptionsToWheel(opts);
+          }),
+        );
+        box.appendChild(
+          mk("⭐ Oylamaya At", function () {
+            sendOptionsToVote(opts);
+          }),
+        );
+        wrap.appendChild(box);
+        msgs.appendChild(wrap);
+        setTimeout(function () {
+          wrap.scrollIntoView({ behavior: "smooth", block: "start" });
+        }, 50);
+      }
       function appendPlaceCards(places) {
         var msgs = document.getElementById("chat-messages");
         if (!msgs) return;
@@ -7056,16 +7122,29 @@
               return;
             }
             var reply = data.error || data.text || "Bir hata oluştu!";
-            // Konum-onay işareti: [[NEED_LOCATION:type]] → metinden temizle, butonla iste
+            // İşaretler: [[NEED_LOCATION:type]] (konum onayı) + [[SECENEKLER: a | b | c]] (çark/oylama köprüsü)
             var locMatch = reply.match(/\[\[NEED_LOCATION:([a-z]+)\]\]/i);
+            var optMatch = reply.match(/\[\[SECENEKLER:([^\]]+)\]\]/i);
             var cleanReply =
-              reply.replace(/\[\[NEED_LOCATION:[a-z]+\]\]/gi, "").trim() ||
+              reply
+                .replace(/\[\[NEED_LOCATION:[a-z]+\]\]/gi, "")
+                .replace(/\[\[SECENEKLER:[^\]]*\]\]/gi, "")
+                .trim() ||
               "Civarındaki gerçek mekanları telefonlarıyla önerebilirim — konumunu açar mısın? 🐙";
             // Modelin kendi işaretini sonraki turda görmemesi için temiz hali sakla
             aiMessages.push({ role: "assistant", content: cleanReply });
             appendMsg("merci", cleanReply, true);
             if (locMatch) {
               appendLocationConsent(locMatch[1].toLowerCase());
+            }
+            if (optMatch) {
+              var opts = optMatch[1]
+                .split("|")
+                .map(function (s) {
+                  return s.trim();
+                })
+                .filter(Boolean);
+              if (opts.length >= 2) appendDecisionButtons(opts);
             }
             // MSN hissiyatı: belirgin ses + titreşim
             msnSound();
