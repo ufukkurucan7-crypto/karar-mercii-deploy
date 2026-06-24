@@ -1956,6 +1956,35 @@
         margin: 0 auto;
         overflow: visible;
       }
+      @keyframes wIdle {
+        0%,
+        100% {
+          transform: translateY(0);
+        }
+        50% {
+          transform: translateY(-5px);
+        }
+      }
+      @keyframes wWinPop {
+        0% {
+          transform: scale(1);
+        }
+        35% {
+          transform: scale(1.07);
+        }
+        70% {
+          transform: scale(0.98);
+        }
+        100% {
+          transform: scale(1);
+        }
+      }
+      .wstage {
+        animation: wIdle 3.4s ease-in-out infinite;
+      }
+      .wstage.win-pop {
+        animation: wWinPop 0.55s ease;
+      }
       .wptr {
         position: absolute;
         top: 0px;
@@ -2675,7 +2704,7 @@
             <div class="wcap">
               <div id="merci-wheel"></div>
               <div class="cap-txt" id="wheel-cap-txt">
-                Saat yönünde çevir ve bırak — oyun başlasın! 🎡
+                Çarkı parmağınla çevir 👆 ya da ortadaki ↻ tuşuna bas!
               </div>
             </div>
           </div>
@@ -3627,6 +3656,9 @@
               }
               // isPremium belli olduktan SONRA UI güncelle
               updateAuthUI();
+              // PRO ise banner'ı gizle (Firestore yolundan gelen premium için de)
+              if (isPremium && typeof KM_AD !== "undefined" && KM_AD.hideBanner)
+                KM_AD.hideBanner();
               loadHistory();
             })
             .catch(function () {
@@ -4400,6 +4432,7 @@
         bannerVisible: true,
         showBanner: function () {
           if (!this.inApp()) return;
+          if (isPremium) return; // PRO: banner asla gösterme
           var AdMob = this.plugin();
           if (!AdMob) return;
           var self = this;
@@ -4428,6 +4461,8 @@
             .then(function () {
               self.bannerCreated = true;
               self.bannerVisible = true;
+              // Yarış durumu: banner yüklenirken PRO doğrulandıysa hemen gizle
+              if (isPremium) self.hideBanner();
             })
             .catch(function (e) {
               console.log("Banner hata", e);
@@ -5018,6 +5053,14 @@
       }
       function vib(ms) {
         try {
+          var H =
+            window.Capacitor &&
+            window.Capacitor.Plugins &&
+            window.Capacitor.Plugins.Haptics;
+          if (H && H.vibrate) {
+            H.vibrate({ duration: ms });
+            return;
+          }
           navigator.vibrate && navigator.vibrate(ms);
         } catch (e) {}
       }
@@ -5844,6 +5887,7 @@
             lastTickAngle += tickEvery * Math.floor(angleDiff / tickEvery);
             var speedRatio = 1 - p;
             casinoTickGain(0.3 + speedRatio * 0.5);
+            if (p > 0.4) vib(5);
           }
 
           drawW("wcanvas", S.wheel, wAngle, -1);
@@ -5913,6 +5957,15 @@
       function finishW(wi) {
         wheelHi = wi;
         drawW("wcanvas", S.wheel, wAngle, wi);
+        var _wst = document.querySelector("#s-wheel .wstage");
+        if (_wst) {
+          _wst.classList.remove("win-pop");
+          void _wst.offsetWidth;
+          _wst.classList.add("win-pop");
+          setTimeout(function () {
+            _wst.classList.remove("win-pop");
+          }, 600);
+        }
         if (edgeClose(wAngle, S.wheel.length) < 0.16) {
           var ptr = document.querySelector("#s-wheel .wptr");
           if (ptr) {
@@ -8380,15 +8433,15 @@
       function confetti() {
         var w = document.getElementById("cfw"),
           c = [
-            "#7c3aed",
-            "#c4b5fd",
-            "#ede9fe",
-            "#a78bfa",
-            "#ddd6fe",
-            "#8b5cf6",
-            "#f5a623",
+            "#7C3AED",
+            "#EC4899",
+            "#F59E0B",
+            "#10B981",
+            "#06B6D4",
+            "#FB7185",
+            "#FBBF24",
           ];
-        for (var i = 0; i < 50; i++) {
+        for (var i = 0; i < 70; i++) {
           ((idx) => {
             var p = document.createElement("div");
             p.className = "cf";
