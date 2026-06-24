@@ -247,9 +247,12 @@ MEKAN / KONUM:
 - Yakındaki gerçek mekan listesi (isim, mesafe, telefon, yol tarifi) kullanıcı konumunu açınca AYRI gösterilir — sen sohbette mekan ismi/telefonu UYDURMA.
 - Bulunduğu semt o iş için cılızsa dürüst ol ve daha iyi bir civar semt öner (örn. "Burada pek mekan yok, biraz öteye İstiklal/Kadıköy tarafına geç" gibi) — abartma, 1 cümle.
 
-SEÇENEK İŞARETİ (karar oyunu — ÖNEMLİ, uygulamanın özel özelliği):
-- Kullanıcıya seçebileceği 2+ SOMUT seçenek sunduğunda (yemek, film, mekan türü, aktivite isimleri gibi) cevabının EN SONUNA tam olarak şunu ekle: [[SECENEKLER: ad1 | ad2 | ad3]] (2-8 adet, aralarına | koy, kısa isimler). Bu işaret kullanıcıya seçenekleri tek tıkla Çark'a veya Oylamaya gönderen butonlar çıkarır — "karar veremedim" anını çözer.
-- Tek kesin karar verdiğinde ya da ortada somut seçenek listesi yokken İŞARET KOYMA.
+SEÇENEK İŞARETİ — ÇOK ÖNEMLİ (uygulamanın özel özelliği, SIK kullan):
+Şu durumlarda cevabının EN SONUNA tam olarak şu işareti EKLE: [[SECENEKLER: ad1 | ad2 | ad3]] (2-8 kısa isim, | ile ayır). Bu, kullanıcıya seçenekleri tek tıkla Çark'a/Oylamaya gönderen butonlar çıkarır.
+1) 2+ seçilebilir somut seçenekten bahsettiğinde (yemek/film/mekan/aktivite isimleri) — CÜMLE İÇİNDE bile olsa (örn. "pizza ısmarlayıp korku filmi izleyin" → her ikisini de seçenek say).
+2) Kullanıcı "sen karar ver / bilmiyorum / fark etmez" deyince YA DA sen "çarka bırakalım / çevir bakalım" deyince — o an aklındaki 2-4 seçeneği işarete koy ki çark butonu gelsin.
+ÖRNEKLER: "Pizza mı burger mi, ikisi de süper! [[SECENEKLER: Pizza | Burger]]" — "Kaderine bırak, çevir bakalım! [[SECENEKLER: Korku | Komedi | Aksiyon]]"
+SADECE tek bir kesin şey önerdiğinde (tek seçenek) işaret KOYMA.
 
 KISITLARA TEPKİ:
 - Kullanıcı kısıt söyleyince ("2 kişiyiz", "yalnızım", "uzak / arabam yok", "bütçe az") baştan soru sormadan DİREKT uygun alternatif öner.
@@ -429,6 +432,7 @@ app.post("/nearby", rateLimit, async (req, res) => {
     if (!isFinite(lat) || !isFinite(lng))
       return res.status(400).json({ error: "Konum geçersiz." });
     const typeKey = String((req.body && req.body.type) || "food");
+    const locName = String((req.body && req.body.locName) || "").slice(0, 60);
     const radius = Math.min(
       Math.max(parseInt(req.body && req.body.radius) || 2500, 300),
       5000,
@@ -509,10 +513,14 @@ app.post("/nearby", rateLimit, async (req, res) => {
       .sort((a, b) => a.dist - b.dist)
       .slice(0, 12);
 
-    // Merci'nin gerçek listeden kısa önerisi (ucuz Haiku)
+    // Merci yorumu (ucuz Haiku). Sonuç varsa listeden öner; YOKSA en yakın iyi semti öner.
     let merciComment = "";
-    if (places.length) {
-      try {
+    const typeLabel =
+      ({ food: "yemek", cafe: "kafe", dessert: "tatlı", bar: "bar/bira", activity: "aktivite" })[
+        typeKey
+      ] || typeKey;
+    try {
+      if (places.length) {
         const top = places
           .slice(0, 6)
           .map((p) => `${p.name} (${p.dist}m)`)
@@ -531,8 +539,27 @@ app.post("/nearby", rateLimit, async (req, res) => {
         cr.content.forEach((b) => {
           if (b.type === "text") merciComment += b.text;
         });
-      } catch (e) {}
-    }
+      } else {
+        // Yakında sonuç YOK → en yakın bilinen canlı semt/ilçeyi öner (genel bilgi)
+        const cr = await anthropic.messages.create({
+          model: "claude-haiku-4-5-20251001",
+          max_tokens: 200,
+          system:
+            "Sen Merci, sevimli bir karar-ahtapotu. Kullanıcının yakınında istediği türde mekan ÇIKMADI. " +
+            "KISA (1-2 cümle), samimi Türkçe: bulunduğu bölgede az olduğunu söyle ve O TÜR için EN YAKIN bilinen canlı semt/ilçeyi öner (gerçek ve mantıklı, örn. büyük şehirlerde bilinen eğlence/yeme-içme bölgeleri). " +
+            "Spesifik mekan ismi UYDURMA; 'şu semte/ilçeye geç, orada bolca var' tarzı yönlendir. En fazla 1 emoji.",
+          messages: [
+            {
+              role: "user",
+              content: `Konum: ${locName || "bilinmiyor"}. Tür: ${typeLabel}. Yakında bulunamadı — en yakın iyi semt/ilçe neresi, oraya yönlendir.`,
+            },
+          ],
+        });
+        cr.content.forEach((b) => {
+          if (b.type === "text") merciComment += b.text;
+        });
+      }
+    } catch (e) {}
 
     res.json({ places, merciComment: merciComment.trim(), isPro });
   } catch (e) {
