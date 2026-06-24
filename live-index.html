@@ -37,7 +37,7 @@
       crossorigin="anonymous"
     ></script>
     <link
-      href="https://fonts.googleapis.com/css2?family=Nunito:wght@700;800;900&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@700;800;900&display=swap"
       rel="stylesheet"
     />
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
@@ -2011,7 +2011,7 @@
         width: 19%;
         height: 19%;
         border-radius: 50%;
-        background: #7c3aed;
+        background: linear-gradient(145deg, #8b5cf6, #6d28d9);
         border: 3px solid #fff;
         color: #fff;
         font-size: clamp(18px, 5vw, 26px);
@@ -2022,7 +2022,9 @@
         display: flex;
         align-items: center;
         justify-content: center;
-        box-shadow: 0 2px 12px rgba(124, 58, 237, 0.4);
+        box-shadow:
+          0 4px 16px rgba(124, 58, 237, 0.5),
+          inset 0 1px 0 rgba(255, 255, 255, 0.45);
         transition:
           transform 0.1s,
           background 0.1s;
@@ -4259,14 +4261,14 @@
       var soundEnabled = localStorage.getItem("kmSound") !== "false";
       var S = { wheel: [], vote: {}, count: 0, history: [] };
       var COLS = [
-        "#7c3aed",
-        "#a78bfa",
-        "#5b21b6",
-        "#8b5cf6",
-        "#6d28d9",
-        "#c4b5fd",
-        "#4c1d95",
-        "#9333ea",
+        "#7C3AED",
+        "#EC4899",
+        "#F59E0B",
+        "#10B981",
+        "#6366F1",
+        "#FB7185",
+        "#06B6D4",
+        "#FBBF24",
       ];
       var wAngle = 0,
         dragging = false,
@@ -5423,19 +5425,36 @@
         if (max && arr.length > max) s = arr.slice(0, max).join("") + "…";
         return s;
       }
-      function drawW(cid, items, angle, hi) {
+      // Dilim rengine göre okunur etiket rengi (açık zeminde koyu yazı)
+      function _textOn(hex) {
+        var s = hex.replace("#", "");
+        var r = parseInt(s.substr(0, 2), 16),
+          g = parseInt(s.substr(2, 2), 16),
+          b = parseInt(s.substr(4, 2), 16);
+        var L = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+        return L > 0.62 ? "#3b1556" : "#fff";
+      }
+      function drawW(cid, items, angle, hi, labelAlpha) {
         if (hi === undefined) hi = -1;
+        if (labelAlpha === undefined) labelAlpha = 1;
         var c = document.getElementById(cid);
         if (!c) return;
-        var ctx = c.getContext("2d"),
-          W = c.width,
-          H = c.height,
-          cx = W / 2,
+        var ctx = c.getContext("2d");
+        // Retina: backing store'u cihaz çözünürlüğüne ölçekle (bulanıklık biter)
+        var dpr = Math.min(window.devicePixelRatio || 1, 3);
+        var W = c.clientWidth || 300,
+          H = c.clientHeight || W;
+        if (c.width !== Math.round(W * dpr) || c.height !== Math.round(H * dpr)) {
+          c.width = Math.round(W * dpr);
+          c.height = Math.round(H * dpr);
+        }
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        var cx = W / 2,
           cy = H / 2,
-          r = cx - 6;
+          r = cx - 7;
         ctx.clearRect(0, 0, W, H);
         if (!items.length) {
-          ctx.fillStyle = "#f0eeff";
+          ctx.fillStyle = "#f3f0ff";
           ctx.beginPath();
           ctx.arc(cx, cy, r, 0, Math.PI * 2);
           ctx.fill();
@@ -5446,46 +5465,103 @@
         }
         var n = items.length,
           sl = (Math.PI * 2) / n;
-        function slice(i, gold) {
+        // — Tekerlek altı yumuşak gölge (derinlik) —
+        ctx.save();
+        ctx.shadowColor = "rgba(76,29,149,.32)";
+        ctx.shadowBlur = 22;
+        ctx.shadowOffsetY = 8;
+        ctx.beginPath();
+        ctx.arc(cx, cy, r, 0, Math.PI * 2);
+        ctx.fillStyle = "#fff";
+        ctx.fill();
+        ctx.restore();
+        // — 1) Dilim dolguları + ince beyaz ayraç —
+        for (var i = 0; i < n; i++) {
           var a = angle + i * sl;
-          ctx.save();
-          if (hi >= 0 && !gold) ctx.globalAlpha = 0.42;
-          if (gold) {
-            ctx.shadowColor = "rgba(245,166,35,.9)";
-            ctx.shadowBlur = 20;
-          }
           ctx.beginPath();
           ctx.moveTo(cx, cy);
           ctx.arc(cx, cy, r, a, a + sl);
           ctx.closePath();
+          ctx.globalAlpha = hi >= 0 && i !== hi ? 0.38 : 1;
           ctx.fillStyle = COLS[i % COLS.length];
           ctx.fill();
-          ctx.shadowBlur = 0;
-          ctx.strokeStyle = gold ? "#f5a623" : "#fff";
-          ctx.lineWidth = gold ? 5 : 2.5;
+          ctx.globalAlpha = 1;
+          ctx.strokeStyle = "rgba(255,255,255,.9)";
+          ctx.lineWidth = 2;
           ctx.stroke();
-          var mid = a + sl / 2;
-          ctx.translate(cx, cy);
-          ctx.rotate(mid);
-          var flip = Math.cos(mid) < 0; // alt yarıdaki yazı baş aşağı olmasın
-          if (flip) ctx.rotate(Math.PI);
-          ctx.fillStyle = "#fff";
-          ctx.font =
-            "bold " +
-            (n > 8 ? (gold ? 12 : 11) : gold ? 15 : 13) +
-            "px Nunito,sans-serif";
-          ctx.textBaseline = "middle";
-          ctx.textAlign = flip ? "left" : "right";
-          ctx.fillText(wheelLabel(items[i], 12), flip ? -(r - 9) : r - 9, 0);
+        }
+        // — 2) Derinlik kubbesi: merkez parlak, kenar gölge (3B his) —
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(cx, cy, r, 0, Math.PI * 2);
+        ctx.clip();
+        var dome = ctx.createRadialGradient(
+          cx,
+          cy - r * 0.22,
+          r * 0.08,
+          cx,
+          cy,
+          r,
+        );
+        dome.addColorStop(0, "rgba(255,255,255,.30)");
+        dome.addColorStop(0.5, "rgba(255,255,255,0)");
+        dome.addColorStop(1, "rgba(20,5,45,.24)");
+        ctx.fillStyle = dome;
+        ctx.fillRect(cx - r, cy - r, r * 2, r * 2);
+        ctx.restore();
+        // — 3) Kazanan dilim: altın parıltı —
+        if (hi >= 0) {
+          var ah = angle + hi * sl;
+          ctx.save();
+          ctx.shadowColor = "rgba(251,191,36,.95)";
+          ctx.shadowBlur = 22;
+          ctx.beginPath();
+          ctx.moveTo(cx, cy);
+          ctx.arc(cx, cy, r, ah, ah + sl);
+          ctx.closePath();
+          ctx.strokeStyle = "#fbbf24";
+          ctx.lineWidth = 5;
+          ctx.stroke();
           ctx.restore();
         }
-        for (var i = 0; i < n; i++) slice(i, false);
-        if (hi >= 0) slice(hi, true);
+        // — 4) Etiketler (radyal, flip + dönerken fade) —
+        for (var j = 0; j < n; j++) {
+          var aj = angle + j * sl,
+            mid = aj + sl / 2;
+          ctx.save();
+          ctx.translate(cx, cy);
+          ctx.rotate(mid);
+          var flip = Math.cos(mid) < 0;
+          if (flip) ctx.rotate(Math.PI);
+          ctx.globalAlpha = (hi >= 0 && j !== hi ? 0.38 : 1) * labelAlpha;
+          ctx.fillStyle = _textOn(COLS[j % COLS.length]);
+          var fs = Math.max(10, Math.round(r * (n > 8 ? 0.085 : 0.105)));
+          ctx.font = "700 " + fs + "px Fredoka,Nunito,sans-serif";
+          ctx.textBaseline = "middle";
+          ctx.textAlign = flip ? "left" : "right";
+          ctx.fillText(wheelLabel(items[j], 12), flip ? -(r - 12) : r - 12, 0);
+          ctx.restore();
+        }
+        // — 5) Dış çerçeve (çift halka) —
         ctx.beginPath();
         ctx.arc(cx, cy, r, 0, Math.PI * 2);
         ctx.strokeStyle = "#fff";
-        ctx.lineWidth = 4;
+        ctx.lineWidth = 5;
         ctx.stroke();
+        ctx.beginPath();
+        ctx.arc(cx, cy, r - 3.5, 0, Math.PI * 2);
+        ctx.strokeStyle = "rgba(124,58,237,.22)";
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        // — 6) Merkez göbek (spin butonu arkası) —
+        ctx.save();
+        ctx.shadowColor = "rgba(76,29,149,.3)";
+        ctx.shadowBlur = 8;
+        ctx.beginPath();
+        ctx.arc(cx, cy, r * 0.135, 0, Math.PI * 2);
+        ctx.fillStyle = "#fff";
+        ctx.fill();
+        ctx.restore();
       }
       function updW() {
         var has = S.wheel.length > 0;
@@ -5504,9 +5580,16 @@
       function drawWEmpty(id) {
         var cv = document.getElementById(id);
         if (!cv) return;
-        var ctx = cv.getContext("2d"),
-          W = cv.width,
-          cx = W / 2,
+        var ctx = cv.getContext("2d");
+        // Retina + transform sıfırla (drawW'den miras kalan dpr ölçeğini ezme)
+        var dpr = Math.min(window.devicePixelRatio || 1, 3);
+        var W = cv.clientWidth || 300;
+        if (cv.width !== Math.round(W * dpr) || cv.height !== Math.round(W * dpr)) {
+          cv.width = Math.round(W * dpr);
+          cv.height = Math.round(W * dpr);
+        }
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        var cx = W / 2,
           cy = W / 2,
           r = W / 2 - 4;
         ctx.clearRect(0, 0, W, W);
@@ -5765,7 +5848,9 @@
             casinoTickGain(0.3 + speedRatio * 0.5);
           }
 
-          drawW("wcanvas", S.wheel, wAngle, -1);
+          // Hızlıyken etiketleri soldur (dönerken flip snap görünmesin), dururken netleşir
+          var labelAlpha = Math.max(0.12, Math.min(1, (p - 0.55) / 0.4));
+          drawW("wcanvas", S.wheel, wAngle, -1, labelAlpha);
 
           if (p < 1) {
             requestAnimationFrame(fr);
