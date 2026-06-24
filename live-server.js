@@ -383,6 +383,148 @@ app.post("/options", rateLimit, authAndQuota, async (req, res) => {
   }
 });
 
+// ── YAKINDAKİ MEKANLAR (OpenStreetMap/Overpass — ÜCRETSİZ) + Merci önerisi ──
+const LOC_FREE_LIMIT = 3; // free: günde 3 deneme (tadımlık)
+const LOC_PRO_LIMIT = 100; // PRO: pratikte sınırsız
+
+const OVERPASS_FILTERS = {
+  food: '["amenity"~"restaurant|fast_food"]',
+  cafe: '["amenity"~"cafe"]',
+  bar: '["amenity"~"bar|pub"]',
+  dessert: '["amenity"~"ice_cream"]',
+  activity: '["leisure"~"park|sports_centre|fitness_centre"]',
+};
+
+function haversine(la1, lo1, la2, lo2) {
+  const R = 6371000;
+  const toR = (d) => (d * Math.PI) / 180;
+  const dLa = toR(la2 - la1);
+  const dLo = toR(lo2 - lo1);
+  const a =
+    Math.sin(dLa / 2) ** 2 +
+    Math.cos(toR(la1)) * Math.cos(toR(la2)) * Math.sin(dLo / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(a));
+}
+
+app.post("/nearby", rateLimit, async (req, res) => {
+  try {
+    // Auth
+    const header = req.headers.authorization || "";
+    const token = header.startsWith("Bearer ") ? header.slice(7) : null;
+    if (!token)
+      return res.status(401).json({ error: "Konum önerisi için giriş yap." });
+    let uid,
+      isPro = false;
+    try {
+      const decoded = await getAuth().verifyIdToken(token);
+      uid = decoded.uid;
+      const us = await adminDb.collection("users").doc(uid).get();
+      isPro = us.exists && us.data().isPro === true;
+    } catch (e) {
+      return res.status(401).json({ error: "Oturum doğrulanamadı." });
+    }
+
+    // Girdi
+    const lat = parseFloat(req.body && req.body.lat);
+    const lng = parseFloat(req.body && req.body.lng);
+    if (!isFinite(lat) || !isFinite(lng))
+      return res.status(400).json({ error: "Konum geçersiz." });
+    const typeKey = String((req.body && req.body.type) || "food");
+    const radius = Math.min(
+      Math.max(parseInt(req.body && req.body.radius) || 1500, 300),
+      5000,
+    );
+
+    // Günlük konum kotası (AI kotasından AYRI)
+    const today = new Date().toISOString().slice(0, 10);
+    const limit = isPro ? LOC_PRO_LIMIT : LOC_FREE_LIMIT;
+    const ref = adminDb.collection("locUsage").doc(`${uid}_${today}`);
+    const allowed = await adminDb.runTransaction(async (tx) => {
+      const s = await tx.get(ref);
+      const c = s.exists ? s.data().count || 0 : 0;
+      if (c >= limit) return false;
+      tx.set(
+        ref,
+        { uid, date: today, count: c + 1, updatedAt: FieldValue.serverTimestamp() },
+        { merge: true },
+      );
+      return true;
+    });
+    if (!allowed)
+      return res
+        .status(429)
+        .json({ error: "Günlük konum önerisi hakkın doldu!", limitReached: true });
+
+    // Overpass sorgusu
+    const sel = OVERPASS_FILTERS[typeKey] || OVERPASS_FILTERS.food;
+    const q =
+      `[out:json][timeout:20];(node${sel}(around:${radius},${lat},${lng});` +
+      `way${sel}(around:${radius},${lat},${lng}););out center 60;`;
+    const ovr = await fetch("https://overpass-api.de/api/interpreter", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: "data=" + encodeURIComponent(q),
+    });
+    const data = await ovr.json();
+    const els = (data && data.elements) || [];
+
+    const seen = {};
+    const places = els
+      .map((e) => {
+        const plat = e.lat != null ? e.lat : e.center && e.center.lat;
+        const plng = e.lon != null ? e.lon : e.center && e.center.lon;
+        const name = e.tags && (e.tags["name:tr"] || e.tags.name);
+        if (!name || plat == null || plng == null) return null;
+        return {
+          name: String(name).slice(0, 60),
+          kind: (e.tags && (e.tags.cuisine || e.tags.amenity || e.tags.leisure)) || "",
+          lat: plat,
+          lng: plng,
+          dist: Math.round(haversine(lat, lng, plat, plng)),
+        };
+      })
+      .filter(Boolean)
+      .filter((p) => {
+        const k = p.name.toLowerCase();
+        if (seen[k]) return false;
+        seen[k] = 1;
+        return true;
+      })
+      .sort((a, b) => a.dist - b.dist)
+      .slice(0, 12);
+
+    // Merci'nin gerçek listeden kısa önerisi (ucuz Haiku)
+    let merciComment = "";
+    if (places.length) {
+      try {
+        const top = places
+          .slice(0, 6)
+          .map((p) => `${p.name} (${p.dist}m)`)
+          .join(", ");
+        const cr = await anthropic.messages.create({
+          model: "claude-haiku-4-5-20251001",
+          max_tokens: 160,
+          system:
+            "Sen Merci, sevimli bir karar-ahtapotu. Sana yakındaki GERÇEK mekanların listesi (isim + mesafe) verilir. " +
+            "KISA (1-2 cümle), samimi, Türkçe bir öneri yap: birini öne çıkar, mesafeye değin, oyunbaz ol. " +
+            "En fazla 1 emoji. Liste DIŞINDA mekan UYDURMA.",
+          messages: [
+            { role: "user", content: "Tür: " + typeKey + "\nYakındaki mekanlar: " + top },
+          ],
+        });
+        cr.content.forEach((b) => {
+          if (b.type === "text") merciComment += b.text;
+        });
+      } catch (e) {}
+    }
+
+    res.json({ places, merciComment: merciComment.trim(), isPro });
+  } catch (e) {
+    console.error("Nearby Error:", e.message);
+    res.status(500).json({ error: "Konum önerisi alınamadı, tekrar dene." });
+  }
+});
+
 // ── REVENUECAT WEBHOOK → Firestore isPro ──
 // RC, satın alma/yenileme/iptal/bitiş olaylarını buraya POST eder. appUserID =
 // Firebase UID olarak configure ettiğimiz için event.app_user_id = users doc id.
