@@ -4547,8 +4547,8 @@
         wrap.className = "paywall-box";
         wrap.innerHTML =
           '<div class="paywall-emoji">🐙</div>' +
-          '<div class="paywall-title">Günlük 1 konu hakkın doldu!</div>' +
-          "<div class=\"paywall-sub\">Pro'ya geçince Merci'ye sınırsız danışabilirsin. Ya da bir reklam izle, +1 konu hakkı kazan.</div>" +
+          '<div class="paywall-title">Bugünkü ücretsiz sohbetini kullandın!</div>' +
+          "<div class=\"paywall-sub\">Pro'ya geçince Merci'ye sınırsız danışabilirsin. Ya da bir reklam izle, +1 sohbet kazan.</div>" +
           '<button class="paywall-btn-primary" onclick="openProModal()">⭐ Pro\'ya Geç — Sınırsız Kullan</button>' +
           '<button class="paywall-btn-ad" onclick="watchAdForTopic()">📺 Reklam İzle (+1 konu)</button>' +
           '<div class="paywall-counter">Yarın 1 yeni hakkın yenilenir 🌙</div>';
@@ -4841,7 +4841,7 @@
           hidePaywall();
           appendMsg(
             "merci",
-            "Teşekkürler! 1 konu hakkı daha kazandın. Ne konuda yardım edeyim? 🐙",
+            "Teşekkürler! 1 sohbet hakkı daha kazandın. Ne konuda yardım edeyim? 🐙",
           );
         }
         function fail() {
@@ -5503,7 +5503,7 @@
           {
             icon: "🧠",
             title: "Merci'ye Danış!",
-            body: "Ne yesek, nereye gidelim gibi sorularını Merci'ye sor! Yapay zeka asistanımız grubunun geçmişine bakarak öneri yapar. Günde 1 konu <b>ücretsiz</b>, sınırsız için Pro ol! 🐙",
+            body: "Ne yesek, nereye gidelim gibi sorularını Merci'ye sor! Yapay zeka asistanımız grubunun geçmişine bakarak öneri yapar. Günde 1 <b>ücretsiz sohbet</b> (istediğin kadar soru sor), sınırsız için Pro ol! 🐙",
             color: "#6d28d9",
           },
         ];
@@ -9375,6 +9375,22 @@
         else drawWEmpty("wcanvas");
       }
       window.addEventListener("resize", resizeWheel);
+      // Klavye açılınca (chat input'a basınca) native banner ekranın ORTASINA
+      // kayıyordu. Çözüm: input odaklanınca banner'ı gizle, odak çıkınca geri getir
+      // (alttaki yerine dönsün, ortada durmasın).
+      (function () {
+        var ctx = document.getElementById("ai-ctx");
+        if (!ctx) return;
+        ctx.addEventListener("focus", function () {
+          if (typeof KM_AD !== "undefined" && KM_AD.hideBanner) KM_AD.hideBanner();
+        });
+        ctx.addEventListener("blur", function () {
+          if (typeof KM_AD !== "undefined" && KM_AD.refreshBanner)
+            setTimeout(function () {
+              KM_AD.refreshBanner();
+            }, 200);
+        });
+      })();
       // iOS: birkaç farklı zamanda çalıştır
       setTimeout(resizeWheel, 0);
       setTimeout(resizeWheel, 200);
@@ -10369,7 +10385,8 @@
         <div class="auth-logo" id="modal-auth-merci"></div>
         <div class="auth-title">Merci'ye Danışmak İçin</div>
         <div class="auth-sub">
-          Google ile giriş yap — her gün 1 ücretsiz Merci sorusu senin! 🐙
+          Google ile giriş yap — her gün 1 ücretsiz sohbet senin, istediğin
+          kadar soru sor! 🐙
         </div>
         <div class="auth-perks">
           <div class="auth-perk">
@@ -10377,7 +10394,7 @@
           </div>
           <div class="auth-perk">
             <span class="auth-perk-icon">🎁</span>
-            <span>Her gün 1 ücretsiz Merci sorusu</span>
+            <span>Her gün 1 ücretsiz sohbet (istediğin kadar soru)</span>
           </div>
           <div class="auth-perk">
             <span class="auth-perk-icon">⭐</span>
