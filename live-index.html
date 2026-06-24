@@ -3570,10 +3570,10 @@
                   cursor: pointer;
                 "
               >
-                🔄 Yeni Konu
+                🔄 Yeni Sohbet
               </button>
               <button
-                onclick="showAIHelp()"
+                onclick="openChatHistory()"
                 style="
                   flex: 1;
                   padding: 8px;
@@ -3587,7 +3587,24 @@
                   cursor: pointer;
                 "
               >
-                ❓ Nasıl Kullanılır
+                🕘 Geçmiş
+              </button>
+              <button
+                onclick="showAIHelp()"
+                title="Nasıl kullanılır?"
+                style="
+                  width: 38px;
+                  padding: 8px;
+                  background: #f5f0ff;
+                  border: 1.5px solid #c4b5fd;
+                  border-radius: 10px;
+                  font-size: 13px;
+                  font-weight: 900;
+                  color: #5b21b6;
+                  cursor: pointer;
+                "
+              >
+                ?
               </button>
             </div>
             <div class="chat-input-row">
@@ -4109,6 +4126,7 @@
       };
 
       window.resetAIChat = function () {
+        saveCurrentChat(); // yeni sohbete geçmeden öncekini geçmişe kaydet
         aiMessages = [];
         currentTopicId = null;
         hidePaywall();
@@ -6785,8 +6803,128 @@
         // Online: listener shows winner for everyone when status becomes 'closed'
       }
 
+      // ══════════ SOHBET GEÇMİŞİ (girişli kullanıcı, localStorage — uid bazlı) ══════════
+      function _chatKey() {
+        return currentUser ? "kmChats_" + currentUser.uid : null;
+      }
+      function loadChats() {
+        var k = _chatKey();
+        if (!k) return [];
+        try {
+          return JSON.parse(localStorage.getItem(k) || "[]");
+        } catch (e) {
+          return [];
+        }
+      }
+      function saveChats(arr) {
+        var k = _chatKey();
+        if (k) localStorage.setItem(k, JSON.stringify(arr.slice(0, 20)));
+      }
+      // Mevcut sohbeti geçmişe yaz (en az 1 kullanıcı mesajı varsa) — KAYBOLMASIN
+      function saveCurrentChat() {
+        if (!currentUser || !aiMessages || !aiMessages.length) return;
+        var firstU = aiMessages.filter(function (m) {
+          return m.role === "user";
+        })[0];
+        if (!firstU) return;
+        if (!currentTopicId) currentTopicId = String(Date.now());
+        var title = (firstU.content || "Sohbet").slice(0, 42);
+        var arr = loadChats().filter(function (c) {
+          return c.id !== currentTopicId;
+        });
+        arr.unshift({
+          id: currentTopicId,
+          title: title,
+          msgs: aiMessages.slice(),
+          ts: Date.now(),
+        });
+        saveChats(arr);
+      }
+      function _relTime(ts) {
+        var m = Math.floor((Date.now() - ts) / 60000);
+        if (m < 1) return "az önce";
+        if (m < 60) return m + " dk önce";
+        var h = Math.floor(m / 60);
+        if (h < 24) return h + " saat önce";
+        return Math.floor(h / 24) + " gün önce";
+      }
+      function renderChatMessages() {
+        var msgs = document.getElementById("chat-messages");
+        if (!msgs) return;
+        msgs.innerHTML = "";
+        aiMessages.forEach(function (m) {
+          appendMsg(m.role === "user" ? "user" : "merci", m.content, false);
+        });
+      }
+      function openChat(chat) {
+        aiMessages = (chat.msgs || []).slice();
+        currentTopicId = chat.id;
+        lastMsgTime = Date.now(); // 30dk idle sıfırlaması bu sohbeti silmesin
+        hidePaywall();
+        renderChatMessages();
+        var ov = document.getElementById("chat-hist-overlay");
+        if (ov) ov.remove();
+      }
+      window.openChatHistory = function () {
+        if (!currentUser) {
+          signInWithGoogle();
+          return;
+        }
+        saveCurrentChat(); // açık sohbet de listeye girsin
+        var chats = loadChats();
+        var ov = document.createElement("div");
+        ov.id = "chat-hist-overlay";
+        ov.style.cssText =
+          "position:fixed;inset:0;background:rgba(30,10,60,.55);z-index:299990;display:flex;align-items:flex-end;justify-content:center;";
+        ov.onclick = function (e) {
+          if (e.target === ov) ov.remove();
+        };
+        var card = document.createElement("div");
+        card.style.cssText =
+          "background:#fff;width:100%;max-width:480px;max-height:75vh;overflow-y:auto;border-radius:22px 22px 0 0;padding:18px 16px 28px;box-shadow:0 -8px 40px rgba(124,58,237,.3)";
+        var html =
+          '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px"><div style="font-size:17px;font-weight:900;color:#5b21b6">🕘 Geçmiş Sohbetler</div><button id="chat-hist-close" style="background:none;border:none;font-size:22px;cursor:pointer;color:#999">✕</button></div>';
+        if (!chats.length) {
+          html +=
+            '<div style="text-align:center;color:#999;padding:30px 10px">Henüz kayıtlı sohbet yok 🐙</div>';
+        } else {
+          chats.forEach(function (c, i) {
+            html +=
+              '<div class="chat-hist-item" data-i="' +
+              i +
+              '" style="display:flex;align-items:center;gap:10px;padding:12px 10px;border-radius:12px;cursor:pointer;border-bottom:1px solid #f0eaff">' +
+              '<div style="font-size:20px">💬</div><div style="flex:1;min-width:0">' +
+              '<div style="font-weight:700;color:#3b0764;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' +
+              String(c.title || "Sohbet").replace(/</g, "&lt;") +
+              '</div><div style="font-size:12px;color:#a78bfa">' +
+              _relTime(c.ts) +
+              "</div></div></div>";
+          });
+          html +=
+            '<button id="chat-hist-clear" style="width:100%;margin-top:14px;background:#fff0f0;color:#c0392b;border:1px solid #f5c6c6;padding:10px;border-radius:12px;font-weight:700;cursor:pointer">🗑️ Tüm geçmişi sil</button>';
+        }
+        card.innerHTML = html;
+        ov.appendChild(card);
+        document.body.appendChild(ov);
+        document.getElementById("chat-hist-close").onclick = function () {
+          ov.remove();
+        };
+        card.querySelectorAll(".chat-hist-item").forEach(function (el) {
+          el.onclick = function () {
+            openChat(chats[+el.dataset.i]);
+          };
+        });
+        var clr = document.getElementById("chat-hist-clear");
+        if (clr)
+          clr.onclick = function () {
+            saveChats([]);
+            ov.remove();
+          };
+      };
+
       // ═══════════════════ AI CHAT ═══════════════════
       function startChat(q) {
+        saveCurrentChat(); // taslağa basınca eski sohbet kaybolmasın
         aiMessages = [];
         currentTopicId = null;
         hidePaywall();
@@ -7259,6 +7397,7 @@
             // Modelin kendi işaretini sonraki turda görmemesi için temiz hali sakla
             aiMessages.push({ role: "assistant", content: cleanReply });
             appendMsg("merci", cleanReply, true);
+            saveCurrentChat(); // her cevaptan sonra sohbeti kaydet (kaybolmasın)
             if (locMatch) {
               appendLocationConsent(locMatch[1].toLowerCase());
             }
