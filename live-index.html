@@ -2693,7 +2693,121 @@
         cursor: pointer;
         font-family: "Nunito", sans-serif;
       }
+      /* ═══════════════════ DARK MODE ═══════════════════ */
+      html.dark body {
+        background: #100c1c;
+      }
+      html.dark .app {
+        background: #100c1c;
+        color: #ece8f7;
+      }
+      html.dark .hdr {
+        background: #1a1330;
+        border-bottom-color: #2a2140;
+      }
+      html.dark .hdr-title {
+        color: #f2eefc;
+      }
+      html.dark .hdr-sub {
+        color: #b9addf;
+      }
+      html.dark .tabs {
+        background: #1a1330;
+        border-top-color: #2a2140;
+      }
+      html.dark .tab {
+        color: #b9addf;
+      }
+      html.dark .tab.on {
+        color: #fff;
+      }
+      html.dark .sec {
+        color: #ece8f7;
+      }
+      html.dark .lbl {
+        color: #c9b8ff;
+      }
+      html.dark .irow input,
+      html.dark input[type="text"],
+      html.dark textarea {
+        background: #271d3f !important;
+        color: #ece8f7 !important;
+        border-color: #3a2f55 !important;
+      }
+      html.dark .irow input::placeholder,
+      html.dark textarea::placeholder {
+        color: #8a7db5;
+      }
+      html.dark .chip {
+        background: #271d3f;
+        color: #ece8f7;
+      }
+      html.dark .btn {
+        background: #271d3f;
+        color: #ece8f7;
+        border-color: #3a2f55;
+      }
+      html.dark .rcard {
+        background: #1e1733;
+        color: #ece8f7;
+        border-color: #342a4f;
+      }
+      html.dark .rwin,
+      html.dark .rlbl,
+      html.dark .rsay,
+      html.dark .cap-txt,
+      html.dark .sec-title {
+        color: #f2eefc;
+      }
+      html.dark .chat-wrap {
+        background: #100c1c;
+      }
+      html.dark .chat-bubble {
+        background: #271d3f;
+        color: #ece8f7;
+      }
+      html.dark .place-card {
+        background: #1e1733;
+        border-color: #342a4f;
+      }
+      html.dark .place-name {
+        color: #f2eefc;
+      }
+      html.dark .place-meta {
+        color: #b9addf;
+      }
+      html.dark .menu-drawer {
+        background: #100c1c;
+      }
+      html.dark .menu-drawer-hdr {
+        border-bottom-color: #2a2140;
+      }
+      html.dark .menu-drawer-title {
+        color: #f2eefc;
+      }
+      html.dark .menu-item {
+        color: #ece8f7;
+        border-bottom-color: #251d3d;
+      }
+      html.dark .menu-item:hover,
+      html.dark .menu-item:active {
+        background: #1e1733;
+      }
+      html.dark .info-modal-box,
+      html.dark .mbox,
+      html.dark .paywall-box,
+      html.dark .auth-box {
+        background: #1e1733 !important;
+        color: #ece8f7;
+      }
     </style>
+    <script>
+      // Dark mode'u boya ÖNCESİ uygula (açılışta beyaz flash olmasın)
+      try {
+        if (localStorage.getItem("kmTheme") === "dark")
+          document.documentElement.classList.add("dark");
+      } catch (e) {}
+    </script>
   </head>
   <body>
     <!-- SPLASH -->
@@ -10214,6 +10328,21 @@
             if (vibEnabled) vib(40); // açınca kısa geri bildirim
           });
         }
+        var darkBtn = document.getElementById("dark-btn");
+        if (darkBtn) {
+          var dState = document.getElementById("dark-state");
+          var _syncDark = function () {
+            var on = document.documentElement.classList.contains("dark");
+            if (dState) dState.textContent = on ? "Açık" : "Kapalı";
+          };
+          _syncDark();
+          darkBtn.addEventListener("click", function () {
+            var on = document.documentElement.classList.toggle("dark");
+            localStorage.setItem("kmTheme", on ? "dark" : "light");
+            _syncDark();
+            vib(20);
+          });
+        }
 
         // ── PRO MODAL backdrop + skip ──
         var proModal = document.getElementById("modal-pro");
@@ -10596,6 +10725,14 @@
             <span id="vib-icon">📳</span> Titreşim
           </button>
         </div>
+        <button class="menu-item" id="dark-btn">
+          <span class="menu-item-icon">🌙</span> Karanlık Mod
+          <span
+            id="dark-state"
+            style="margin-left: auto; font-size: 12px; color: #a78bfa; font-weight: 800"
+            >Kapalı</span
+          >
+        </button>
         <button
           class="menu-item"
           id="mi-logout"
