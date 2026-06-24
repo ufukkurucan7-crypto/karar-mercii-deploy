@@ -2033,6 +2033,8 @@
       }
       /* Çark dönerken: etrafı gölgele + kontrolleri kilitle, dikkat çarka odaklansın */
       body.wheel-spinning .hdr,
+      body.wheel-spinning .tabs,
+      body.wheel-spinning #hist-section,
       body.wheel-spinning #s-wheel .lbl,
       body.wheel-spinning #s-wheel .cats,
       body.wheel-spinning #s-wheel .irow,
@@ -5673,15 +5675,14 @@
           ctx.save();
           ctx.translate(cx, cy);
           ctx.rotate(mid);
-          var flip = Math.cos(mid) < 0;
-          if (flip) ctx.rotate(Math.PI);
+          // Yazılar çarkla birlikte sabit yönde döner (flip yok = yön değiştirmez)
           ctx.globalAlpha = hi >= 0 && j !== hi ? 0.38 : 1;
           ctx.fillStyle = _textOn(COLS[j % COLS.length]);
           var fs = Math.max(10, Math.round(r * (n > 8 ? 0.085 : 0.105)));
           ctx.font = "700 " + fs + "px Fredoka,Nunito,sans-serif";
           ctx.textBaseline = "middle";
-          ctx.textAlign = flip ? "left" : "right";
-          ctx.fillText(wheelLabel(items[j], 12), flip ? -(r - 12) : r - 12, 0);
+          ctx.textAlign = "right";
+          ctx.fillText(wheelLabel(items[j], 12), r - 12, 0);
           ctx.restore();
         }
         // — 5) Dış çerçeve (çift halka) —
@@ -5947,6 +5948,12 @@
         if (spinning) return;
         spinning = true;
         document.body.classList.add("wheel-spinning");
+        // Çark dönerken ekranın ortasına kaysın (odak)
+        try {
+          var _wstC = document.querySelector("#s-wheel .wstage");
+          if (_wstC)
+            _wstC.scrollIntoView({ block: "center", behavior: "smooth" });
+        } catch (e) {}
         var spinBtn = document.getElementById("wspin-btn");
         if (spinBtn) {
           spinBtn.classList.add("spinning");
@@ -6038,15 +6045,16 @@
         // Son anında hafifçe titreme (kenar yakınsa) sonra dur
         var edgeDist = edgeClose(target, S.wheel.length);
         var doWobble = edgeDist < 0.16;
-        var amp = doWobble ? 0.03 + Math.random() * 0.025 : 0;
+        var amp = doWobble ? 0.05 + Math.random() * 0.03 : 0;
         var dir = Math.random() < 0.5 ? 1 : -1;
         var t0 = performance.now(),
-          dur = doWobble ? 500 : 120;
+          dur = doWobble ? 1150 : 150;
         (function fr(now) {
           var t = Math.min((now - t0) / dur, 1);
-          wAngle = doWobble
-            ? target + Math.sin(t * Math.PI) * amp * dir * (1 - t * 0.6)
-            : target;
+          // Kenara/beraberliğe yakınsa yavaşça sönen sallanmayla yerine otursun
+          wAngle =
+            target +
+            Math.sin(t * Math.PI * 2.2) * amp * dir * Math.pow(1 - t, 1.8);
           drawW("wcanvas", S.wheel, wAngle, -1);
           if (t < 1) requestAnimationFrame(fr);
           else {
