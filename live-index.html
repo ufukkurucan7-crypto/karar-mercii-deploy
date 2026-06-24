@@ -6895,6 +6895,106 @@
           wrap.scrollIntoView({ behavior: "smooth", block: "start" });
         }, 50);
       }
+      // ── KONUM İZNİ (Merci ekranına girince bir kez açıklamalı iste) ──
+      // Onaylanınca konum alınır + şehir/semt cache'lenir → Merci artık şehir sormaz.
+      function captureLocationOnce(cb) {
+        if (typeof getGeo !== "function") {
+          if (cb) cb(false);
+          return;
+        }
+        getGeo()
+          .then(function (pos) {
+            try {
+              localStorage.setItem(
+                "kmUserGeo",
+                JSON.stringify({ lat: pos.lat, lng: pos.lng }),
+              );
+            } catch (e) {}
+            fetch(
+              "https://nominatim.openstreetmap.org/reverse?lat=" +
+                pos.lat +
+                "&lon=" +
+                pos.lng +
+                "&format=json&accept-language=tr",
+              { headers: { Accept: "application/json" } },
+            )
+              .then(function (r) {
+                return r.json();
+              })
+              .then(function (d) {
+                var a = (d && d.address) || {};
+                var city = a.city || a.town || a.province || a.state || "";
+                var district =
+                  a.suburb || a.district || a.neighbourhood || a.county || "";
+                var loc = district ? district + ", " + city : city;
+                if (loc) localStorage.setItem("kmUserLocation", loc);
+                if (cb) cb(true, loc);
+              })
+              .catch(function () {
+                if (cb) cb(true, "");
+              });
+          })
+          .catch(function () {
+            if (cb) cb(false);
+          });
+      }
+      function maybeAskLocation() {
+        if (!currentUser) return;
+        if (localStorage.getItem("kmUserLocation")) return; // zaten var
+        if (localStorage.getItem("kmLocPrompted")) return; // daha önce soruldu
+        var msgs = document.getElementById("chat-messages");
+        if (!msgs) return;
+        var wrap = document.createElement("div");
+        wrap.className = "msg-merci";
+        wrap.innerHTML =
+          '<div class="chat-av-merci">' +
+          merciSVGChat(28) +
+          '</div><div class="chat-bubble">📍 Sana yakın mekan, yer ve yol önerileri verebilmem için konumuna ihtiyacım var. Açmak ister misin?</div>';
+        var row = document.createElement("div");
+        row.style.cssText =
+          "display:flex;gap:8px;margin-top:8px;padding-left:40px;flex-wrap:wrap";
+        var yes = document.createElement("button");
+        yes.style.cssText =
+          "background:linear-gradient(135deg,#7c3aed,#a855f7);color:#fff;border:none;padding:10px 16px;border-radius:12px;font-weight:800;cursor:pointer";
+        yes.textContent = "📍 İzin Ver";
+        yes.onclick = function () {
+          localStorage.setItem("kmLocPrompted", "1");
+          yes.disabled = true;
+          yes.textContent = "⏳ ...";
+          captureLocationOnce(function (ok, loc) {
+            wrap.remove();
+            if (ok && loc)
+              appendMsg(
+                "merci",
+                "Süper, " + loc + " civarındasın 🐙 Artık yakınını önerebilirim!",
+                false,
+              );
+            else if (ok)
+              appendMsg("merci", "Konumunu aldım, teşekkürler 🐙", false);
+            else
+              appendMsg(
+                "merci",
+                "Konum alınamadı — telefon ayarlarından izni açabilirsin. Yine de yardımcı olurum!",
+                false,
+              );
+          });
+        };
+        var no = document.createElement("button");
+        no.style.cssText =
+          "background:#eee;color:#666;border:none;padding:10px 16px;border-radius:12px;font-weight:700;cursor:pointer";
+        no.textContent = "Şimdi değil";
+        no.onclick = function () {
+          localStorage.setItem("kmLocPrompted", "1");
+          wrap.remove();
+        };
+        row.appendChild(yes);
+        row.appendChild(no);
+        wrap.appendChild(row);
+        msgs.appendChild(wrap);
+        setTimeout(function () {
+          wrap.scrollIntoView({ behavior: "smooth", block: "start" });
+        }, 50);
+      }
       // ── MERCİ → ÇARK / OYLAMA KÖPRÜSÜ ──
       // Merci 2+ seçenek verince sohbette "Çarka At / Oylamaya At" butonları çıkar;
       // tıklanınca seçenekler otomatik yüklenir ve ilgili ekrana geçilir.
@@ -7031,7 +7131,12 @@
               "Content-Type": "application/json",
               Authorization: "Bearer " + token,
             },
-            body: JSON.stringify({ lat: pos.lat, lng: pos.lng, type: type }),
+            body: JSON.stringify({
+              lat: pos.lat,
+              lng: pos.lng,
+              type: type,
+              locName: localStorage.getItem("kmUserLocation") || "",
+            }),
           });
           var data = await r.json();
           if (r.status === 401) {
@@ -7047,9 +7152,11 @@
             return;
           }
           if (!data.places || !data.places.length) {
+            // Yakında yoksa: Merci en yakın canlı semti önerir (server merciComment)
             appendMsg(
               "merci",
-              "Yakınında uygun bir yer bulamadım, başka tür dene 🐙",
+              data.merciComment ||
+                "Yakınında uygun bir yer bulamadım, başka tür dene 🐙",
               false,
             );
             return;
@@ -7122,8 +7229,9 @@
                 messages: aiMessages,
                 groupCount: S.count,
                 history: S.history.slice(0, 15),
-                // Konum BİLEREK gönderilmiyor: bayat cache yerine sohbette taze
-                // onay akışı kullanılıyor (NEED_LOCATION işareti → merciNearby).
+                // Konum: Merci ekranına girince onaylı alınan şehir/semt (varsa) →
+                // Merci şehir sormaz. Yoksa null → NEED_LOCATION işareti devreye girer.
+                location: localStorage.getItem("kmUserLocation") || null,
                 resultContext: rc,
               }),
             }),
@@ -8813,6 +8921,8 @@
           if (tabIcon && !tabIcon.innerHTML) {
             tabIcon.innerHTML = merciSVGGlasses(48);
           }
+          // Girişliyse ve konum henüz yoksa açıklamalı izin iste (bir kez)
+          setTimeout(maybeAskLocation, 400);
         }
         if (m === "vote") {
           var vh = document.getElementById("vote-hero-merci");
