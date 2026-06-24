@@ -5643,35 +5643,49 @@
           {
             pose: "chat",
             title: "Selam, ben Merci! 🐙",
-            body: "Kararsız kaldığında ben buradayım. 15 saniyede gezdireyim 👇",
+            body: "15 saniyede uygulamayı gezdireyim, hadi 👇",
           },
           {
             tab: "wheel",
             sel: '.tab[data-tab="wheel"]',
             pose: "celebrate",
             title: "🎡 Çark",
-            body: "Seçenekleri yaz, çarkı saat yönünde çevir — kader karar versin! En az 2 seçenek yeter.",
+            body: "Karar veremeyince çarkı saat yönünde çevir — kader seçsin! İşte ana karar aracın.",
+          },
+          {
+            tab: "wheel",
+            sel: "#cats-wheel",
+            pose: "default",
+            title: "📂 Hazır kategoriler",
+            body: "Buradan hazır listelerden (yemek, film, aktivite...) tek dokunuşla çarkı doldurabilirsin.",
+          },
+          {
+            tab: "wheel",
+            sel: "#s-wheel .irow",
+            pose: "default",
+            title: "➕ Kendi seçeneğini ekle",
+            body: "Ya da buraya kendin yazıp + ile ekle. '✨ Merci doldursun' dersen seçenekleri ben üretirim!",
           },
           {
             tab: "vote",
             sel: '.tab[data-tab="vote"]',
             pose: "default",
             title: "⭐ Oylama",
-            body: "Kalabalıksanız oylayın: tek cihaz, elden ele Masa modu ya da herkesin telefonundan Online oda.",
+            body: "Kalabalıksanız oylayın: Tek Cihaz, elden ele Masa modu ya da Online oda (herkes kendi telefonundan — oda kur veya kodla katıl).",
           },
           {
             tab: "cekilis",
             sel: '.tab[data-tab="cekilis"]',
             pose: "celebrate",
             title: "🎉 Çekiliş / Kura",
-            body: "İsimleri ya da seçenekleri ekle, 'Çekilişi Başlat'a bas — Merci animasyonla talihliyi çeksin!",
+            body: "İsimleri ekle, 'Çekilişi Başlat'a bas — Merci animasyonla talihliyi çeksin!",
           },
           {
             tab: "ai",
             sel: '.tab[data-tab="ai"]',
             pose: "glasses",
             title: "🧠 Merci'ye Danış",
-            body: "Ne yesek, nereye gidelim diye sor; öneririm, hatta seçeneklerimi tek tuşla çarka/oylamaya atarım!",
+            body: "Ne yesek, nereye gidelim diye sor; öneririm, hatta seçeneklerimi tek tuşla Çark'a/Oylamaya atarım!",
           },
         ];
         var i = 0;
@@ -5685,6 +5699,12 @@
         function draw(s) {
           root.innerHTML = "";
           var target = s.sel ? document.querySelector(s.sel) : null;
+          // Hedef ekranda görünür değilse (alt/üst kayık) ortaya getir, sonra ölç
+          if (target && target.scrollIntoView) {
+            try {
+              target.scrollIntoView({ block: "center" });
+            } catch (e) {}
+          }
           var r = target ? target.getBoundingClientRect() : null;
           if (r && r.width) {
             var pad = 8;
