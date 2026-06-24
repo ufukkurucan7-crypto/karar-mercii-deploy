@@ -2822,10 +2822,14 @@
             <span class="tab-icon">⭐</span>
             <span class="tab-label">Oylama</span>
           </div>
+          <div class="tab" data-tab="cekilis">
+            <span class="tab-icon">🎉</span>
+            <span class="tab-label">Çekiliş</span>
+          </div>
           <div class="tab" data-tab="ai" id="tab-ai">
             <div class="tab-merci-glow"></div>
             <span class="tab-icon" id="tab-ai-icon"></span>
-            <span class="tab-label">Merci'ye Dan&#305;&#351;</span>
+            <span class="tab-label">Merci</span>
           </div>
         </div>
 
@@ -2906,6 +2910,70 @@
                 onclick="askMerciAboutResult('wheel','wheel')"
               >
                 🐙 Merci'ye Sor
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- ÇEKİLİŞ / KURA -->
+        <div class="sec" id="s-cekilis">
+          <div style="text-align: center; margin: 4px 0 10px">
+            <div
+              id="cekilis-hero-merci"
+              style="display: flex; justify-content: center"
+            ></div>
+            <div
+              style="
+                font-family: Fredoka, Nunito, sans-serif;
+                font-size: 20px;
+                font-weight: 700;
+                color: #6d28d9;
+                margin-top: 4px;
+              "
+            >
+              🎉 Çekiliş / Kura
+            </div>
+            <div style="font-size: 12px; color: #7c3aed; font-weight: 700">
+              İsimleri ekle, talihliyi Merci çeksin!
+            </div>
+          </div>
+          <p class="lbl">İsim / seçenek ekle</p>
+          <div class="irow">
+            <input
+              id="ci"
+              type="text"
+              placeholder="İsim yaz..."
+              onkeydown="if(event.key==='Enter'){event.preventDefault();addCekilis();}"
+            /><button class="abtn" onclick="addCekilis()">
+              +
+            </button>
+          </div>
+          <div class="ogrid" id="cl"></div>
+          <button
+            id="cekilis-start"
+            onclick="startCekilis()"
+            style="width: 100%; margin: 10px 0 4px; padding: 14px; border: none; border-radius: 16px; background: linear-gradient(135deg, #7c3aed, #ec4899); color: #fff; font-family: Fredoka, Nunito, sans-serif; font-weight: 700; font-size: 16px; cursor: pointer; box-shadow: 0 4px 14px rgba(124, 58, 237, 0.32)"
+          >
+            🎉 Çekilişi Başlat
+          </button>
+          <div id="cekilis-stage" style="display: none; text-align: center; margin: 18px 0">
+            <div
+              id="cekilis-display"
+              style="font-family: Fredoka, Nunito, sans-serif; font-size: 30px; font-weight: 800; color: #5b21b6; min-height: 44px; padding: 18px 10px; border-radius: 18px; background: #f5f0ff; border: 2px solid #c4b5fd"
+            ></div>
+          </div>
+          <div id="cr" style="display: none">
+            <div class="rcard">
+              <div class="rmerci" id="c-merci"></div>
+              <div class="rlbl">Talihli 🎉</div>
+              <div class="rwin" id="cwin"></div>
+              <div class="rsay" id="c-say"></div>
+              <button
+                class="btn ghost"
+                style="margin-top: 12px; font-size: 13px; padding: 10px"
+                onclick="startCekilis()"
+              >
+                🔄 Tekrar Çek
               </button>
             </div>
           </div>
@@ -4518,7 +4586,8 @@
       // ═══════════════════ STATE ═══════════════════
       var soundEnabled = localStorage.getItem("kmSound") !== "false";
       var vibEnabled = localStorage.getItem("kmVib") !== "false";
-      var S = { wheel: [], vote: {}, count: 0, history: [] };
+      var S = { wheel: [], vote: {}, cekilis: [], count: 0, history: [] };
+      var cekilisSpinning = false;
       var COLS = [
         "#7C3AED",
         "#EC4899",
@@ -5591,6 +5660,13 @@
             body: "Kalabalıksanız oylayın: tek cihaz, elden ele Masa modu ya da herkesin telefonundan Online oda.",
           },
           {
+            tab: "cekilis",
+            sel: '.tab[data-tab="cekilis"]',
+            pose: "celebrate",
+            title: "🎉 Çekiliş / Kura",
+            body: "İsimleri ya da seçenekleri ekle, 'Çekilişi Başlat'a bas — Merci animasyonla talihliyi çeksin!",
+          },
+          {
             tab: "ai",
             sel: '.tab[data-tab="ai"]',
             pose: "glasses",
@@ -6582,6 +6658,106 @@
       var _lastVoteScores = {};
       var _lastVotePeopleCount = 0;
 
+      // ═══════════════════ ÇEKİLİŞ / KURA ═══════════════════
+      function addCekilis() {
+        var inp = document.getElementById("ci");
+        var v = (inp.value || "").trim();
+        if (!v) return;
+        if (S.cekilis.indexOf(v) < 0 && S.cekilis.length < 100)
+          S.cekilis.push(v);
+        inp.value = "";
+        renderCekilis();
+        snd("add");
+      }
+      function removeCekilis(val) {
+        if (cekilisSpinning) return;
+        S.cekilis = S.cekilis.filter(function (x) {
+          return x !== val;
+        });
+        renderCekilis();
+        snd("click");
+      }
+      function renderCekilis() {
+        var l = document.getElementById("cl");
+        if (!l) return;
+        l.innerHTML = "";
+        S.cekilis.forEach(function (item) {
+          var d = document.createElement("div");
+          d.className = "chip";
+          d.innerHTML =
+            "<span>" +
+            item +
+            '</span><button class="chx" onclick="removeCekilis(\'' +
+            esc(item) +
+            "')\">×</button>";
+          l.appendChild(d);
+        });
+        var sb = document.getElementById("cekilis-start");
+        if (sb) sb.style.opacity = S.cekilis.length >= 2 ? "1" : "0.5";
+      }
+      function startCekilis() {
+        if (cekilisSpinning) return;
+        if (S.cekilis.length < 2) {
+          alert("En az 2 isim/seçenek gerekli! 🎉");
+          return;
+        }
+        cekilisSpinning = true;
+        document.getElementById("cr").style.display = "none";
+        var stage = document.getElementById("cekilis-stage");
+        var disp = document.getElementById("cekilis-display");
+        stage.style.display = "";
+        try {
+          stage.scrollIntoView({ block: "center", behavior: "smooth" });
+        } catch (e) {}
+        var names = S.cekilis.slice();
+        var winner = names[Math.floor(Math.random() * names.length)];
+        var i = 0,
+          elapsed = 0,
+          total = 2600,
+          delay = 60;
+        function tick() {
+          disp.textContent = names[i % names.length];
+          i++;
+          vib(5);
+          elapsed += delay;
+          if (elapsed < total) {
+            delay = 60 + (elapsed / total) * 260; // giderek yavaşla
+            setTimeout(tick, delay);
+          } else {
+            disp.textContent = "🎉 " + winner;
+            finishCekilis(winner);
+          }
+        }
+        tick();
+      }
+      function finishCekilis(winner) {
+        cekilisSpinning = false;
+        var say =
+          (typeof getSaying === "function" ? getSaying(winner) : "") ||
+          "Talihli belli oldu!";
+        document.getElementById("cwin").textContent = winner;
+        document.getElementById("c-say").textContent = say;
+        var poseF = merciPoseForWinner(winner);
+        var el = document.getElementById("c-merci");
+        if (el) {
+          el.classList.remove("cele");
+          try {
+            el.innerHTML = poseF(58);
+          } catch (e) {}
+          void el.offsetWidth;
+          el.classList.add("cele");
+        }
+        document.getElementById("cr").style.display = "";
+        winSound();
+        vib(90);
+        confetti();
+        addHist("🎉", winner, "Çekiliş", say);
+        try {
+          document
+            .getElementById("cr")
+            .scrollIntoView({ block: "center", behavior: "smooth" });
+        } catch (e) {}
+      }
       function merciPoseForWinner(winner) {
         var w = (winner || "").toLowerCase();
         // Korku → korkmuş Merci
@@ -9240,12 +9416,17 @@
             KM_AD.showInterstitial();
           }, 350);
         }
-        ["wheel", "vote", "ai"].forEach((x) => {
+        ["wheel", "vote", "cekilis", "ai"].forEach((x) => {
           document.getElementById("s-" + x).classList.toggle("on", x === m);
           document
             .querySelectorAll(".tab")
             .forEach((t) => t.classList.toggle("on", t.dataset.tab === m));
         });
+        if (m === "cekilis") {
+          var ch = document.getElementById("cekilis-hero-merci");
+          if (ch && !ch.innerHTML) setM("cekilis-hero-merci", 84, "celebrate");
+          renderCekilis();
+        }
         if (m === "ai") {
           var heroEl = document.getElementById("ai-hero-merci");
           if (heroEl && !heroEl.innerHTML) {
