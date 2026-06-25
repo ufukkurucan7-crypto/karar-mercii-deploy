@@ -6,7 +6,7 @@
       name="viewport"
       content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"
     />
-    <meta name="theme-color" content="#7c3aed" />
+    <meta name="theme-color" content="var(--ac)" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta
       name="apple-mobile-web-app-status-bar-style"
@@ -52,19 +52,19 @@
       }
       /* ── TASARIM TOKEN'LARI (semantik palet — dark mode buraya eklenecek) ── */
       :root {
-        --brand: #7c3aed;
-        --brand-deep: #5b21b6;
-        --brand-darker: #4c1d95;
-        --brand-soft: #f0eeff;
-        --brand-border: #c4b5fd;
+        --brand: var(--ac);
+        --brand-deep: var(--ac-d);
+        --brand-darker: var(--ac-dd);
+        --brand-soft: var(--ac-bg);
+        --brand-border: var(--ac-ll);
         --coral: #fb7185;
         --gold: #fbbf24;
         --bg: #ffffff;
         --surface: #ffffff;
-        --surface-2: #f0eeff;
+        --surface-2: var(--ac-bg);
         --text: #1a1a2e;
-        --text-soft: #7c3aed;
-        --border: #f0eeff;
+        --text-soft: var(--ac);
+        --border: var(--ac-bg);
         --radius: 16px;
         --radius-sm: 12px;
         --shadow-sm: 0 2px 10px rgba(124, 58, 237, 0.1);
@@ -118,7 +118,7 @@
       .splash {
         position: fixed;
         inset: 0;
-        background: #7c3aed;
+        background: var(--ac);
         z-index: 9999;
         display: flex;
         flex-direction: column;
@@ -138,7 +138,7 @@
         letter-spacing: 1px;
       }
       .splash-sub {
-        color: #c4b5fd;
+        color: var(--ac-ll);
         font-size: 12px;
         font-weight: 700;
         margin-top: 6px;
@@ -163,10 +163,10 @@
         left: 16px;
         width: 40px;
         height: 40px;
-        background: #f0eeff;
+        background: var(--ac-bg);
         border: none;
         border-radius: 12px;
-        color: #5b21b6;
+        color: var(--ac-d);
         font-size: 18px;
         font-weight: 900;
         cursor: pointer;
@@ -178,21 +178,21 @@
       .ob-title {
         font-size: 27px;
         font-weight: 900;
-        color: #4c1d95;
+        color: var(--ac-dd);
         margin-top: 14px;
         line-height: 1.2;
       }
       .ob-sub {
         font-size: 14px;
         font-weight: 700;
-        color: #7c3aed;
+        color: var(--ac);
         margin-top: 10px;
         line-height: 1.6;
       }
       .ob-btn {
         margin-top: 30px;
         padding: 16px 44px;
-        background: #7c3aed;
+        background: var(--ac);
         color: #fff;
         border: none;
         border-radius: 16px;
@@ -206,7 +206,7 @@
       /* Header */
       .hdr {
         padding: 14px 16px 10px 22px;
-        border-bottom: 2px solid #f0eeff;
+        border-bottom: 2px solid var(--ac-bg);
         display: flex;
         align-items: center;
         gap: 10px;
@@ -218,23 +218,23 @@
       .hdr-title {
         font-size: 20px;
         font-weight: 900;
-        color: #4c1d95;
+        color: var(--ac-dd);
         line-height: 1.1;
       }
       .hdr-sub {
         font-size: 11px;
         font-weight: 700;
-        color: #7c3aed;
+        color: var(--ac);
         margin-top: 2px;
       }
       .hdr-home {
         width: 40px;
         height: 40px;
         margin-left: auto; /* home + menü butonlarını en sağa it */
-        background: #f0eeff;
-        border: 2px solid #c4b5fd;
+        background: var(--ac-bg);
+        border: 2px solid var(--ac-ll);
         border-radius: 12px;
-        color: #5b21b6;
+        color: var(--ac-d);
         font-size: 17px;
         cursor: pointer;
         display: flex;
@@ -246,10 +246,10 @@
         margin-left: auto;
         width: 38px;
         height: 38px;
-        background: #f0eeff;
-        border: 2px solid #c4b5fd;
+        background: var(--ac-bg);
+        border: 2px solid var(--ac-ll);
         border-radius: 12px;
-        color: #5b21b6;
+        color: var(--ac-d);
         font-size: 16px;
         cursor: pointer;
         display: flex;
@@ -261,8 +261,8 @@
       .menu-btn {
         width: 40px;
         height: 40px;
-        background: linear-gradient(135deg, #7c3aed, #a855f7);
-        border: 2px solid #6d28d9;
+        background: linear-gradient(135deg, var(--ac), var(--ac-l));
+        border: 2px solid var(--ac-d2);
         border-radius: 12px;
         color: #fff;
         font-size: 21px;
@@ -303,7 +303,7 @@
       }
       .menu-drawer-hdr {
         padding: 18px 16px 14px;
-        border-bottom: 2px solid #f0eeff;
+        border-bottom: 2px solid var(--ac-bg);
         display: flex;
         align-items: center;
         justify-content: space-between;
@@ -311,15 +311,15 @@
       .menu-drawer-title {
         font-size: 15px;
         font-weight: 900;
-        color: #4c1d95;
+        color: var(--ac-dd);
       }
       .menu-close-btn {
         width: 32px;
         height: 32px;
         border-radius: 10px;
-        background: #f0eeff;
-        border: 2px solid #c4b5fd;
-        color: #5b21b6;
+        background: var(--ac-bg);
+        border: 2px solid var(--ac-ll);
+        color: var(--ac-d);
         font-size: 16px;
         cursor: pointer;
         display: flex;
@@ -340,7 +340,7 @@
         padding: 14px 20px;
         background: none;
         border: none;
-        border-bottom: 1px solid #f5f0ff;
+        border-bottom: 1px solid var(--ac-bg2);
         font-size: 14px;
         font-weight: 800;
         color: #3b0764;
@@ -351,7 +351,7 @@
       }
       .menu-item:hover,
       .menu-item:active {
-        background: #f5f0ff;
+        background: var(--ac-bg2);
       }
       .menu-item-icon {
         font-size: 19px;
@@ -382,7 +382,7 @@
       .info-modal-title {
         font-size: 18px;
         font-weight: 900;
-        color: #4c1d95;
+        color: var(--ac-dd);
         margin-bottom: 14px;
         text-align: center;
       }
@@ -399,7 +399,7 @@
         font-family: "Nunito", sans-serif;
         font-weight: 800;
         font-size: 14px;
-        color: #4c1d95;
+        color: var(--ac-dd);
         cursor: pointer;
         transition: border-color 0.15s, opacity 0.15s, background 0.15s;
       }
@@ -417,7 +417,7 @@
       .set-row .set-state {
         font-size: 12.5px;
         font-weight: 800;
-        color: #a78bfa;
+        color: var(--ac-l2);
       }
       html.dark .set-row {
         background: #1e1733;
@@ -426,6 +426,43 @@
       }
       html.dark .set-row:active {
         background: #261d40;
+      }
+      .theme-sw {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 8px;
+        padding: 14px 8px;
+        background: #f7f5ff;
+        border: 2.5px solid #e3dcff;
+        border-radius: 14px;
+        font-family: "Nunito", sans-serif;
+        font-weight: 800;
+        font-size: 13px;
+        color: #4c1d95;
+        cursor: pointer;
+        transition: border-color 0.15s, transform 0.1s;
+      }
+      .theme-sw:active {
+        transform: scale(0.97);
+      }
+      .theme-sw.active {
+        border-color: var(--ac);
+        background: var(--ac-bg);
+      }
+      .theme-dot {
+        width: 38px;
+        height: 38px;
+        border-radius: 50%;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.18);
+      }
+      html.dark .theme-sw {
+        background: #1e1733;
+        border-color: #2d2347;
+        color: #ece8f7;
+      }
+      html.dark .theme-sw.active {
+        border-color: var(--ac-l);
       }
       .info-modal-body {
         font-size: 13px;
@@ -437,14 +474,14 @@
       .info-modal-body h3 {
         font-size: 13px;
         font-weight: 900;
-        color: #7c3aed;
+        color: var(--ac);
         margin: 14px 0 4px;
       }
       .info-modal-close {
         display: block;
         width: 100%;
         padding: 13px;
-        background: #7c3aed;
+        background: var(--ac);
         border: none;
         border-radius: 12px;
         color: #fff;
@@ -480,19 +517,19 @@
       }
       .rate-feedback {
         margin-top: 10px;
-        background: #f5f0ff;
+        background: var(--ac-bg2);
         border-radius: 12px;
         padding: 14px;
       }
       .rate-feedback p {
         font-size: 13px;
         font-weight: 800;
-        color: #4c1d95;
+        color: var(--ac-dd);
         margin-bottom: 8px;
       }
       .rate-feedback textarea {
         width: 100%;
-        border: 2px solid #c4b5fd;
+        border: 2px solid var(--ac-ll);
         border-radius: 10px;
         padding: 10px;
         font-size: 13px;
@@ -506,13 +543,13 @@
         box-sizing: border-box;
       }
       .rate-feedback textarea:focus {
-        border-color: #7c3aed;
+        border-color: var(--ac);
       }
       .rate-send-btn {
         width: 100%;
         margin-top: 10px;
         padding: 12px;
-        background: #7c3aed;
+        background: var(--ac);
         border: none;
         border-radius: 10px;
         color: #fff;
@@ -526,7 +563,7 @@
         padding: 14px 0 4px;
         font-size: 14px;
         font-weight: 800;
-        color: #7c3aed;
+        color: var(--ac);
       }
       /* ── LIKE/DISLIKE ── */
       .msg-feedback {
@@ -542,14 +579,14 @@
         padding: 3px 8px;
         font-size: 13px;
         cursor: pointer;
-        color: #a78bfa;
+        color: var(--ac-l2);
         font-family: "Nunito", sans-serif;
         font-weight: 800;
         transition: all 0.15s;
         line-height: 1;
       }
       .fb-btn:hover {
-        background: #f5f0ff;
+        background: var(--ac-bg2);
       }
       .fb-btn.liked {
         background: #d1fae5;
@@ -569,8 +606,8 @@
       /* ── PAYWALL ── */
       .paywall-box {
         margin: 12px 16px;
-        background: linear-gradient(135deg, #f5f0ff, #ede9fe);
-        border: 2px solid #c4b5fd;
+        background: linear-gradient(135deg, var(--ac-bg2), var(--ac-bg3));
+        border: 2px solid var(--ac-ll);
         border-radius: 18px;
         padding: 20px 18px;
         text-align: center;
@@ -582,20 +619,20 @@
       .paywall-title {
         font-size: 16px;
         font-weight: 900;
-        color: #4c1d95;
+        color: var(--ac-dd);
         margin-bottom: 6px;
       }
       .paywall-sub {
         font-size: 12px;
         font-weight: 700;
-        color: #7c3aed;
+        color: var(--ac);
         margin-bottom: 16px;
         line-height: 1.5;
       }
       .paywall-btn-primary {
         width: 100%;
         padding: 13px;
-        background: #7c3aed;
+        background: var(--ac);
         border: none;
         border-radius: 12px;
         color: #fff;
@@ -609,9 +646,9 @@
         width: 100%;
         padding: 11px;
         background: #fff;
-        border: 2px solid #c4b5fd;
+        border: 2px solid var(--ac-ll);
         border-radius: 12px;
-        color: #5b21b6;
+        color: var(--ac-d);
         font-size: 13px;
         font-weight: 900;
         font-family: "Nunito", sans-serif;
@@ -620,7 +657,7 @@
       .paywall-counter {
         font-size: 11px;
         font-weight: 700;
-        color: #a78bfa;
+        color: var(--ac-l2);
         margin-top: 10px;
       }
 
@@ -652,7 +689,7 @@
       }
       .pro-badge {
         display: inline-block;
-        background: linear-gradient(135deg, #7c3aed, #a855f7);
+        background: linear-gradient(135deg, var(--ac), var(--ac-l));
         color: #fff;
         font-size: 11px;
         font-weight: 900;
@@ -664,20 +701,20 @@
       .pro-title {
         font-size: 22px;
         font-weight: 900;
-        color: #4c1d95;
+        color: var(--ac-dd);
         margin-bottom: 6px;
       }
       .pro-sub {
         font-size: 13px;
         font-weight: 700;
-        color: #7c3aed;
+        color: var(--ac);
         margin-bottom: 20px;
         line-height: 1.5;
       }
       .pro-perks {
         text-align: left;
         margin-bottom: 22px;
-        background: #f5f0ff;
+        background: var(--ac-bg2);
         border-radius: 14px;
         padding: 14px 16px;
       }
@@ -704,7 +741,7 @@
       }
       .pro-plan {
         flex: 1;
-        border: 2px solid #c4b5fd;
+        border: 2px solid var(--ac-ll);
         border-radius: 14px;
         padding: 14px 10px;
         cursor: pointer;
@@ -713,15 +750,15 @@
         background: #fff;
       }
       .pro-plan.selected {
-        border-color: #7c3aed;
-        background: #f5f0ff;
+        border-color: var(--ac);
+        background: var(--ac-bg2);
       }
       .pro-plan-badge {
         position: absolute;
         top: -10px;
         left: 50%;
         transform: translateX(-50%);
-        background: #7c3aed;
+        background: var(--ac);
         color: #fff;
         font-size: 10px;
         font-weight: 900;
@@ -732,30 +769,30 @@
       .pro-plan-name {
         font-size: 12px;
         font-weight: 900;
-        color: #4c1d95;
+        color: var(--ac-dd);
         margin-bottom: 4px;
       }
       .pro-plan-price {
         font-size: 20px;
         font-weight: 900;
-        color: #7c3aed;
+        color: var(--ac);
         line-height: 1;
       }
       .pro-plan-price span {
         font-size: 11px;
         font-weight: 700;
-        color: #a78bfa;
+        color: var(--ac-l2);
       }
       .pro-plan-note {
         font-size: 10px;
         font-weight: 700;
-        color: #a78bfa;
+        color: var(--ac-l2);
         margin-top: 3px;
       }
       .pro-btn {
         width: 100%;
         padding: 15px;
-        background: linear-gradient(135deg, #7c3aed, #a855f7);
+        background: linear-gradient(135deg, var(--ac), var(--ac-l));
         border: none;
         border-radius: 14px;
         color: #fff;
@@ -769,7 +806,7 @@
       .pro-skip {
         font-size: 12px;
         font-weight: 700;
-        color: #a78bfa;
+        color: var(--ac-l2);
         cursor: pointer;
         display: block;
         margin-top: 4px;
@@ -793,13 +830,13 @@
       .ob-auth-title {
         font-size: 22px;
         font-weight: 900;
-        color: #4c1d95;
+        color: var(--ac-dd);
         margin-bottom: 8px;
       }
       .ob-auth-sub {
         font-size: 13px;
         font-weight: 700;
-        color: #7c3aed;
+        color: var(--ac);
         margin-bottom: 32px;
         line-height: 1.6;
         max-width: 280px;
@@ -809,7 +846,7 @@
         width: 100%;
         padding: 13px 16px;
         background: #fff;
-        border: 1.5px solid #c4b5fd;
+        border: 1.5px solid var(--ac-ll);
         border-radius: 12px;
         font-size: 14px;
         font-weight: 900;
@@ -822,19 +859,19 @@
         gap: 10px;
       }
       .ob-google-btn:active {
-        background: #f5f0ff;
+        background: var(--ac-bg2);
       }
 
       .ob-guest-btn {
         width: 100%;
         padding: 12px 16px;
-        background: #f5f0ff;
-        border: 1.5px solid #c4b5fd;
+        background: var(--ac-bg2);
+        border: 1.5px solid var(--ac-ll);
         border-radius: 12px;
         font-size: 13px;
         font-weight: 800;
         font-family: "Nunito", sans-serif;
-        color: #5b21b6;
+        color: var(--ac-d);
         cursor: pointer;
         margin-top: 12px;
         margin-bottom: 16px;
@@ -842,11 +879,11 @@
       .ob-auth-terms {
         font-size: 11px;
         font-weight: 700;
-        color: #c4b5fd;
+        color: var(--ac-ll);
         line-height: 1.6;
       }
       .ob-auth-terms a {
-        color: #a78bfa;
+        color: var(--ac-l2);
       }
 
       /* ── AUTH MODAL ── */
@@ -879,13 +916,13 @@
       .auth-title {
         font-size: 20px;
         font-weight: 900;
-        color: #4c1d95;
+        color: var(--ac-dd);
         margin-bottom: 6px;
       }
       .auth-sub {
         font-size: 13px;
         font-weight: 700;
-        color: #7c3aed;
+        color: var(--ac);
         margin-bottom: 24px;
         line-height: 1.5;
       }
@@ -909,7 +946,7 @@
         width: 100%;
         padding: 14px;
         background: #fff;
-        border: 2px solid #c4b5fd;
+        border: 2px solid var(--ac-ll);
         border-radius: 14px;
         font-size: 14px;
         font-weight: 900;
@@ -924,7 +961,7 @@
         transition: background 0.15s;
       }
       .google-btn:hover {
-        background: #f5f0ff;
+        background: var(--ac-bg2);
       }
       .google-icon {
         width: 20px;
@@ -933,19 +970,19 @@
       .auth-skip {
         font-size: 12px;
         font-weight: 700;
-        color: #a78bfa;
+        color: var(--ac-l2);
         cursor: pointer;
         margin-top: 8px;
         display: block;
       }
       .auth-skip:hover {
-        color: #7c3aed;
+        color: var(--ac);
       }
 
       /* ── MENU PROFILE ── */
       .menu-profile {
         padding: 16px 20px;
-        border-bottom: 2px solid #f0eeff;
+        border-bottom: 2px solid var(--ac-bg);
         display: flex;
         align-items: center;
         gap: 12px;
@@ -954,7 +991,7 @@
         width: 42px;
         height: 42px;
         border-radius: 50%;
-        background: #7c3aed;
+        background: var(--ac);
         display: flex;
         align-items: center;
         justify-content: center;
@@ -974,7 +1011,7 @@
       .menu-profile-name {
         font-size: 13px;
         font-weight: 900;
-        color: #4c1d95;
+        color: var(--ac-dd);
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
@@ -982,7 +1019,7 @@
       .menu-profile-status {
         font-size: 11px;
         font-weight: 700;
-        color: #7c3aed;
+        color: var(--ac);
         margin-top: 2px;
       }
       .menu-profile-status.premium {
@@ -992,8 +1029,8 @@
         font-size: 11px;
         font-weight: 900;
         font-family: "Nunito", sans-serif;
-        color: #7c3aed;
-        background: #f0eeff;
+        color: var(--ac);
+        background: var(--ac-bg);
         border: none;
         border-radius: 8px;
         padding: 6px 10px;
@@ -1026,13 +1063,13 @@
       .confirm-title {
         font-size: 17px;
         font-weight: 900;
-        color: #4c1d95;
+        color: var(--ac-dd);
         margin-bottom: 10px;
       }
       .confirm-sub {
         font-size: 13px;
         font-weight: 700;
-        color: #7c3aed;
+        color: var(--ac);
         margin-bottom: 20px;
         line-height: 1.5;
       }
@@ -1043,19 +1080,19 @@
       .confirm-yes {
         flex: 1;
         padding: 12px;
-        background: #f0eeff;
+        background: var(--ac-bg);
         border: none;
         border-radius: 12px;
         font-size: 14px;
         font-weight: 900;
         font-family: "Nunito", sans-serif;
-        color: #5b21b6;
+        color: var(--ac-d);
         cursor: pointer;
       }
       .confirm-no {
         flex: 1;
         padding: 12px;
-        background: #7c3aed;
+        background: var(--ac);
         border: none;
         border-radius: 12px;
         font-size: 14px;
@@ -1072,28 +1109,28 @@
         font-weight: 800;
         font-family: "Nunito", sans-serif;
         cursor: pointer;
-        border: 2px solid #c4b5fd;
+        border: 2px solid var(--ac-ll);
         border-radius: 12px;
-        background: #f5f0ff;
-        color: #5b21b6;
+        background: var(--ac-bg2);
+        color: var(--ac-d);
         transition:
           background 0.15s,
           color 0.15s;
       }
       .online-role-btn.on {
-        background: #7c3aed;
+        background: var(--ac);
         color: #fff;
-        border-color: #7c3aed;
+        border-color: var(--ac);
       }
       /* ── END HAMBURGER MENU ── */
       .hdr-badge {
-        background: #f0eeff;
-        border: 2px solid #c4b5fd;
+        background: var(--ac-bg);
+        border: 2px solid var(--ac-ll);
         border-radius: 20px;
         padding: 5px 10px;
         font-size: 11px;
         font-weight: 800;
-        color: #5b21b6;
+        color: var(--ac-d);
       }
 
       /* Tabs */
@@ -1107,10 +1144,10 @@
         padding: 9px 2px 7px;
         font-size: 9.5px;
         font-weight: 900;
-        border: 2px solid #ddd6fe;
+        border: 2px solid var(--ac-lll);
         border-radius: 16px;
         background: #faf8ff;
-        color: #7c3aed;
+        color: var(--ac);
         cursor: pointer;
         text-align: center;
         line-height: 1.3;
@@ -1141,8 +1178,8 @@
         letter-spacing: 0.3px;
       }
       .tab.on {
-        background: linear-gradient(145deg, #6d28d9, #9333ea);
-        border-color: #5b21b6;
+        background: linear-gradient(145deg, var(--ac-d2), #9333ea);
+        border-color: var(--ac-d);
         color: #fff;
         box-shadow: 0 6px 20px rgba(109, 40, 217, 0.38);
         transform: translateY(-3px) scale(1.03);
@@ -1167,11 +1204,11 @@
         pointer-events: none;
       }
       #tab-ai:not(.on) {
-        border-color: #c4b5fd;
-        background: linear-gradient(145deg, #f5f0ff, #faf8ff);
+        border-color: var(--ac-ll);
+        background: linear-gradient(145deg, var(--ac-bg2), #faf8ff);
       }
       #tab-ai:not(.on) .tab-label {
-        background: linear-gradient(90deg, #7c3aed, #a855f7);
+        background: linear-gradient(90deg, var(--ac), var(--ac-l));
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
         background-clip: text;
@@ -1200,7 +1237,7 @@
       .lbl {
         font-size: 10px;
         font-weight: 900;
-        color: #7c3aed;
+        color: var(--ac);
         letter-spacing: 0.8px;
         text-transform: uppercase;
         margin-bottom: 8px;
@@ -1230,9 +1267,9 @@
         border-radius: 12px;
         font-size: 12px;
         font-weight: 800;
-        background: #f0eeff;
-        border: 2px solid #c4b5fd;
-        color: #5b21b6;
+        background: var(--ac-bg);
+        border: 2px solid var(--ac-ll);
+        color: var(--ac-d);
         cursor: pointer;
         font-family: "Nunito", sans-serif;
         white-space: nowrap;
@@ -1240,9 +1277,9 @@
       }
       .cat:hover,
       .cat:active {
-        background: #7c3aed;
+        background: var(--ac);
         color: #fff;
-        border-color: #7c3aed;
+        border-color: var(--ac);
       }
 
       /* Inputs */
@@ -1257,22 +1294,22 @@
         font-size: 14px;
         font-weight: 700;
         font-family: "Nunito", sans-serif;
-        border: 2px solid #c4b5fd;
+        border: 2px solid var(--ac-ll);
         border-radius: 10px;
         background: #fff;
         color: #1a1a2e;
         outline: none;
       }
       .irow input::placeholder {
-        color: #a78bfa;
+        color: var(--ac-l2);
         font-weight: 700;
       }
       .irow input:focus {
-        border-color: #7c3aed;
+        border-color: var(--ac);
       }
       .abtn {
         padding: 11px 16px;
-        background: #7c3aed;
+        background: var(--ac);
         border: none;
         border-radius: 10px;
         color: #fff;
@@ -1299,7 +1336,7 @@
         background: #f9f7ff;
         font-size: 11px;
         font-weight: 800;
-        color: #4c1d95;
+        color: var(--ac-dd);
         min-width: 0;
       }
       .chip span {
@@ -1312,10 +1349,10 @@
         flex-shrink: 0;
         width: 18px;
         height: 18px;
-        background: #ede9fe;
+        background: var(--ac-bg3);
         border: none;
         border-radius: 6px;
-        color: #7c3aed;
+        color: var(--ac);
         font-size: 13px;
         font-weight: 900;
         cursor: pointer;
@@ -1325,7 +1362,7 @@
         font-family: "Nunito", sans-serif;
       }
       .chx:hover {
-        background: #7c3aed;
+        background: var(--ac);
         color: #fff;
       }
 
@@ -1354,15 +1391,15 @@
         flex: 1;
         font-size: 13px;
         font-weight: 800;
-        color: #4c1d95;
+        color: var(--ac-dd);
       }
       .rbtn {
         width: 24px;
         height: 24px;
-        background: #ede9fe;
+        background: var(--ac-bg3);
         border: none;
         border-radius: 8px;
-        color: #7c3aed;
+        color: var(--ac);
         font-size: 16px;
         font-weight: 900;
         cursor: pointer;
@@ -1372,7 +1409,7 @@
         font-family: "Nunito", sans-serif;
       }
       .rbtn:hover {
-        background: #7c3aed;
+        background: var(--ac);
         color: #fff;
       }
       .stars {
@@ -1400,7 +1437,7 @@
         font-family: "Nunito", sans-serif;
         border: none;
         border-radius: 12px;
-        background: #7c3aed;
+        background: var(--ac);
         color: #fff;
         cursor: pointer;
         margin-top: 8px;
@@ -1408,12 +1445,12 @@
         transition: background 0.15s;
       }
       .btn:hover {
-        background: #5b21b6;
+        background: var(--ac-d);
       }
       .btn.ghost {
-        background: #f0eeff;
-        color: #5b21b6;
-        border: 2px solid #c4b5fd;
+        background: var(--ac-bg);
+        color: var(--ac-d);
+        border: 2px solid var(--ac-ll);
       }
       .btn.gold {
         background: #f5a623;
@@ -1434,21 +1471,21 @@
         align-items: center;
         gap: 8px;
         padding: 10px 12px;
-        background: #f0eeff;
-        border: 2px solid #c4b5fd;
+        background: var(--ac-bg);
+        border: 2px solid var(--ac-ll);
         border-radius: 10px;
         margin-bottom: 10px;
       }
       .masa-row input {
         width: 18px;
         height: 18px;
-        accent-color: #7c3aed;
+        accent-color: var(--ac);
         cursor: pointer;
       }
       .masa-row label {
         font-size: 12px;
         font-weight: 800;
-        color: #5b21b6;
+        color: var(--ac-d);
         cursor: pointer;
         flex: 1;
       }
@@ -1456,7 +1493,7 @@
         text-align: center;
         font-size: 13px;
         font-weight: 800;
-        color: #7c3aed;
+        color: var(--ac);
         padding: 8px;
         background: #f9f7ff;
         border-radius: 10px;
@@ -1466,7 +1503,7 @@
       /* Share box */
       .share-box {
         background: #f9f7ff;
-        border: 2px dashed #c4b5fd;
+        border: 2px dashed var(--ac-ll);
         border-radius: 14px;
         padding: 16px;
         text-align: center;
@@ -1475,20 +1512,20 @@
       .share-code {
         font-size: 28px;
         font-weight: 900;
-        color: #4c1d95;
+        color: var(--ac-dd);
         letter-spacing: 8px;
         margin: 8px 0;
       }
       .share-link {
         font-size: 11px;
         font-weight: 700;
-        color: #7c3aed;
+        color: var(--ac);
         word-break: break-all;
         margin-top: 6px;
       }
       .share-copy {
         padding: 8px 18px;
-        background: #7c3aed;
+        background: var(--ac);
         border: none;
         border-radius: 10px;
         color: #fff;
@@ -1510,17 +1547,17 @@
         font-family: "Nunito", sans-serif;
         font-weight: 900;
         letter-spacing: 6px;
-        border: 2px solid #c4b5fd;
+        border: 2px solid var(--ac-ll);
         border-radius: 10px;
         background: #fff;
-        color: #4c1d95;
+        color: var(--ac-dd);
         outline: none;
         text-align: center;
         text-transform: uppercase;
       }
       .join-row button {
         padding: 11px 18px;
-        background: #7c3aed;
+        background: var(--ac);
         border: none;
         border-radius: 10px;
         color: #fff;
@@ -1535,7 +1572,7 @@
         border: 2px solid #f5a623;
         border-radius: 14px;
         padding: 18px 16px;
-        background: linear-gradient(180deg, #fff8ec, #f0eeff);
+        background: linear-gradient(180deg, #fff8ec, var(--ac-bg));
         text-align: center;
         margin-top: 10px;
         animation: cardpop 0.5s cubic-bezier(0.2, 1.3, 0.4, 1);
@@ -1582,7 +1619,7 @@
       .rwin {
         font-size: 24px;
         font-weight: 900;
-        color: #4c1d95;
+        color: var(--ac-dd);
         margin-bottom: 6px;
       }
       @keyframes winpop {
@@ -1619,7 +1656,7 @@
         border-radius: 10px;
         font-size: 12.5px;
         font-weight: 700;
-        color: #4c1d95;
+        color: var(--ac-dd);
         margin-top: 8px;
         line-height: 1.5;
         animation: sayfade 0.5s 0.45s both;
@@ -1637,7 +1674,7 @@
       .empty {
         text-align: center;
         padding: 12px;
-        color: #a78bfa;
+        color: var(--ac-l2);
         font-size: 13px;
         font-weight: 700;
       }
@@ -1649,19 +1686,19 @@
         gap: 10px;
         margin-bottom: 14px;
         padding: 12px;
-        background: #f0eeff;
+        background: var(--ac-bg);
         border-radius: 12px;
-        border: 2px solid #c4b5fd;
+        border: 2px solid var(--ac-ll);
       }
       .ai-intro-txt {
         font-size: 13px;
         font-weight: 900;
-        color: #4c1d95;
+        color: var(--ac-dd);
       }
       .ai-intro-sub {
         font-size: 11px;
         font-weight: 700;
-        color: #7c3aed;
+        color: var(--ac);
         margin-top: 2px;
         line-height: 1.4;
       }
@@ -1671,9 +1708,9 @@
         margin: 0 0 14px;
         background: linear-gradient(
           145deg,
-          #4c1d95 0%,
-          #6d28d9 50%,
-          #7c3aed 100%
+          var(--ac-dd) 0%,
+          var(--ac-d2) 50%,
+          var(--ac) 100%
         );
         border-radius: 20px;
         padding: 12px 16px 16px;
@@ -1725,7 +1762,7 @@
       .merci-ai-hero-sub {
         font-size: 12px;
         font-weight: 700;
-        color: #c4b5fd;
+        color: var(--ac-ll);
         line-height: 1.5;
         position: relative;
         z-index: 1;
@@ -1756,9 +1793,9 @@
         border-radius: 12px;
         font-size: 11.5px;
         font-weight: 800;
-        background: #f5f0ff;
-        border: 2px solid #ddd6fe;
-        color: #5b21b6;
+        background: var(--ac-bg2);
+        border: 2px solid var(--ac-lll);
+        color: var(--ac-d);
         cursor: pointer;
         font-family: "Nunito", sans-serif;
         transition: all 0.15s;
@@ -1770,9 +1807,9 @@
       }
       .ai-quick-btn:hover,
       .ai-quick-btn:active {
-        background: #7c3aed;
+        background: var(--ac);
         color: #fff;
-        border-color: #7c3aed;
+        border-color: var(--ac);
         transform: scale(1.02);
       }
       .ai-quick-btn-emoji {
@@ -1791,13 +1828,13 @@
       }
       .ai-wall-bubble {
         display: inline-block;
-        background: #f0eeff;
-        border: 2px solid #c4b5fd;
+        background: var(--ac-bg);
+        border: 2px solid var(--ac-ll);
         border-radius: 16px 16px 16px 4px;
         padding: 10px 14px;
         font-size: 13px;
         font-weight: 800;
-        color: #4c1d95;
+        color: var(--ac-dd);
         margin-bottom: 20px;
         max-width: 240px;
         line-height: 1.5;
@@ -1806,7 +1843,7 @@
       .ai-wall-perks {
         text-align: left;
         background: #faf8ff;
-        border: 2px solid #ede9fe;
+        border: 2px solid var(--ac-bg3);
         border-radius: 14px;
         padding: 12px 14px;
         margin-bottom: 18px;
@@ -1837,23 +1874,23 @@
         border-radius: 20px;
         font-size: 12px;
         font-weight: 800;
-        background: #f0eeff;
-        border: 2px solid #c4b5fd;
-        color: #5b21b6;
+        background: var(--ac-bg);
+        border: 2px solid var(--ac-ll);
+        color: var(--ac-d);
         cursor: pointer;
         font-family: "Nunito", sans-serif;
         transition: all 0.15s;
       }
       .chip-ai:hover,
       .chip-ai:active {
-        background: #7c3aed;
+        background: var(--ac);
         color: #fff;
-        border-color: #7c3aed;
+        border-color: var(--ac);
       }
       .chip-ai.surprise {
-        background: linear-gradient(90deg, #7c3aed, #a78bfa);
+        background: linear-gradient(90deg, var(--ac), var(--ac-l2));
         color: #fff;
-        border-color: #7c3aed;
+        border-color: var(--ac);
       }
       .chat-wrap {
         border: 2px solid #e0d7ff;
@@ -1905,8 +1942,8 @@
         border-radius: 50%;
         overflow: hidden;
         flex-shrink: 0;
-        background: #f0eeff;
-        border: 2px solid #c4b5fd;
+        background: var(--ac-bg);
+        border: 2px solid var(--ac-ll);
         display: flex;
         align-items: center;
         justify-content: center;
@@ -1929,9 +1966,9 @@
         box-shadow: 0 1px 4px rgba(124, 58, 237, 0.07);
       }
       .chat-bubble-u {
-        background: #7c3aed;
+        background: var(--ac);
         color: #fff;
-        border-color: #6d28d9;
+        border-color: var(--ac-d2);
         border-radius: 14px 14px 4px 14px;
         padding: 10px 13px;
         font-size: 13px;
@@ -1949,15 +1986,15 @@
         padding: 12px 14px;
         font-size: 12px;
         font-weight: 800;
-        color: #7c3aed;
+        color: var(--ac);
         background: #fff;
-        border-top: 1px solid #f0eeff;
+        border-top: 1px solid var(--ac-bg);
       }
       .dot {
         width: 7px;
         height: 7px;
         border-radius: 50%;
-        background: #7c3aed;
+        background: var(--ac);
         animation: pu 1.2s infinite;
       }
       .dot:nth-child(2) {
@@ -1989,7 +2026,7 @@
         font-size: 14px;
         font-weight: 700;
         font-family: "Nunito", sans-serif;
-        border: 2px solid #c4b5fd;
+        border: 2px solid var(--ac-ll);
         border-radius: 10px;
         background: #fff;
         color: #1a1a2e;
@@ -2000,16 +2037,16 @@
         line-height: 1.5;
       }
       .chat-input-row textarea::placeholder {
-        color: #a78bfa;
+        color: var(--ac-l2);
         font-weight: 700;
       }
       .chat-input-row textarea:focus {
-        border-color: #7c3aed;
+        border-color: var(--ac);
       }
       .send-btn {
         width: 44px;
         height: 44px;
-        background: #7c3aed;
+        background: var(--ac);
         border: none;
         border-radius: 10px;
         color: #fff;
@@ -2022,7 +2059,7 @@
         justify-content: center;
       }
       .send-btn:disabled {
-        background: #c4b5fd;
+        background: var(--ac-ll);
         cursor: not-allowed;
       }
 
@@ -2120,9 +2157,9 @@
         border-radius: 12px;
         font-size: 12.5px;
         font-weight: 800;
-        background: #f0eeff;
-        border: 2px solid #c4b5fd;
-        color: #5b21b6;
+        background: var(--ac-bg);
+        border: 2px solid var(--ac-ll);
+        color: var(--ac-d);
         cursor: pointer;
         font-family: "Nunito", sans-serif;
         white-space: nowrap;
@@ -2147,17 +2184,17 @@
       .place-name {
         font-weight: 800;
         font-size: 13.5px;
-        color: #4c1d95;
+        color: var(--ac-dd);
       }
       .place-meta {
         font-size: 11px;
         font-weight: 700;
-        color: #7c3aed;
+        color: var(--ac);
         margin-top: 2px;
       }
       .place-dir {
         flex-shrink: 0;
-        background: linear-gradient(135deg, #7c3aed, #a855f7);
+        background: linear-gradient(135deg, var(--ac), var(--ac-l));
         color: #fff;
         border: none;
         border-radius: 10px;
@@ -2233,7 +2270,7 @@
         height: 26px;
         border-radius: 50%;
         background: #fff;
-        border: 4px solid #4c1d95;
+        border: 4px solid var(--ac-dd);
         z-index: 8;
         pointer-events: none;
       }
@@ -2245,7 +2282,7 @@
         width: 19%;
         height: 19%;
         border-radius: 50%;
-        background: linear-gradient(145deg, #8b5cf6, #6d28d9);
+        background: linear-gradient(145deg, var(--ac-m), var(--ac-d2));
         border: 3px solid #fff;
         color: #fff;
         font-size: clamp(18px, 5vw, 26px);
@@ -2268,10 +2305,10 @@
       }
       .wspin-btn:active {
         transform: translate(-50%, -50%) scale(0.92);
-        background: #5b21b6;
+        background: var(--ac-d);
       }
       .wspin-btn.spinning {
-        background: #a78bfa;
+        background: var(--ac-l2);
         cursor: default;
         pointer-events: none;
         animation: spinArrow 0.6s linear infinite;
@@ -2338,7 +2375,7 @@
         transform: translateX(-50%);
         font-size: 11px;
         font-weight: 900;
-        color: #4c1d95;
+        color: var(--ac-dd);
         background: rgba(255, 255, 255, 0.88);
         padding: 4px 10px;
         border-radius: 10px;
@@ -2355,7 +2392,7 @@
       .wcap .cap-txt {
         font-size: 12px;
         font-weight: 800;
-        color: #7c3aed;
+        color: var(--ac);
       }
 
       /* Modal */
@@ -2383,13 +2420,13 @@
       .mtitle {
         font-size: 16px;
         font-weight: 900;
-        color: #4c1d95;
+        color: var(--ac-dd);
         margin-bottom: 6px;
       }
       .msub {
         font-size: 13px;
         font-weight: 700;
-        color: #7c3aed;
+        color: var(--ac);
         margin-bottom: 14px;
         line-height: 1.5;
       }
@@ -2409,12 +2446,12 @@
         height: 0;
         border-left: 10px solid transparent;
         border-right: 10px solid transparent;
-        border-top: 18px solid #4c1d95;
+        border-top: 18px solid var(--ac-dd);
         z-index: 5;
       }
       .mbtn {
         padding: 12px 30px;
-        background: #7c3aed;
+        background: var(--ac);
         border: none;
         border-radius: 10px;
         color: #fff;
@@ -2431,8 +2468,8 @@
         gap: 10px;
         align-items: flex-start;
         padding: 12px;
-        background: #f0eeff;
-        border: 2px solid #c4b5fd;
+        background: var(--ac-bg);
+        border: 2px solid var(--ac-ll);
         border-radius: 12px;
         margin-bottom: 8px;
       }
@@ -2440,7 +2477,7 @@
         flex: 1;
         font-size: 12px;
         font-weight: 800;
-        color: #4c1d95;
+        color: var(--ac-dd);
         line-height: 1.5;
       }
       .hist-actions {
@@ -2454,16 +2491,16 @@
         font-size: 11px;
         font-weight: 900;
         border-radius: 9px;
-        border: 2px solid #c4b5fd;
+        border: 2px solid var(--ac-ll);
         background: #f9f7ff;
-        color: #5b21b6;
+        color: var(--ac-d);
         cursor: pointer;
         font-family: "Nunito", sans-serif;
       }
       .hist-mini-btn:hover {
-        background: #7c3aed;
+        background: var(--ac);
         color: #fff;
-        border-color: #7c3aed;
+        border-color: var(--ac);
       }
       .hist-clear {
         padding: 8px 12px;
@@ -2491,7 +2528,7 @@
       .hist-chart-title {
         font-size: 10px;
         font-weight: 900;
-        color: #7c3aed;
+        color: var(--ac);
         text-transform: uppercase;
         letter-spacing: 0.06em;
         margin-bottom: 8px;
@@ -2511,20 +2548,20 @@
         flex: 1;
         font-size: 12px;
         font-weight: 800;
-        color: #4c1d95;
+        color: var(--ac-dd);
         line-height: 1.4;
       }
       .hist-cmt {
         font-size: 10px;
         font-weight: 700;
-        color: #a78bfa;
+        color: var(--ac-l2);
         margin-top: 2px;
         font-style: italic;
       }
       .hist-time {
         font-size: 10px;
         font-weight: 700;
-        color: #a78bfa;
+        color: var(--ac-l2);
         white-space: nowrap;
       }
 
@@ -2552,28 +2589,28 @@
       }
       .vote-mode-btn {
         padding: 22px 10px;
-        background: #f0eeff;
-        border: 2px solid #c4b5fd;
+        background: var(--ac-bg);
+        border: 2px solid var(--ac-ll);
         border-radius: 18px;
         cursor: pointer;
         text-align: center;
         font-family: "Nunito", sans-serif;
-        color: #4c1d95;
+        color: var(--ac-dd);
         transition: all 0.15s;
         width: 100%;
         box-shadow: 0 3px 14px rgba(124, 58, 237, 0.08);
       }
       .vote-mode-btn:hover,
       .vote-mode-btn.on {
-        background: #7c3aed;
+        background: var(--ac);
         color: #fff;
-        border-color: #7c3aed;
+        border-color: var(--ac);
       }
       .vote-mode-btn.on .ai-intro-sub {
-        color: #c4b5fd;
+        color: var(--ac-ll);
       }
       .timer-bar {
-        background: #4c1d95;
+        background: var(--ac-dd);
         color: #fff;
         border-radius: 10px;
         padding: 8px 14px;
@@ -2619,9 +2656,9 @@
         border-radius: 20px;
         font-size: 11px;
         font-weight: 800;
-        background: #f0eeff;
-        border: 2px solid #c4b5fd;
-        color: #5b21b6;
+        background: var(--ac-bg);
+        border: 2px solid var(--ac-ll);
+        color: var(--ac-d);
       }
       .onl-sel-row {
         display: flex;
@@ -2631,24 +2668,24 @@
       }
       .onl-sel-btn {
         padding: 7px 12px;
-        background: #f0eeff;
-        border: 2px solid #c4b5fd;
+        background: var(--ac-bg);
+        border: 2px solid var(--ac-ll);
         border-radius: 10px;
         font-size: 12px;
         font-weight: 900;
-        color: #5b21b6;
+        color: var(--ac-d);
         cursor: pointer;
         font-family: "Nunito", sans-serif;
         transition: all 0.15s;
       }
       .onl-sel-btn.on {
-        background: #7c3aed !important;
-        border-color: #7c3aed !important;
+        background: var(--ac) !important;
+        border-color: var(--ac) !important;
         color: #fff !important;
       }
       .onl-sel-btn:active {
-        background: #6d28d9;
-        border-color: #6d28d9;
+        background: var(--ac-d2);
+        border-color: var(--ac-d2);
         color: #fff;
       }
       /* ── ONLINE SETUP POPUP MODAL ── */
@@ -2692,20 +2729,20 @@
         justify-content: space-between;
         margin-bottom: 16px;
         padding-bottom: 12px;
-        border-bottom: 2px solid #f0eeff;
+        border-bottom: 2px solid var(--ac-bg);
       }
       .online-popup-title {
         font-size: 17px;
         font-weight: 900;
-        color: #4c1d95;
+        color: var(--ac-dd);
       }
       .online-popup-close {
         width: 32px;
         height: 32px;
-        background: #f0eeff;
+        background: var(--ac-bg);
         border: none;
         border-radius: 10px;
-        color: #5b21b6;
+        color: var(--ac-d);
         font-size: 16px;
         cursor: pointer;
         display: flex;
@@ -2717,8 +2754,8 @@
         display: flex;
         align-items: center;
         gap: 10px;
-        background: #f0eeff;
-        border: 2px solid #c4b5fd;
+        background: var(--ac-bg);
+        border: 2px solid var(--ac-ll);
         border-radius: 12px;
         padding: 10px 14px;
         margin-bottom: 12px;
@@ -2727,14 +2764,14 @@
         flex: 1;
         font-size: 13px;
         font-weight: 900;
-        color: #4c1d95;
+        color: var(--ac-dd);
       }
       .masa-people-change-btn {
         font-size: 11px;
         font-weight: 900;
-        color: #7c3aed;
+        color: var(--ac);
         background: #fff;
-        border: 1.5px solid #c4b5fd;
+        border: 1.5px solid var(--ac-ll);
         border-radius: 8px;
         padding: 5px 10px;
         cursor: pointer;
@@ -2769,8 +2806,8 @@
       }
       html.dark .tab.on {
         color: #fff;
-        background: linear-gradient(145deg, #6d28d9, #9333ea);
-        border-color: #5b21b6;
+        background: linear-gradient(145deg, var(--ac-d2), #9333ea);
+        border-color: var(--ac-d);
       }
       html.dark .sec {
         color: #ece8f7;
@@ -2851,10 +2888,10 @@
         background: #1e1733 !important;
         color: #ece8f7;
       }
-      /* İnline açık-mor (#f5f0ff/#f0eeff) yüzeyleri toplu dark'a çevir:
+      /* İnline açık-mor (var(--ac-bg2)/var(--ac-bg)) yüzeyleri toplu dark'a çevir:
          chat başlık butonları (Yeni Sohbet/Geçmiş/?), Ayarlar butonları, çeşitli çipler */
-      html.dark [style*="#f5f0ff"],
-      html.dark [style*="#f0eeff"],
+      html.dark [style*="var(--ac-bg2)"],
+      html.dark [style*="var(--ac-bg)"],
       html.dark [style*="#f0eff"],
       html.dark [style*="#faf7ff"] {
         background: #271d3f !important;
@@ -2893,12 +2930,80 @@
         color: #d8cef5;
         border-color: #3a2f55;
       }
+      /* ═══ ACCENT TEMA DEĞİŞKENLERİ (varsayılan: Mor) ═══ */
+      :root {
+        --ac: #7c3aed;
+        --ac-d: #5b21b6;
+        --ac-d2: #6d28d9;
+        --ac-dd: #4c1d95;
+        --ac-l: #a855f7;
+        --ac-l2: #a78bfa;
+        --ac-m: #8b5cf6;
+        --ac-ll: #c4b5fd;
+        --ac-lll: #ddd6fe;
+        --ac-bg3: #ede9fe;
+        --ac-bg2: #f5f0ff;
+        --ac-bg: #f0eeff;
+        --ac-bd: #e0d7ff;
+      }
+      /* MAVI */
+      html[data-theme="mavi"] {
+        --ac: #2563eb;
+        --ac-d: #1d4ed8;
+        --ac-d2: #1e40af;
+        --ac-dd: #1e3a8a;
+        --ac-l: #3b82f6;
+        --ac-l2: #60a5fa;
+        --ac-m: #3b82f6;
+        --ac-ll: #bfdbfe;
+        --ac-lll: #dbeafe;
+        --ac-bg3: #e0edff;
+        --ac-bg2: #eff6ff;
+        --ac-bg: #eef5ff;
+        --ac-bd: #c7ddff;
+      }
+      /* YEŞİL / TURKUAZ */
+      html[data-theme="yesil"] {
+        --ac: #0d9488;
+        --ac-d: #0f766e;
+        --ac-d2: #115e59;
+        --ac-dd: #134e4a;
+        --ac-l: #14b8a6;
+        --ac-l2: #2dd4bf;
+        --ac-m: #14b8a6;
+        --ac-ll: #99f6e4;
+        --ac-lll: #ccfbf1;
+        --ac-bg3: #d4f7ee;
+        --ac-bg2: #f0fdfa;
+        --ac-bg: #effdf9;
+        --ac-bd: #bbf0e6;
+      }
+      /* PEMBE / MERCAN */
+      html[data-theme="pembe"] {
+        --ac: #db2777;
+        --ac-d: #be185d;
+        --ac-d2: #9d174d;
+        --ac-dd: #831843;
+        --ac-l: #ec4899;
+        --ac-l2: #f472b6;
+        --ac-m: #ec4899;
+        --ac-ll: #fbcfe8;
+        --ac-lll: #fce7f3;
+        --ac-bg3: #fce7f3;
+        --ac-bg2: #fdf2f8;
+        --ac-bg: #fdf2f8;
+        --ac-bd: #f9c6e0;
+      }
     </style>
     <script>
       // Dark mode'u boya ÖNCESİ uygula (açılışta beyaz flash olmasın)
       try {
         if (localStorage.getItem("kmTheme") === "dark")
           document.documentElement.classList.add("dark");
+        // Accent tema (PRO) — boya öncesi uygula
+        var _ac = localStorage.getItem("kmAccent");
+        if (_ac && _ac !== "mor")
+          document.documentElement.setAttribute("data-theme", _ac);
       } catch (e) {}
     </script>
   </head>
@@ -3056,7 +3161,7 @@
           <button
             id="merci-fill-btn"
             onclick="merciFillWheel()"
-            style="width: 100%; margin: 8px 0 4px; padding: 11px; border: none; border-radius: 14px; background: linear-gradient(135deg, #7c3aed, #ec4899); color: #fff; font-family: Fredoka, Nunito, sans-serif; font-weight: 700; font-size: 14px; cursor: pointer; box-shadow: 0 4px 14px rgba(124, 58, 237, 0.32)"
+            style="width: 100%; margin: 8px 0 4px; padding: 11px; border: none; border-radius: 14px; background: linear-gradient(135deg, var(--ac), #ec4899); color: #fff; font-family: Fredoka, Nunito, sans-serif; font-weight: 700; font-size: 14px; cursor: pointer; box-shadow: 0 4px 14px rgba(124, 58, 237, 0.32)"
           >
             ✨ Merci doldursun
           </button>
@@ -3110,9 +3215,9 @@
                   margin-top: 8px;
                   font-size: 13px;
                   padding: 10px;
-                  background: #7c3aed;
+                  background: var(--ac);
                   color: #fff;
-                  border-color: #7c3aed;
+                  border-color: var(--ac);
                 "
                 onclick="askMerciAboutResult('wheel','wheel')"
               >
@@ -3134,13 +3239,13 @@
                 font-family: 'Nunito', sans-serif;
                 font-size: 20px;
                 font-weight: 900;
-                color: #6d28d9;
+                color: var(--ac-d2);
                 margin-top: 4px;
               "
             >
               🎉 Çekiliş / Kura
             </div>
-            <div style="font-size: 12px; color: #7c3aed; font-weight: 700">
+            <div style="font-size: 12px; color: var(--ac); font-weight: 700">
               İsimleri ekle, talihliyi Merci çeksin!
             </div>
           </div>
@@ -3166,14 +3271,14 @@
           <button
             id="cekilis-start"
             onclick="startCekilis()"
-            style="width: 100%; margin: 10px 0 4px; padding: 14px; border: none; border-radius: 16px; background: linear-gradient(135deg, #7c3aed, #ec4899); color: #fff; font-family: 'Nunito', sans-serif; font-weight: 900; font-size: 16px; cursor: pointer; box-shadow: 0 4px 14px rgba(124, 58, 237, 0.32)"
+            style="width: 100%; margin: 10px 0 4px; padding: 14px; border: none; border-radius: 16px; background: linear-gradient(135deg, var(--ac), #ec4899); color: #fff; font-family: 'Nunito', sans-serif; font-weight: 900; font-size: 16px; cursor: pointer; box-shadow: 0 4px 14px rgba(124, 58, 237, 0.32)"
           >
             🎉 Çekilişi Başlat
           </button>
           <div id="cekilis-stage" style="display: none; text-align: center; margin: 18px 0">
             <div
               id="cekilis-display"
-              style="font-family: 'Nunito', sans-serif; font-size: 30px; font-weight: 900; color: #5b21b6; min-height: 44px; padding: 18px 10px; border-radius: 18px; background: #f5f0ff; border: 2px solid #c4b5fd"
+              style="font-family: 'Nunito', sans-serif; font-size: 30px; font-weight: 900; color: var(--ac-d); min-height: 44px; padding: 18px 10px; border-radius: 18px; background: var(--ac-bg2); border: 2px solid var(--ac-ll)"
             ></div>
           </div>
           <div id="cr" style="display: none">
@@ -3207,7 +3312,7 @@
                   font-family: Fredoka, Nunito, sans-serif;
                   font-weight: 700;
                   font-size: 19px;
-                  color: #4c1d95;
+                  color: var(--ac-dd);
                   margin-top: 4px;
                 "
               >
@@ -3217,7 +3322,7 @@
                 style="
                   font-size: 12px;
                   font-weight: 700;
-                  color: #7c3aed;
+                  color: var(--ac);
                   margin-top: 2px;
                 "
               >
@@ -3245,7 +3350,7 @@
                   style="
                     font-size: 9px;
                     font-weight: 700;
-                    color: #a78bfa;
+                    color: var(--ac-l2);
                     margin-top: 1px;
                   "
                 >
@@ -3265,7 +3370,7 @@
                   style="
                     font-size: 9px;
                     font-weight: 700;
-                    color: #a78bfa;
+                    color: var(--ac-l2);
                     margin-top: 1px;
                   "
                 >
@@ -3455,7 +3560,7 @@
             <div id="online-host" style="display: none">
               <div class="share-box">
                 <p
-                  style="font-size: 12px; font-weight: 800; color: #5b21b6"
+                  style="font-size: 12px; font-weight: 800; color: var(--ac-d)"
                   id="room-title-display"
                 >
                   Oda hazır!
@@ -3471,7 +3576,7 @@
                   style="
                     font-size: 12px;
                     font-weight: 800;
-                    color: #7c3aed;
+                    color: var(--ac);
                     margin: 6px 0;
                   "
                 >
@@ -3515,8 +3620,8 @@
                 style="
                   display: none;
                   margin-top: 6px;
-                  border-color: #c4b5fd;
-                  color: #7c3aed;
+                  border-color: var(--ac-ll);
+                  color: var(--ac);
                 "
                 onclick="resetOnlineToRoleSelect()"
               >
@@ -3613,7 +3718,7 @@
                   display: none;
                   text-align: center;
                   padding: 16px;
-                  color: #7c3aed;
+                  color: var(--ac);
                   font-size: 13px;
                   font-weight: 800;
                 "
@@ -3625,7 +3730,7 @@
                     margin-top: 8px;
                     font-size: 14px;
                     font-weight: 900;
-                    color: #4c1d95;
+                    color: var(--ac-dd);
                   "
                 ></div>
               </div>
@@ -3635,7 +3740,7 @@
                   display: none;
                   text-align: center;
                   padding: 20px 16px;
-                  color: #7c3aed;
+                  color: var(--ac);
                   font-size: 14px;
                   font-weight: 800;
                   animation: tiepulse 1.5s ease-in-out infinite;
@@ -3675,9 +3780,9 @@
                   margin-top: 8px;
                   font-size: 13px;
                   padding: 10px;
-                  background: #7c3aed;
+                  background: var(--ac);
                   color: #fff;
-                  border-color: #7c3aed;
+                  border-color: var(--ac);
                 "
                 onclick="askMerciAboutResult('vote')"
               >
@@ -3690,8 +3795,8 @@
                   margin-top: 8px;
                   font-size: 13px;
                   padding: 10px;
-                  border-color: #c4b5fd;
-                  color: #7c3aed;
+                  border-color: var(--ac-ll);
+                  color: var(--ac);
                 "
                 onclick="resetVoteScreen()"
               >
@@ -3762,7 +3867,7 @@
                 style="
                   width: 100%;
                   padding: 13px;
-                  background: linear-gradient(135deg, #7c3aed, #a855f7);
+                  background: linear-gradient(135deg, var(--ac), var(--ac-l));
                   border: none;
                   border-radius: 12px;
                   color: #fff;
@@ -3805,8 +3910,8 @@
                     class="chat-av-merci"
                     id="chat-init-av"
                     style="
-                      background: #f0eeff;
-                      border: 2px solid #c4b5fd;
+                      background: var(--ac-bg);
+                      border: 2px solid var(--ac-ll);
                       border-radius: 50%;
                       overflow: hidden;
                       width: 32px;
@@ -3842,13 +3947,13 @@
                 style="
                   flex: 1;
                   padding: 8px;
-                  background: #f5f0ff;
-                  border: 1.5px solid #c4b5fd;
+                  background: var(--ac-bg2);
+                  border: 1.5px solid var(--ac-ll);
                   border-radius: 10px;
                   font-size: 11px;
                   font-weight: 900;
                   font-family: &quot;Nunito&quot;, sans-serif;
-                  color: #5b21b6;
+                  color: var(--ac-d);
                   cursor: pointer;
                 "
               >
@@ -3859,13 +3964,13 @@
                 style="
                   flex: 1;
                   padding: 8px;
-                  background: #f5f0ff;
-                  border: 1.5px solid #c4b5fd;
+                  background: var(--ac-bg2);
+                  border: 1.5px solid var(--ac-ll);
                   border-radius: 10px;
                   font-size: 11px;
                   font-weight: 900;
                   font-family: &quot;Nunito&quot;, sans-serif;
-                  color: #5b21b6;
+                  color: var(--ac-d);
                   cursor: pointer;
                 "
               >
@@ -3877,12 +3982,12 @@
                 style="
                   width: 38px;
                   padding: 8px;
-                  background: #f5f0ff;
-                  border: 1.5px solid #c4b5fd;
+                  background: var(--ac-bg2);
+                  border: 1.5px solid var(--ac-ll);
                   border-radius: 10px;
                   font-size: 13px;
                   font-weight: 900;
-                  color: #5b21b6;
+                  color: var(--ac-d);
                   cursor: pointer;
                 "
               >
@@ -3939,7 +4044,7 @@
           style="
             text-align: center;
             padding: 14px 0 16px;
-            border-bottom: 2px solid #f0eeff;
+            border-bottom: 2px solid var(--ac-bg);
             margin-bottom: 20px;
           "
         >
@@ -3947,7 +4052,7 @@
             id="ro-merci"
             style="display: flex; justify-content: center; margin-bottom: 6px"
           ></div>
-          <div style="font-size: 20px; font-weight: 900; color: #4c1d95">
+          <div style="font-size: 20px; font-weight: 900; color: var(--ac-dd)">
             Karar Mercii
           </div>
         </div>
@@ -3981,7 +4086,7 @@
               display: none;
               text-align: center;
               padding: 16px;
-              color: #7c3aed;
+              color: var(--ac);
               font-size: 13px;
               font-weight: 800;
             "
@@ -3993,7 +4098,7 @@
                 margin-top: 8px;
                 font-size: 14px;
                 font-weight: 900;
-                color: #4c1d95;
+                color: var(--ac-dd);
               "
             ></div>
           </div>
@@ -4003,7 +4108,7 @@
               display: none;
               text-align: center;
               padding: 20px 16px;
-              color: #7c3aed;
+              color: var(--ac);
               font-size: 14px;
               font-weight: 800;
               animation: tiepulse 1.5s ease-in-out infinite;
@@ -4021,7 +4126,7 @@
             right: 0;
             padding: 14px 16px;
             background: #fff;
-            border-top: 2px solid #f0eeff;
+            border-top: 2px solid var(--ac-bg);
           "
         >
           <div style="max-width: 420px; margin: 0 auto">
@@ -4056,10 +4161,10 @@
             style="
               width: 36px;
               height: 36px;
-              background: #f0eeff;
-              border: 2px solid #c4b5fd;
+              background: var(--ac-bg);
+              border: 2px solid var(--ac-ll);
               border-radius: 10px;
-              color: #5b21b6;
+              color: var(--ac-d);
               font-size: 18px;
               cursor: pointer;
               font-family: &quot;Nunito&quot;, sans-serif;
@@ -4067,7 +4172,7 @@
           >
             ←
           </button>
-          <div style="font-size: 16px; font-weight: 900; color: #4c1d95">
+          <div style="font-size: 16px; font-weight: 900; color: var(--ac-dd)">
             Merci'ye Danış
           </div>
         </div>
@@ -5519,7 +5624,7 @@
           uid,
           _merciBodyArmsUp(uid),
           _eyesNormal(uid),
-          '<path d="M305 305Q340 338 375 305Q368 325 340 332Q312 325 305 305Z" fill="#7c3aed" stroke="#26215C" stroke-width="2"/>',
+          '<path d="M305 305Q340 338 375 305Q368 325 340 332Q312 325 305 305Z" fill="var(--ac)" stroke="#26215C" stroke-width="2"/>',
           '<text x="480" y="140" font-size="28" font-family="sans-serif">🎉</text><text x="145" y="130" font-size="22" font-family="sans-serif">✨</text>',
         );
       }
@@ -5551,7 +5656,7 @@
           bodyThink,
           _eyesThink(uid),
           '<path d="M320 310Q340 316 360 310" fill="none" stroke="#26215C" stroke-width="4" stroke-linecap="round"/>',
-          '<circle cx="460" cy="118" r="28" fill="#f0eeff" stroke="#c4b5fd" stroke-width="2"/><circle cx="490" cy="90" r="18" fill="#f0eeff" stroke="#c4b5fd" stroke-width="2"/><circle cx="510" cy="70" r="10" fill="#f0eeff" stroke="#c4b5fd" stroke-width="2"/><text x="448" y="126" font-size="22" font-family="sans-serif">💭</text>',
+          '<circle cx="460" cy="118" r="28" fill="var(--ac-bg)" stroke="var(--ac-ll)" stroke-width="2"/><circle cx="490" cy="90" r="18" fill="var(--ac-bg)" stroke="var(--ac-ll)" stroke-width="2"/><circle cx="510" cy="70" r="10" fill="var(--ac-bg)" stroke="var(--ac-ll)" stroke-width="2"/><text x="448" y="126" font-size="22" font-family="sans-serif">💭</text>',
         );
       }
 
@@ -5565,7 +5670,7 @@
           _merciBody(uid),
           _eyesNormal(uid),
           '<path d="M318 310Q340 330 362 310" fill="none" stroke="#26215C" stroke-width="4" stroke-linecap="round"/>',
-          '<rect x="418" y="88" width="118" height="52" rx="14" fill="#f0eeff" stroke="#c4b5fd" stroke-width="2"/><path d="M426 140 L414 155 L438 140Z" fill="#f0eeff" stroke="#c4b5fd" stroke-width="1.5"/><circle cx="444" cy="114" r="7" fill="#c4b5fd"/><circle cx="470" cy="114" r="7" fill="#c4b5fd"/><circle cx="496" cy="114" r="7" fill="#c4b5fd"/>',
+          '<rect x="418" y="88" width="118" height="52" rx="14" fill="var(--ac-bg)" stroke="var(--ac-ll)" stroke-width="2"/><path d="M426 140 L414 155 L438 140Z" fill="var(--ac-bg)" stroke="var(--ac-ll)" stroke-width="1.5"/><circle cx="444" cy="114" r="7" fill="var(--ac-ll)"/><circle cx="470" cy="114" r="7" fill="var(--ac-ll)"/><circle cx="496" cy="114" r="7" fill="var(--ac-ll)"/>',
         );
       }
 
@@ -5606,7 +5711,7 @@
           uid,
           _merciBody(uid),
           _eyesScared(uid),
-          '<path d="M316 308Q340 298 364 308Q358 322 340 325Q322 322 316 308Z" fill="#7c3aed" stroke="#26215C" stroke-width="2"/>',
+          '<path d="M316 308Q340 298 364 308Q358 322 340 325Q322 322 316 308Z" fill="var(--ac)" stroke="#26215C" stroke-width="2"/>',
           "",
         );
       }
@@ -5926,7 +6031,7 @@
             spot.style.cssText =
               "position:fixed;left:" + (r.left - pad) + "px;top:" + (r.top - pad) +
               "px;width:" + (r.width + pad * 2) + "px;height:" + (r.height + pad * 2) +
-              "px;border-radius:14px;box-shadow:0 0 0 9999px rgba(20,6,40,.8);border:2.5px solid #a855f7;pointer-events:none";
+              "px;border-radius:14px;box-shadow:0 0 0 9999px rgba(20,6,40,.8);border:2.5px solid var(--ac-l);pointer-events:none";
             root.appendChild(spot);
           } else {
             var dim = document.createElement("div");
@@ -5945,22 +6050,22 @@
             "width:88%;max-width:340px;background:#fff;border-radius:20px;padding:20px 18px;box-shadow:0 14px 50px rgba(124,58,237,.45);text-align:center";
           var dots = '<div style="display:flex;gap:6px;justify-content:center;margin:14px 0">';
           steps.forEach(function (_u, k) {
-            dots += '<span style="width:8px;height:8px;border-radius:50%;display:inline-block;background:' + (k === i ? "#7c3aed" : "#ddd") + '"></span>';
+            dots += '<span style="width:8px;height:8px;border-radius:50%;display:inline-block;background:' + (k === i ? "var(--ac)" : "#ddd") + '"></span>';
           });
           dots += "</div>";
           bub.innerHTML =
             '<div style="margin-bottom:6px;display:flex;justify-content:center">' + poseSvg(s.pose, 66) + "</div>" +
-            '<div style="font-size:17px;font-weight:900;color:#6d28d9;margin-bottom:8px">' + s.title + "</div>" +
+            '<div style="font-size:17px;font-weight:900;color:var(--ac-d2);margin-bottom:8px">' + s.title + "</div>" +
             '<div style="font-size:13.5px;font-weight:700;color:#3b0764;line-height:1.6">' + s.body + "</div>" + dots;
           var btns = document.createElement("div");
           btns.style.cssText = "display:flex;gap:8px";
           var skip = document.createElement("button");
           skip.textContent = "Atla";
-          skip.style.cssText = "flex:1;background:#f0eaff;color:#7c3aed;border:none;padding:11px;border-radius:12px;font-weight:800;cursor:pointer";
+          skip.style.cssText = "flex:1;background:#f0eaff;color:var(--ac);border:none;padding:11px;border-radius:12px;font-weight:800;cursor:pointer";
           skip.onclick = end;
           var next = document.createElement("button");
           next.textContent = i === steps.length - 1 ? "Başla! 🎉" : "İleri →";
-          next.style.cssText = "flex:2;background:linear-gradient(135deg,#7c3aed,#a855f7);color:#fff;border:none;padding:11px;border-radius:12px;font-weight:900;cursor:pointer";
+          next.style.cssText = "flex:2;background:linear-gradient(135deg,var(--ac),var(--ac-l));color:#fff;border:none;padding:11px;border-radius:12px;font-weight:900;cursor:pointer";
           next.onclick = function () {
             if (i === steps.length - 1) {
               end();
@@ -6003,19 +6108,19 @@
             icon: "🎡",
             title: "Çark ile Karar Ver!",
             body: "Seçeneklerini yaz ve + ile ekle (ya da hazır kategorilerden seç). Çarkı <b>saat yönünde</b> sürükle ve bırak — Merci kararını versin! Min. 2 seçenek gerekli.",
-            color: "#7c3aed",
+            color: "var(--ac)",
           },
           {
             icon: "⭐",
             title: "Oylama Nasıl Çalışır?",
             body: "<b>Tek Kişi</b> modunda sadece sen oylar. <b>Masa Modu</b>'nda elden ele geçerek herkes sırayla yıldız verir, son kişi bitirdiğinde kazanan açıklanır. <b>Online</b> modda herkes kendi telefonundan bağlanır!",
-            color: "#a855f7",
+            color: "var(--ac-l)",
           },
           {
             icon: "🧠",
             title: "Merci'ye Danış!",
             body: "Ne yesek, nereye gidelim gibi sorularını Merci'ye sor! Yapay zeka asistanımız grubunun geçmişine bakarak öneri yapar. Günde <b>6 ücretsiz mesaj</b>, sınırsız için Pro ol! 🐙",
-            color: "#6d28d9",
+            color: "var(--ac-d2)",
           },
         ];
         var cur = 0;
@@ -6042,7 +6147,7 @@
                   '<div style="width:' +
                   (i === cur ? "20" : "8") +
                   "px;height:8px;border-radius:4px;background:" +
-                  (i === cur ? s.color : "#c4b5fd") +
+                  (i === cur ? s.color : "var(--ac-ll)") +
                   ';transition:all 0.3s;"></div>'
                 );
               })
@@ -6050,10 +6155,10 @@
             "</div>" +
             '<button id="tut-next" style="width:100%;padding:14px;background:linear-gradient(135deg,' +
             s.color +
-            ',#a855f7);border:none;border-radius:14px;color:#fff;font-size:15px;font-weight:900;font-family:Nunito,sans-serif;cursor:pointer;margin-bottom:10px;box-shadow:0 4px 16px rgba(124,58,237,0.3);">' +
+            ',var(--ac-l));border:none;border-radius:14px;color:#fff;font-size:15px;font-weight:900;font-family:Nunito,sans-serif;cursor:pointer;margin-bottom:10px;box-shadow:0 4px 16px rgba(124,58,237,0.3);">' +
             (isLast ? "🚀 Hadi Başlayalım!" : "Devam →") +
             "</button>" +
-            '<button id="tut-skip" style="background:none;border:none;font-size:12px;font-weight:700;color:#a78bfa;cursor:pointer;font-family:Nunito,sans-serif;">' +
+            '<button id="tut-skip" style="background:none;border:none;font-size:12px;font-weight:700;color:var(--ac-l2);cursor:pointer;font-family:Nunito,sans-serif;">' +
             (isLast ? "" : "Geç →") +
             "</button>" +
             "</div>";
@@ -6202,9 +6307,9 @@
             ch.l +
             "</span>";
           if (i === AICHIPS.length - 1) {
-            el.style.background = "linear-gradient(135deg, #7c3aed, #a855f7)";
+            el.style.background = "linear-gradient(135deg, var(--ac), var(--ac-l))";
             el.style.color = "#fff";
-            el.style.borderColor = "#6d28d9";
+            el.style.borderColor = "var(--ac-d2)";
             el.style.gridColumn = "span 2";
           }
           el.addEventListener("click", () => startChat(ch.q));
@@ -6498,7 +6603,7 @@
             if (we) {
               we.style.display = "";
               we.textContent = "⚠️ En az 2 seçenek gerekli!";
-              we.style.color = "#7c3aed";
+              we.style.color = "var(--ac)";
               setTimeout(function () {
                 we.textContent = "☝️ Yukarıdan seçenek ekle — çark dolsun!";
                 we.style.color = "";
@@ -7062,12 +7167,12 @@
             return allScores[b] - allScores[a];
           });
           var peopleInfo = masaOn
-            ? ' <span style="color:#a78bfa;font-weight:700">(' +
+            ? ' <span style="color:var(--ac-l2);font-weight:700">(' +
               masaPeopleCount +
               " kişi)</span>"
             : "";
           scoresEl.innerHTML =
-            '<div style="font-size:11px;font-weight:900;color:#7c3aed;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:6px">Oy Dağılımı' +
+            '<div style="font-size:11px;font-weight:900;color:var(--ac);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:6px">Oy Dağılımı' +
             peopleInfo +
             "</div>" +
             sorted
@@ -7080,19 +7185,19 @@
                   '<div style="margin-bottom:5px">' +
                   '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:2px">' +
                   '<span style="font-size:12px;font-weight:800;color:' +
-                  (isWin ? "#4c1d95" : "#7c3aed") +
+                  (isWin ? "var(--ac-dd)" : "var(--ac)") +
                   '">' +
                   (isWin ? "🏆 " : "") +
                   k +
                   "</span>" +
                   '<span style="font-size:12px;font-weight:900;color:' +
-                  (isWin ? "#7c3aed" : "#a78bfa") +
+                  (isWin ? "var(--ac)" : "var(--ac-l2)") +
                   '">' +
                   pts +
                   " puan</span>" +
                   "</div>" +
-                  '<div style="height:5px;background:#f0eeff;border-radius:3px"><div style="height:5px;background:' +
-                  (isWin ? "#7c3aed" : "#c4b5fd") +
+                  '<div style="height:5px;background:var(--ac-bg);border-radius:3px"><div style="height:5px;background:' +
+                  (isWin ? "var(--ac)" : "var(--ac-ll)") +
                   ";border-radius:3px;width:" +
                   pct +
                   '%"></div></div>' +
@@ -7484,7 +7589,7 @@
         card.style.cssText =
           "background:#fff;width:100%;max-width:480px;max-height:75vh;overflow-y:auto;border-radius:22px 22px 0 0;padding:18px 16px 28px;box-shadow:0 -8px 40px rgba(124,58,237,.3)";
         var html =
-          '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px"><div style="font-size:17px;font-weight:900;color:#5b21b6">🕘 Geçmiş Sohbetler</div><button id="chat-hist-close" style="background:none;border:none;font-size:22px;cursor:pointer;color:#999">✕</button></div>';
+          '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px"><div style="font-size:17px;font-weight:900;color:var(--ac-d)">🕘 Geçmiş Sohbetler</div><button id="chat-hist-close" style="background:none;border:none;font-size:22px;cursor:pointer;color:#999">✕</button></div>';
         if (!chats.length) {
           html +=
             '<div style="text-align:center;color:#999;padding:30px 10px">Henüz kayıtlı sohbet yok 🐙</div>';
@@ -7497,7 +7602,7 @@
               '<div style="font-size:20px">💬</div><div style="flex:1;min-width:0">' +
               '<div style="font-weight:700;color:#3b0764;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' +
               String(c.title || "Sohbet").replace(/</g, "&lt;") +
-              '</div><div style="font-size:12px;color:#a78bfa">' +
+              '</div><div style="font-size:12px;color:var(--ac-l2)">' +
               _relTime(c.ts) +
               "</div></div></div>";
           });
@@ -7620,7 +7725,7 @@
         var btn = document.createElement("button");
         btn.className = "loc-consent-btn";
         btn.style.cssText =
-          "display:inline-flex;align-items:center;gap:6px;background:linear-gradient(135deg,#7c3aed,#a855f7);" +
+          "display:inline-flex;align-items:center;gap:6px;background:linear-gradient(135deg,var(--ac),var(--ac-l));" +
           "color:#fff;border:none;padding:12px 18px;border-radius:14px;font-size:15px;font-weight:700;" +
           "cursor:pointer;box-shadow:0 4px 14px rgba(124,58,237,.35)";
         btn.innerHTML = "📍 Konumu aç, " + lbl + " öner";
@@ -7694,7 +7799,7 @@
           "display:flex;gap:8px;margin-top:8px;padding-left:40px;flex-wrap:wrap";
         var yes = document.createElement("button");
         yes.style.cssText =
-          "background:linear-gradient(135deg,#7c3aed,#a855f7);color:#fff;border:none;padding:10px 16px;border-radius:12px;font-weight:800;cursor:pointer";
+          "background:linear-gradient(135deg,var(--ac),var(--ac-l));color:#fff;border:none;padding:10px 16px;border-radius:12px;font-weight:800;cursor:pointer";
         yes.textContent = "📍 İzin Ver";
         yes.onclick = function () {
           localStorage.setItem("kmLocPrompted", "1");
@@ -7778,7 +7883,7 @@
           var b = document.createElement("button");
           b.style.cssText =
             "flex:1;min-width:130px;display:inline-flex;align-items:center;justify-content:center;gap:6px;" +
-            "background:linear-gradient(135deg,#7c3aed,#a855f7);color:#fff;border:none;padding:11px 14px;" +
+            "background:linear-gradient(135deg,var(--ac),var(--ac-l));color:#fff;border:none;padding:11px 14px;" +
             "border-radius:14px;font-size:14px;font-weight:800;cursor:pointer;box-shadow:0 4px 12px rgba(124,58,237,.3)";
           b.innerHTML = label;
           b.onclick = fn;
@@ -7822,7 +7927,7 @@
           var phoneHtml = telRaw
             ? '<a class="place-phone" href="tel:' +
               telRaw +
-              '" style="color:#7c3aed;font-weight:600;text-decoration:none">📞 ' +
+              '" style="color:var(--ac);font-weight:600;text-decoration:none">📞 ' +
               telDisp +
               "</a>"
             : "";
@@ -8448,7 +8553,7 @@
         } else {
           var msg = document.createElement("div");
           msg.style.cssText =
-            "text-align:center;padding:8px;color:#7c3aed;font-size:13px;font-weight:800";
+            "text-align:center;padding:8px;color:var(--ac);font-size:13px;font-weight:800";
           msg.textContent = "Oylaman iletildi!";
           l.appendChild(msg);
         }
@@ -8648,7 +8753,7 @@
         document.getElementById("vwin").textContent = w;
         document.getElementById("v-say").innerHTML =
           say +
-          '<br><span style="font-size:12px;font-weight:800;color:#7c3aed;margin-top:4px;display:inline-block">' +
+          '<br><span style="font-size:12px;font-weight:800;color:var(--ac);margin-top:4px;display:inline-block">' +
           pts +
           " puan · " +
           cnt +
@@ -9350,7 +9455,7 @@
                 w +
                 '</div><div class="rsay">' +
                 roSay +
-                '<br><span style="font-size:12px;font-weight:800;color:#7c3aed;margin-top:4px;display:inline-block">' +
+                '<br><span style="font-size:12px;font-weight:800;color:var(--ac);margin-top:4px;display:inline-block">' +
                 pts +
                 " puan · " +
                 cnt +
@@ -9887,17 +9992,17 @@
         var values = sorted.map((x) => x[1]);
         var maxV = Math.max(...values);
         var palette = [
-          "#7c3aed",
-          "#a78bfa",
-          "#8b5cf6",
-          "#c4b5fd",
-          "#6d28d9",
-          "#ede9fe",
-          "#5b21b6",
-          "#ddd6fe",
+          "var(--ac)",
+          "var(--ac-l2)",
+          "var(--ac-m)",
+          "var(--ac-ll)",
+          "var(--ac-d2)",
+          "var(--ac-bg3)",
+          "var(--ac-d)",
+          "var(--ac-lll)",
         ];
         var colors = values.map((v, i) =>
-          v === maxV ? "#7c3aed" : palette[i % palette.length],
+          v === maxV ? "var(--ac)" : palette[i % palette.length],
         );
         if (histChartInst) {
           histChartInst.destroy();
@@ -9932,7 +10037,7 @@
                 grid: { display: false },
                 ticks: {
                   font: { family: "Nunito", weight: "800", size: 10 },
-                  color: "#5b21b6",
+                  color: "var(--ac-d)",
                   maxRotation: 30,
                 },
               },
@@ -9941,9 +10046,9 @@
                 ticks: {
                   stepSize: 1,
                   font: { family: "Nunito", weight: "800", size: 10 },
-                  color: "#a78bfa",
+                  color: "var(--ac-l2)",
                 },
-                grid: { color: "#ede9fe" },
+                grid: { color: "var(--ac-bg3)" },
               },
             },
           },
@@ -9969,7 +10074,7 @@
             h.emoji +
             '</span><div class="hist-txt"><b>' +
             h.item +
-            '</b><br><span style="font-size:10px;color:#a78bfa">' +
+            '</b><br><span style="font-size:10px;color:var(--ac-l2)">' +
             h.mode +
             " · " +
             (h.date || "") +
@@ -9988,7 +10093,7 @@
       function confetti() {
         var w = document.getElementById("cfw"),
           c = [
-            "#7C3AED",
+            "var(--ac)",
             "#EC4899",
             "#F59E0B",
             "#10B981",
@@ -10027,7 +10132,7 @@
         var rect = el.getBoundingClientRect(),
           ox = rect.left + rect.width / 2,
           oy = rect.top + rect.height / 2;
-        var cols = ["#7c3aed", "#a78bfa", "#f5a623", "#c4b5fd", "#8b5cf6"],
+        var cols = ["var(--ac)", "var(--ac-l2)", "#f5a623", "var(--ac-ll)", "var(--ac-m)"],
           wrap = document.getElementById("cfw");
         for (var i = 0; i < 26; i++) {
           (() => {
@@ -10472,17 +10577,50 @@
             vib(20);
           });
         }
+        // ── TEMA SEÇİMİ (PRO) ──
+        var THEME_NAMES = { mor: "Mor", mavi: "Mavi", yesil: "Yeşil", pembe: "Pembe" };
+        function currentAccent() {
+          var a = localStorage.getItem("kmAccent") || "mor";
+          return THEME_NAMES[a] ? a : "mor";
+        }
+        function applyAccent(a) {
+          if (!THEME_NAMES[a]) a = "mor";
+          if (a !== "mor")
+            document.documentElement.setAttribute("data-theme", a);
+          else document.documentElement.removeAttribute("data-theme");
+          localStorage.setItem("kmAccent", a);
+          var ts = document.getElementById("theme-state");
+          if (ts) ts.textContent = THEME_NAMES[a];
+          document.querySelectorAll(".theme-sw").forEach(function (b) {
+            b.classList.toggle(
+              "active",
+              b.getAttribute("data-theme-val") === a
+            );
+          });
+        }
+        // başlangıç durum etiketi
+        (function () {
+          var ts = document.getElementById("theme-state");
+          if (ts) ts.textContent = THEME_NAMES[currentAccent()];
+        })();
         var themeBtn = document.getElementById("theme-btn");
         if (themeBtn)
           themeBtn.addEventListener("click", function () {
-            // Tema renk seçimi PRO özelliği — şimdilik PRO'ya yönlendir
-            if (typeof isPremium !== "undefined" && isPremium) {
-              if (typeof toast === "function")
-                toast("Tema renkleri çok yakında! 🎨");
-            } else {
+            // Tüm temalar PRO'ya özel — PRO değilse satışa yönlendir
+            if (!(typeof isPremium !== "undefined" && isPremium)) {
               openProModal();
+              return;
             }
+            applyAccent(currentAccent()); // aktif swatch'ı işaretle
+            var m = document.getElementById("modal-theme");
+            if (m) m.classList.add("on");
           });
+        document.querySelectorAll(".theme-sw").forEach(function (b) {
+          b.addEventListener("click", function () {
+            applyAccent(b.getAttribute("data-theme-val"));
+            vib(15);
+          });
+        });
         var miSettings = document.getElementById("mi-settings");
         if (miSettings)
           miSettings.addEventListener("click", function () {
@@ -10770,8 +10908,8 @@
           class="menu-item"
           id="mi-pro"
           style="
-            background: linear-gradient(135deg, #7c3aed, #a855f7);
-            border-bottom: 2px solid #6d28d9;
+            background: linear-gradient(135deg, var(--ac), var(--ac-l));
+            border-bottom: 2px solid var(--ac-d2);
           "
         >
           <span
@@ -10821,12 +10959,12 @@
         </button>
         <button class="menu-item" id="mi-settings">
           <span class="menu-item-icon">⚙️</span> Ayarlar
-          <span style="margin-left: auto; color: #a78bfa; font-size: 18px">›</span>
+          <span style="margin-left: auto; color: var(--ac-l2); font-size: 18px">›</span>
         </button>
         <button
           class="menu-item"
           id="mi-logout"
-          style="display: none; border-top: 2px solid #f0eeff"
+          style="display: none; border-top: 2px solid var(--ac-bg)"
         >
           <span class="menu-item-icon">🚪</span> Çıkış Yap
         </button>
@@ -10845,7 +10983,7 @@
               flex: 1;
               font-size: 16px;
               font-weight: 900;
-              color: #4c1d95;
+              color: var(--ac-dd);
             "
           >
             Ayarlar
@@ -10853,14 +10991,14 @@
           <button
             onclick="closeInfoModal('modal-settings')"
             style="
-              background: #f0eeff;
+              background: var(--ac-bg);
               border: none;
               border-radius: 8px;
               width: 30px;
               height: 30px;
               font-size: 16px;
               cursor: pointer;
-              color: #5b21b6;
+              color: var(--ac-d);
             "
           >
             ✕
@@ -10885,7 +11023,7 @@
         <button class="set-row" id="theme-btn">
           <span class="set-ic">🎨</span>
           <span class="set-lbl">
-            Tema Rengi
+            Tema Seçimi
             <span
               style="
                 background: linear-gradient(135deg, #fbbf24, #f59e0b);
@@ -10902,6 +11040,45 @@
           </span>
           <span class="set-state" id="theme-state">Mor</span>
         </button>
+      </div>
+    </div>
+
+    <!-- ═══ TEMA SEÇİMİ MODAL (PRO) ═══ -->
+    <div class="info-modal" id="modal-theme">
+      <div class="info-modal-box" style="padding: 18px 16px 22px; max-width: 360px">
+        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px">
+          <span style="font-size: 20px">🎨</span>
+          <div style="flex: 1; font-size: 16px; font-weight: 900; color: var(--ac-dd)">
+            Tema Seçimi
+          </div>
+          <button
+            onclick="closeInfoModal('modal-theme')"
+            style="background: var(--ac-bg); border: none; border-radius: 8px; width: 30px; height: 30px; font-size: 16px; cursor: pointer; color: var(--ac-d)"
+          >
+            ✕
+          </button>
+        </div>
+        <div style="font-size: 11.5px; color: var(--ac-l2); font-weight: 700; margin-bottom: 14px">
+          Uygulamanın rengini seç ✨ (PRO)
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px">
+          <button class="theme-sw" data-theme-val="mor">
+            <span class="theme-dot" style="background: linear-gradient(135deg, #7c3aed, #a855f7)"></span>
+            Mor
+          </button>
+          <button class="theme-sw" data-theme-val="mavi">
+            <span class="theme-dot" style="background: linear-gradient(135deg, #2563eb, #60a5fa)"></span>
+            Mavi
+          </button>
+          <button class="theme-sw" data-theme-val="yesil">
+            <span class="theme-dot" style="background: linear-gradient(135deg, #0d9488, #2dd4bf)"></span>
+            Yeşil
+          </button>
+          <button class="theme-sw" data-theme-val="pembe">
+            <span class="theme-dot" style="background: linear-gradient(135deg, #db2777, #f472b6)"></span>
+            Pembe
+          </button>
+        </div>
       </div>
     </div>
 
@@ -10925,7 +11102,7 @@
               style="
                 font-size: 16px;
                 font-weight: 900;
-                color: #4c1d95;
+                color: var(--ac-dd);
                 line-height: 1.2;
               "
             >
@@ -10935,7 +11112,7 @@
               style="
                 font-size: 11px;
                 font-weight: 700;
-                color: #7c3aed;
+                color: var(--ac);
                 margin-top: 2px;
               "
             >
@@ -10945,14 +11122,14 @@
           <button
             onclick="closeInfoModal('modal-about')"
             style="
-              background: #f0eeff;
+              background: var(--ac-bg);
               border: none;
               border-radius: 8px;
               width: 30px;
               height: 30px;
               font-size: 16px;
               cursor: pointer;
-              color: #5b21b6;
+              color: var(--ac-d);
               flex-shrink: 0;
             "
           >
@@ -10978,17 +11155,17 @@
           <br />
           <div
             style="
-              background: #f0eeff;
+              background: var(--ac-bg);
               border-radius: 10px;
               padding: 10px;
               text-align: center;
               margin-top: 10px;
             "
           >
-            <div style="font-size: 12px; font-weight: 900; color: #4c1d95">
+            <div style="font-size: 12px; font-weight: 900; color: var(--ac-dd)">
               ASY Tech Studio
             </div>
-            <div style="font-size: 10px; color: #7c3aed; margin-top: 2px">
+            <div style="font-size: 10px; color: var(--ac); margin-top: 2px">
               asytechstudio@gmail.com · v1.0
             </div>
           </div>
@@ -11028,7 +11205,7 @@
           kullanmaz.
           <h3>İletişim</h3>
           Sorularınız için:
-          <a href="mailto:asytechstudio@gmail.com" style="color: #7c3aed"
+          <a href="mailto:asytechstudio@gmail.com" style="color: var(--ac)"
             >asytechstudio@gmail.com</a
           >
         </div>
@@ -11065,7 +11242,7 @@
           koşullar her zaman uygulama içinde erişilebilir olacaktır.
           <h3>İletişim</h3>
           Sorularınız için:
-          <a href="mailto:asytechstudio@gmail.com" style="color: #7c3aed"
+          <a href="mailto:asytechstudio@gmail.com" style="color: var(--ac)"
             >asytechstudio@gmail.com</a
           >
         </div>
@@ -11117,7 +11294,7 @@
               display: block;
               margin-top: 8px;
               padding: 13px;
-              background: #7c3aed;
+              background: var(--ac);
               border-radius: 12px;
               color: #fff;
               text-align: center;
@@ -11156,20 +11333,20 @@
             margin-bottom: 16px;
           "
         >
-          <div style="font-size: 17px; font-weight: 900; color: #4c1d95">
+          <div style="font-size: 17px; font-weight: 900; color: var(--ac-dd)">
             Bize Ulaşın
           </div>
           <button
             onclick="document.getElementById('modal-bize-ulasin').classList.remove('on')"
             style="
-              background: #f0eeff;
+              background: var(--ac-bg);
               border: none;
               border-radius: 8px;
               width: 32px;
               height: 32px;
               font-size: 18px;
               cursor: pointer;
-              color: #5b21b6;
+              color: var(--ac-d);
             "
           >
             ×
@@ -11179,7 +11356,7 @@
           style="
             font-size: 12px;
             font-weight: 700;
-            color: #7c3aed;
+            color: var(--ac);
             margin-bottom: 14px;
           "
         >
@@ -11192,10 +11369,10 @@
             padding: 10px;
             font-family: &quot;Nunito&quot;, sans-serif;
             font-weight: 700;
-            border: 2px solid #c4b5fd;
+            border: 2px solid var(--ac-ll);
             border-radius: 10px;
             margin-bottom: 8px;
-            color: #4c1d95;
+            color: var(--ac-dd);
             outline: none;
             background: #fff;
           "
@@ -11214,7 +11391,7 @@
             padding: 10px;
             font-family: &quot;Nunito&quot;, sans-serif;
             font-weight: 700;
-            border: 2px solid #c4b5fd;
+            border: 2px solid var(--ac-ll);
             border-radius: 10px;
             margin-bottom: 8px;
             min-height: 100px;
@@ -11232,7 +11409,7 @@
             padding: 10px;
             font-family: &quot;Nunito&quot;, sans-serif;
             font-weight: 700;
-            border: 2px solid #c4b5fd;
+            border: 2px solid var(--ac-ll);
             border-radius: 10px;
             margin-bottom: 12px;
             outline: none;
@@ -11244,7 +11421,7 @@
           style="
             width: 100%;
             padding: 12px;
-            background: #7c3aed;
+            background: var(--ac);
             color: #fff;
             border: none;
             border-radius: 10px;
@@ -11262,7 +11439,7 @@
             display: none;
             text-align: center;
             padding: 10px;
-            color: #7c3aed;
+            color: var(--ac);
             font-weight: 800;
             margin-top: 8px;
           "
@@ -11272,13 +11449,13 @@
         <p
           style="
             font-size: 11px;
-            color: #a78bfa;
+            color: var(--ac-l2);
             margin-top: 12px;
             text-align: center;
           "
         >
           Ya da mail atın:
-          <a href="mailto:asytechstudio@gmail.com" style="color: #7c3aed"
+          <a href="mailto:asytechstudio@gmail.com" style="color: var(--ac)"
             >asytechstudio@gmail.com</a
           >
         </p>
@@ -11307,20 +11484,20 @@
             padding-bottom: 8px;
           "
         >
-          <div style="font-size: 17px; font-weight: 900; color: #4c1d95">
+          <div style="font-size: 17px; font-weight: 900; color: var(--ac-dd)">
             Gizlilik Politikası
           </div>
           <button
             onclick="document.getElementById('modal-kvkk').classList.remove('on')"
             style="
-              background: #f0eeff;
+              background: var(--ac-bg);
               border: none;
               border-radius: 8px;
               width: 32px;
               height: 32px;
               font-size: 18px;
               cursor: pointer;
-              color: #5b21b6;
+              color: var(--ac-d);
             "
           >
             ×
@@ -11334,10 +11511,10 @@
             line-height: 1.8;
           "
         >
-          <p style="color: #a78bfa; margin-bottom: 12px">
+          <p style="color: var(--ac-l2); margin-bottom: 12px">
             Son güncelleme: Haziran 2026
           </p>
-          <p style="font-weight: 900; color: #4c1d95; margin-bottom: 4px">
+          <p style="font-weight: 900; color: var(--ac-dd); margin-bottom: 4px">
             1. VERİ SORUMLUSU
           </p>
           <p style="margin-bottom: 12px">
@@ -11345,7 +11522,7 @@
             "Karar Mercii" uygulamasına aittir. İletişim:
             asytechstudio@gmail.com
           </p>
-          <p style="font-weight: 900; color: #4c1d95; margin-bottom: 4px">
+          <p style="font-weight: 900; color: var(--ac-dd); margin-bottom: 4px">
             2. TOPLANAN VERİLER
           </p>
           <p style="margin-bottom: 4px">• Cihaz kimliği (anonim)</p>
@@ -11358,7 +11535,7 @@
           <p style="margin-bottom: 12px">
             • Reklam kimliği ve cihaz bilgileri (Google AdMob)
           </p>
-          <p style="font-weight: 900; color: #4c1d95; margin-bottom: 4px">
+          <p style="font-weight: 900; color: var(--ac-dd); margin-bottom: 4px">
             3. VERİLERİN KULLANIMI
           </p>
           <p style="margin-bottom: 12px">
@@ -11366,14 +11543,14 @@
             tespiti için kullanılır. Üçüncü taraflarla ticari amaçla
             paylaşılmaz.
           </p>
-          <p style="font-weight: 900; color: #4c1d95; margin-bottom: 4px">
+          <p style="font-weight: 900; color: var(--ac-dd); margin-bottom: 4px">
             4. YAPAY ZEKA
           </p>
           <p style="margin-bottom: 12px">
             "Merci'ye Danış" Anthropic Claude AI kullanmaktadır. Sohbet
             içerikleri Anthropic sunucularına iletilir. anthropic.com/privacy
           </p>
-          <p style="font-weight: 900; color: #4c1d95; margin-bottom: 4px">
+          <p style="font-weight: 900; color: var(--ac-dd); margin-bottom: 4px">
             5. KULLANICI HAKLARI (KVKK)
           </p>
           <p style="margin-bottom: 4px">
@@ -11384,7 +11561,7 @@
           <p style="margin-bottom: 12px">
             Talepler için: asytechstudio@gmail.com
           </p>
-          <p style="font-weight: 900; color: #4c1d95; margin-bottom: 4px">
+          <p style="font-weight: 900; color: var(--ac-dd); margin-bottom: 4px">
             6. REKLAM VE ÇEREZLER
           </p>
           <p style="margin-bottom: 12px">
@@ -11394,11 +11571,11 @@
             işleyebilir (policies.google.com/privacy). Pro üyelikte reklam
             gösterilmez.
           </p>
-          <p style="font-weight: 900; color: #4c1d95; margin-bottom: 4px">
+          <p style="font-weight: 900; color: var(--ac-dd); margin-bottom: 4px">
             7. ÇOCUKLAR
           </p>
           <p style="margin-bottom: 12px">Uygulama 13 yaş ve üzeri içindir.</p>
-          <p style="font-size: 11px; color: #a78bfa">
+          <p style="font-size: 11px; color: var(--ac-l2)">
             ASY Tech Studio — asytechstudio@gmail.com
           </p>
         </div>
@@ -11427,20 +11604,20 @@
             padding-bottom: 8px;
           "
         >
-          <div style="font-size: 17px; font-weight: 900; color: #4c1d95">
+          <div style="font-size: 17px; font-weight: 900; color: var(--ac-dd)">
             Kullanım Koşulları
           </div>
           <button
             onclick="document.getElementById('modal-kosullar').classList.remove('on')"
             style="
-              background: #f0eeff;
+              background: var(--ac-bg);
               border: none;
               border-radius: 8px;
               width: 32px;
               height: 32px;
               font-size: 18px;
               cursor: pointer;
-              color: #5b21b6;
+              color: var(--ac-d);
             "
           >
             ×
@@ -11454,24 +11631,24 @@
             line-height: 1.8;
           "
         >
-          <p style="color: #a78bfa; margin-bottom: 12px">
+          <p style="color: var(--ac-l2); margin-bottom: 12px">
             Son güncelleme: Haziran 2026
           </p>
-          <p style="font-weight: 900; color: #4c1d95; margin-bottom: 4px">
+          <p style="font-weight: 900; color: var(--ac-dd); margin-bottom: 4px">
             1. TARAFLAR
           </p>
           <p style="margin-bottom: 12px">
             Bu koşullar, ASY Tech Studio ile Karar Mercii kullanıcısı arasındaki
             ilişkiyi düzenler.
           </p>
-          <p style="font-weight: 900; color: #4c1d95; margin-bottom: 4px">
+          <p style="font-weight: 900; color: var(--ac-dd); margin-bottom: 4px">
             2. HİZMET
           </p>
           <p style="margin-bottom: 12px">
             Karar Mercii; grup kararlarını çark, oylama ve yapay zeka ile
             kolaylaştıran bir web uygulamasıdır.
           </p>
-          <p style="font-weight: 900; color: #4c1d95; margin-bottom: 4px">
+          <p style="font-weight: 900; color: var(--ac-dd); margin-bottom: 4px">
             3. KULLANIM ŞARTLARI
           </p>
           <p style="margin-bottom: 4px">
@@ -11484,35 +11661,35 @@
           <p style="margin-bottom: 12px">
             • Başkalarının haklarını ihlal etmeyeceğinizi
           </p>
-          <p style="font-weight: 900; color: #4c1d95; margin-bottom: 4px">
+          <p style="font-weight: 900; color: var(--ac-dd); margin-bottom: 4px">
             4. YAPAY ZEKA
           </p>
           <p style="margin-bottom: 12px">
             Merci'ye Danış bilgi amaçlıdır. ASY Tech Studio yanıtların
             doğruluğunu garanti etmez.
           </p>
-          <p style="font-weight: 900; color: #4c1d95; margin-bottom: 4px">
+          <p style="font-weight: 900; color: var(--ac-dd); margin-bottom: 4px">
             5. FİKRİ MÜLKİYET
           </p>
           <p style="margin-bottom: 12px">
             Tüm tasarım, kod ve Merci karakteri ASY Tech Studio'ya aittir.
             İzinsiz kopyalanamaz.
           </p>
-          <p style="font-weight: 900; color: #4c1d95; margin-bottom: 4px">
+          <p style="font-weight: 900; color: var(--ac-dd); margin-bottom: 4px">
             6. SORUMLULUK
           </p>
           <p style="margin-bottom: 12px">
             ASY Tech Studio kesintisiz çalışmayı garanti etmez. Kullanıcı
             kararlarından sorumluluk kabul edilmez.
           </p>
-          <p style="font-weight: 900; color: #4c1d95; margin-bottom: 4px">
+          <p style="font-weight: 900; color: var(--ac-dd); margin-bottom: 4px">
             7. HUKUK
           </p>
           <p style="margin-bottom: 12px">
             Türkiye hukukuna tabidir. Anlaşmazlıklarda İstanbul mahkemeleri
             yetkilidir.
           </p>
-          <p style="font-size: 11px; color: #a78bfa">
+          <p style="font-size: 11px; color: var(--ac-l2)">
             ASY Tech Studio — asytechstudio@gmail.com
           </p>
         </div>
@@ -11540,7 +11717,7 @@
               >Sınırsız soru + reklamsız
               <span
                 style="
-                  background: linear-gradient(135deg, #7c3aed, #a855f7);
+                  background: linear-gradient(135deg, var(--ac), var(--ac-l));
                   color: #fff;
                   font-size: 9px;
                   font-weight: 900;
@@ -11598,10 +11775,10 @@
             right: 14px;
             width: 32px;
             height: 32px;
-            background: #f0eeff;
+            background: var(--ac-bg);
             border: none;
             border-radius: 10px;
-            color: #5b21b6;
+            color: var(--ac-d);
             font-size: 18px;
             cursor: pointer;
             display: flex;
@@ -11659,7 +11836,7 @@
           <span
             onclick="restorePro()"
             style="
-              color: #7c3aed;
+              color: var(--ac);
               font-size: 13px;
               font-weight: 700;
               cursor: pointer;
@@ -11682,10 +11859,10 @@
             right: 14px;
             width: 32px;
             height: 32px;
-            background: #f0eeff;
+            background: var(--ac-bg);
             border: none;
             border-radius: 10px;
-            color: #5b21b6;
+            color: var(--ac-d);
             font-size: 18px;
             cursor: pointer;
             display: flex;
