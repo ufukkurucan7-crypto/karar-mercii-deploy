@@ -1937,44 +1937,59 @@
         max-width: 92%;
       }
       .chat-av-merci {
-        width: 28px;
-        height: 28px;
+        width: 32px;
+        height: 32px;
         border-radius: 50%;
         overflow: hidden;
         flex-shrink: 0;
-        background: var(--ac-bg);
+        background: #fff;
         border: 2px solid var(--ac-ll);
         display: flex;
         align-items: center;
         justify-content: center;
+        box-shadow: 0 3px 8px rgba(124, 58, 237, 0.22);
       }
       .chat-av-merci svg {
-        width: 28px;
+        width: 30px;
         height: auto;
         display: block;
       }
+      /* Ardışık Merci mesajlarında avatar tekrarını gizle (gruplama) */
+      .msg-merci.grouped .chat-av-merci {
+        visibility: hidden;
+      }
       .chat-bubble {
-        background: #fff;
-        border: 2px solid #e0d7ff;
-        border-radius: 4px 14px 14px 14px;
-        padding: 10px 13px;
-        font-size: 13px;
-        font-weight: 700;
+        background: rgba(255, 255, 255, 0.94);
+        border: none;
+        border-left: 3px solid var(--ac);
+        border-radius: 6px 16px 16px 16px;
+        padding: 12px 15px;
+        font-size: 14.5px;
+        font-weight: 500;
         color: #1a1a2e;
-        line-height: 1.6;
+        line-height: 1.55;
         word-break: break-word;
-        box-shadow: 0 1px 4px rgba(124, 58, 237, 0.07);
+        box-shadow: 0 6px 18px rgba(80, 40, 150, 0.16);
+      }
+      .chat-bubble b {
+        font-weight: 800;
+        color: var(--ac-d);
       }
       .chat-bubble-u {
-        background: var(--ac);
+        background: linear-gradient(135deg, var(--ac-d), var(--ac-l));
         color: #fff;
-        border-color: var(--ac-d2);
-        border-radius: 14px 14px 4px 14px;
-        padding: 10px 13px;
-        font-size: 13px;
-        font-weight: 700;
+        border: none;
+        border-radius: 16px 16px 4px 16px;
+        padding: 12px 15px;
+        font-size: 14.5px;
+        font-weight: 500;
         line-height: 1.5;
         word-break: break-word;
+        box-shadow: 0 6px 18px rgba(124, 58, 237, 0.4);
+      }
+      .chat-bubble-u b {
+        font-weight: 800;
+        color: #fff;
       }
       .msg-header {
         display: none;
@@ -4239,6 +4254,13 @@
       } catch (e) {}
 
       auth.onAuthStateChanged(function (user) {
+        // Anonim oturum = SADECE misafir oda katılımı için (Firestore yazma izni).
+        // Ana UI'ı etkilemesin: currentUser null kalsın → AI/profil açılmasın, kota
+        // gerçek kullanıcıya göre işlesin. (auth.currentUser yine de set'tir →
+        // oda participants/oy yazmaları request.auth!=null kuralını geçer.)
+        if (user && user.isAnonymous) {
+          return;
+        }
         currentUser = user;
         isPremium = false;
         premiumResolved = false;
@@ -4370,6 +4392,14 @@
       }
 
       function signInWithGoogle() {
+        // İnternet yokken Google girişi native "No Credentials available" gibi
+        // anlamsız bir hata veriyor → önce bağlantıyı kontrol et, anlaşılır mesaj göster.
+        if (navigator.onLine === false) {
+          alert(
+            "İnternet bağlantısı yok 📡\nGiriş yapmak için internete bağlanıp tekrar dene.",
+          );
+          return;
+        }
         // ── Capacitor uygulaması → NATIVE Google girişi ──
         // (WebView'de web tabanlı OAuth "missing initial state" ile patlar)
         if (
@@ -4402,6 +4432,18 @@
                 // Kullanıcı iptal ettiyse sessiz geç
                 var m = (err && (err.message || err.code) + "") || "";
                 if (/cancel|12501|sign[_ ]?in[_ ]?cancel/i.test(m)) return;
+                // İnternet/credential sorunu → ham native hata yerine anlaşılır mesaj
+                if (
+                  navigator.onLine === false ||
+                  /no credential|credential.*available|network|unavailable|timeout|7:|getCredential/i.test(
+                    m,
+                  )
+                ) {
+                  alert(
+                    "İnternet bağlantısı yok ya da zayıf 📡\nBağlantını kontrol edip tekrar dene.",
+                  );
+                  return;
+                }
                 alert("Giriş yapılamadı: " + m);
               });
             return;
@@ -4423,6 +4465,15 @@
               err.code === "auth/cancelled-popup-request"
             )
               return;
+            if (
+              navigator.onLine === false ||
+              err.code === "auth/network-request-failed"
+            ) {
+              alert(
+                "İnternet bağlantısı yok 📡\nBağlantını kontrol edip tekrar dene.",
+              );
+              return;
+            }
             alert("Giriş yapılamadı: " + err.message);
           });
       }
@@ -6018,11 +6069,16 @@
         function draw(s) {
           root.innerHTML = "";
           var target = s.sel ? document.querySelector(s.sel) : null;
-          // Hedef ekranda görünür değilse (alt/üst kayık) ortaya getir, sonra ölç
+          // Hedef ekran DIŞINDAYSA ortaya getir; zaten görünüyorsa (örn. alt tab
+          // butonları) scrollIntoView yapma — yoksa sayfa boşuna aşağı zıplıyordu.
           if (target && target.scrollIntoView) {
-            try {
-              target.scrollIntoView({ block: "center" });
-            } catch (e) {}
+            var pr = target.getBoundingClientRect();
+            var offscreen = pr.bottom < 0 || pr.top > window.innerHeight;
+            if (offscreen) {
+              try {
+                target.scrollIntoView({ block: "center" });
+              } catch (e) {}
+            }
           }
           var r = target ? target.getBoundingClientRect() : null;
           if (r && r.width) {
@@ -7655,6 +7711,11 @@
             '<div class="chat-bubble chat-bubble-u">' + safe + "</div>";
         } else {
           d.className = "msg-merci";
+          // Ardışık Merci mesajlarında avatarı gruplA (tekrar gösterme)
+          var _prev = msgs.lastElementChild;
+          if (_prev && _prev.classList.contains("msg-merci")) {
+            d.className += " grouped";
+          }
           d.innerHTML =
             '<div class="chat-av-merci">' +
             merciSVG(28) +
@@ -7682,26 +7743,59 @@
             window.Capacitor &&
             window.Capacitor.Plugins &&
             window.Capacitor.Plugins.Geolocation;
-          if (Geo && Geo.getCurrentPosition) {
-            var go = function () {
-              Geo.getCurrentPosition({ enableHighAccuracy: false, timeout: 10000 })
-                .then(function (p) {
-                  resolve({ lat: p.coords.latitude, lng: p.coords.longitude });
-                })
-                .catch(reject);
-            };
-            if (Geo.requestPermissions) Geo.requestPermissions().then(go).catch(go);
-            else go();
+          var isNative = !!(
+            window.Capacitor &&
+            window.Capacitor.isNativePlatform &&
+            window.Capacitor.isNativePlatform()
+          );
+          // Native uygulama AMA Geolocation plugin yok = cihazdaki build eski → güncelle
+          if (isNative && !Geo) {
+            reject(new Error("PLUGIN_MISSING"));
             return;
           }
+          var ok = function (p) {
+            resolve({ lat: p.coords.latitude, lng: p.coords.longitude });
+          };
+          if (Geo && Geo.getCurrentPosition) {
+            // Önce TAM konum (GPS) dene; başarısız/timeout olursa kaba konuma düş
+            var tryPlugin = function () {
+              Geo.getCurrentPosition({
+                enableHighAccuracy: true,
+                timeout: 20000,
+                maximumAge: 60000,
+              })
+                .then(ok)
+                .catch(function () {
+                  Geo.getCurrentPosition({
+                    enableHighAccuracy: false,
+                    timeout: 15000,
+                    maximumAge: 120000,
+                  })
+                    .then(ok)
+                    .catch(reject);
+                });
+            };
+            if (Geo.requestPermissions) {
+              Geo.requestPermissions({ permissions: ["location"] })
+                .then(function (st) {
+                  var g = st && (st.location || st.coarseLocation);
+                  if (g === "denied") {
+                    reject(new Error("DENIED"));
+                    return;
+                  }
+                  tryPlugin();
+                })
+                .catch(tryPlugin); // requestPermissions yoksa/atarsa yine dene
+            } else tryPlugin();
+            return;
+          }
+          // Web / PWA fallback
           if (navigator.geolocation) {
-            navigator.geolocation.getCurrentPosition(
-              function (p) {
-                resolve({ lat: p.coords.latitude, lng: p.coords.longitude });
-              },
-              reject,
-              { enableHighAccuracy: false, timeout: 10000 },
-            );
+            navigator.geolocation.getCurrentPosition(ok, reject, {
+              enableHighAccuracy: true,
+              timeout: 20000,
+              maximumAge: 60000,
+            });
             return;
           }
           reject(new Error("no geo"));
@@ -7712,6 +7806,10 @@
       function appendLocationConsent(type) {
         var msgs = document.getElementById("chat-messages");
         if (!msgs) return;
+        // Üst üste birikmesin: önceki konum-onay butonlarını temizle
+        msgs.querySelectorAll(".loc-consent-wrap").forEach(function (el) {
+          el.remove();
+        });
         var labels = {
           food: "🍽️ yemek",
           cafe: "☕ kafe",
@@ -7721,7 +7819,7 @@
         };
         var lbl = labels[type] || "📍 yakındaki yer";
         var wrap = document.createElement("div");
-        wrap.className = "msg-merci";
+        wrap.className = "msg-merci loc-consent-wrap";
         var btn = document.createElement("button");
         btn.className = "loc-consent-btn";
         btn.style.cssText =
@@ -7778,18 +7876,21 @@
                 if (cb) cb(true, "");
               });
           })
-          .catch(function () {
-            if (cb) cb(false);
+          .catch(function (err) {
+            if (cb) cb(false, "", err && err.message);
           });
       }
       function maybeAskLocation() {
         if (!currentUser) return;
+        if (document.getElementById("km-tour")) return; // tanıtım turu sırasında sorma
         if (localStorage.getItem("kmUserLocation")) return; // zaten var
         if (localStorage.getItem("kmLocPrompted")) return; // daha önce soruldu
         var msgs = document.getElementById("chat-messages");
         if (!msgs) return;
+        // Üst üste birikmesin: zaten bir konum-sorusu duruyorsa tekrar ekleme
+        if (msgs.querySelector(".loc-ask-wrap")) return;
         var wrap = document.createElement("div");
-        wrap.className = "msg-merci";
+        wrap.className = "msg-merci loc-ask-wrap";
         wrap.innerHTML =
           '<div class="chat-av-merci">' +
           merciSVGChat(28) +
@@ -7805,7 +7906,7 @@
           localStorage.setItem("kmLocPrompted", "1");
           yes.disabled = true;
           yes.textContent = "⏳ ...";
-          captureLocationOnce(function (ok, loc) {
+          captureLocationOnce(function (ok, loc, errCode) {
             wrap.remove();
             if (ok && loc)
               appendMsg(
@@ -7815,10 +7916,22 @@
               );
             else if (ok)
               appendMsg("merci", "Konumunu aldım, teşekkürler 🐙", false);
+            else if (errCode === "PLUGIN_MISSING")
+              appendMsg(
+                "merci",
+                "Konum için uygulamanın güncel sürümü gerekli 📲 Play Store'dan güncelleyince yakınını önerebilirim!",
+                false,
+              );
+            else if (errCode === "DENIED")
+              appendMsg(
+                "merci",
+                "Konum izni kapalı 📍 Telefon Ayarlar > Uygulamalar > Karar Mercii > İzinler > Konum'dan açabilirsin. Yine de yardımcı olurum!",
+                false,
+              );
             else
               appendMsg(
                 "merci",
-                "Konum alınamadı — telefon ayarlarından izni açabilirsin. Yine de yardımcı olurum!",
+                "Konuma ulaşamadım 📍 GPS'in açık ve sinyalin olduğundan emin ol, tekrar dene. Yine de yardımcı olurum!",
                 false,
               );
           });
@@ -8368,6 +8481,10 @@
           document.getElementById("online-participant").style.display = "none";
           document.getElementById("role-host-btn").classList.remove("on");
           document.getElementById("role-join-btn").classList.remove("on");
+          // Online'da kategori seçimi, oda kurulum onayına kadar GİZLİ kalsın
+          // (yoksa seçilen seçenekler gizli #vol listesine düşüp "kayboluyor" gibi görünüyor).
+          var cw = document.getElementById("cats-vote-wrap");
+          if (cw) cw.style.display = "none";
         }
         masaOn = mode === "masa";
         masaPeopleConfirmed = false;
@@ -8387,6 +8504,9 @@
           .getElementById(role === "host" ? "role-host-btn" : "role-join-btn")
           .classList.add("on");
         document.getElementById("online-setup").style.display = "none";
+        // Katılımcı seçenek eklemez → kategori seçimini gizle
+        var cwRole = document.getElementById("cats-vote-wrap");
+        if (cwRole) cwRole.style.display = "none";
         document.getElementById("online-join").style.display =
           role === "join" ? "" : "none";
         document.getElementById("online-name-input").style.display = "none";
@@ -8427,6 +8547,9 @@
         document.getElementById("online-role-row").style.display = "flex";
         document.getElementById("role-host-btn").classList.add("on");
         document.getElementById("role-join-btn").classList.remove("on");
+        // Seçenek ekleme alanı açıldı → artık kategori seçimi anlamlı, göster
+        var cw = document.getElementById("cats-vote-wrap");
+        if (cw) cw.style.display = "block";
         snd("ding");
       }
       function toggleMaxPCustom() {
@@ -8504,6 +8627,8 @@
           onlineOpts.forEach((o) => (hostVotes[o] = 0));
           document.getElementById("online-setup").style.display = "none";
           document.getElementById("online-role-row").style.display = "none";
+          var cwDone = document.getElementById("cats-vote-wrap");
+          if (cwDone) cwDone.style.display = "none";
           document.getElementById("online-host").style.display = "";
           document.getElementById("share-code").textContent = code;
           document.getElementById("room-title-display").textContent =
@@ -9188,6 +9313,34 @@
         setTimeout(() => (b.textContent = "🔗 Linki Kopyala"), 2000);
       }
 
+      // Misafir oda katılımı için Firestore yazma izni garanti et.
+      // Kural: rooms yazma = request.auth != null. WhatsApp linkini girişsiz açan
+      // misafir, anonim oturumla auth kazanır (currentUser'ı KİRLETMEDEN — yukarıdaki
+      // onAuthStateChanged anonim kullanıcıyı ana UI dışında tutar).
+      // NOT: Firebase Console → Authentication → Sign-in method → "Anonymous" AÇIK olmalı.
+      function ensureRoomAuth() {
+        return new Promise(function (resolve, reject) {
+          if (auth.currentUser) {
+            resolve(auth.currentUser);
+            return;
+          }
+          // Auth persistence henüz restore olmadıysa ilk durumu bekle (yarış önler)
+          var unsub = auth.onAuthStateChanged(function (u) {
+            unsub();
+            if (u) {
+              resolve(u);
+              return;
+            }
+            auth
+              .signInAnonymously()
+              .then(function (c) {
+                resolve(c.user);
+              })
+              .catch(reject);
+          });
+        });
+      }
+
       // ── ROOM OVERLAY (URL-based participant join) ──
       async function initRoomOverlay(code) {
         roCode = code.toUpperCase();
@@ -9197,6 +9350,7 @@
           .forEach((el) => (el.style.display = "none"));
         setM("ro-merci", 56);
         try {
+          await ensureRoomAuth();
           var doc = await db.collection("rooms").doc(roCode).get();
           if (!doc.exists) {
             alert("Oda bulunamadı!");
@@ -9241,6 +9395,7 @@
           return;
         }
         try {
+          await ensureRoomAuth();
           var doc = await db.collection("rooms").doc(roCode).get();
           if (!doc.exists) return;
           var data = doc.data();
@@ -9406,6 +9561,7 @@
         if (!roCode) return;
         clearTimerInterval();
         try {
+          await ensureRoomAuth();
           await db
             .collection("rooms")
             .doc(roCode)
@@ -10209,6 +10365,7 @@
               }
               if (currentUser) {
                 setCount(0);
+                _doSw("wheel");
               } else {
                 showScreen("scr-ob1");
               }
@@ -10218,6 +10375,7 @@
         }
         if (currentUser) {
           setCount(0);
+          _doSw("wheel");
         } else {
           showScreen("scr-ob1");
         }
@@ -10461,6 +10619,33 @@
         else drawWEmpty("wcanvas");
       }
       window.addEventListener("resize", resizeWheel);
+      // ── ÇEVRİMDIŞI BANDI ── İnternet yokken kullanıcıyı bilgilendir (engellemeden;
+      // çark/çekiliş/masa oylama offline çalışmaya devam etsin). Merci, online oda ve
+      // giriş internet ister; band bunu açıkça söyler. Online olunca otomatik kaybolur.
+      (function () {
+        var bar = null;
+        function showOff() {
+          if (bar) return;
+          bar = document.createElement("div");
+          bar.id = "km-offline-bar";
+          bar.style.cssText =
+            "position:fixed;top:0;left:0;right:0;z-index:500000;background:#3b1d6e;color:#fff;" +
+            "font-family:Nunito,sans-serif;font-size:12.5px;font-weight:800;text-align:center;" +
+            "padding:7px 12px;box-shadow:0 2px 10px rgba(0,0,0,.3)";
+          bar.textContent =
+            "📡 Çevrimdışısın — Merci, online oda ve giriş için internet gerekli";
+          document.body.appendChild(bar);
+        }
+        function hideOff() {
+          if (bar) {
+            bar.remove();
+            bar = null;
+          }
+        }
+        window.addEventListener("offline", showOff);
+        window.addEventListener("online", hideOff);
+        if (navigator.onLine === false) showOff();
+      })();
       // Klavye açılınca (chat input'a basınca) native banner ekranın ORTASINA
       // kayıyordu. Çözüm: input odaklanınca banner'ı gizle, odak çıkınca geri getir
       // (alttaki yerine dönsün, ortada durmasın).
