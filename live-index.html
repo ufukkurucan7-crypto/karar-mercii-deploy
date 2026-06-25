@@ -386,6 +386,47 @@
         margin-bottom: 14px;
         text-align: center;
       }
+      .set-row {
+        width: 100%;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 14px 14px;
+        margin-bottom: 9px;
+        background: #f7f5ff;
+        border: 1.5px solid #e3dcff;
+        border-radius: 14px;
+        font-family: "Nunito", sans-serif;
+        font-weight: 800;
+        font-size: 14px;
+        color: #4c1d95;
+        cursor: pointer;
+        transition: border-color 0.15s, opacity 0.15s, background 0.15s;
+      }
+      .set-row:active {
+        background: #efe9ff;
+      }
+      .set-row .set-ic {
+        font-size: 20px;
+        line-height: 1;
+      }
+      .set-row .set-lbl {
+        flex: 1;
+        text-align: left;
+      }
+      .set-row .set-state {
+        font-size: 12.5px;
+        font-weight: 800;
+        color: #a78bfa;
+      }
+      html.dark .set-row {
+        background: #1e1733;
+        border-color: #2d2347;
+        color: #ece8f7;
+      }
+      html.dark .set-row:active {
+        background: #261d40;
+      }
       .info-modal-body {
         font-size: 13px;
         font-weight: 700;
@@ -8635,7 +8676,7 @@
         winSound();
         vib(90);
         confetti();
-        navigator.vibrate && navigator.vibrate([200, 100, 200]);
+        vib(200);
         // Online oylama sonucunda non-PRO'ya geçiş reklamı
         if (!isPremium && typeof KM_AD !== "undefined" && KM_AD.showInterstitial)
           setTimeout(function () {
@@ -9314,7 +9355,7 @@
                 " puan · " +
                 cnt +
                 " kişi oyladı</span></div></div>";
-              navigator.vibrate && navigator.vibrate([200, 100, 200]);
+              vib(200);
               confetti();
               snd("ding");
             } else if (
@@ -10377,19 +10418,22 @@
         // ── SES BUTONU ──
         function _applyToggleStyle(btn, on) {
           if (!btn) return;
-          btn.style.opacity = on ? "1" : "0.45";
-          btn.style.borderColor = on ? "#a855f7" : "#e0d5ff";
+          btn.style.opacity = on ? "1" : "0.5";
         }
         var soundBtn = document.getElementById("sound-btn");
         if (soundBtn) {
           var sIcon = document.getElementById("sound-icon");
-          if (sIcon) sIcon.textContent = soundEnabled ? "🔊" : "🔇";
-          _applyToggleStyle(soundBtn, soundEnabled);
+          var sState = document.getElementById("sound-state");
+          var _syncSound = function () {
+            if (sIcon) sIcon.textContent = soundEnabled ? "🔊" : "🔇";
+            if (sState) sState.textContent = soundEnabled ? "Açık" : "Kapalı";
+            _applyToggleStyle(soundBtn, soundEnabled);
+          };
+          _syncSound();
           soundBtn.addEventListener("click", function () {
             soundEnabled = !soundEnabled;
             localStorage.setItem("kmSound", soundEnabled ? "true" : "false");
-            if (sIcon) sIcon.textContent = soundEnabled ? "🔊" : "🔇";
-            _applyToggleStyle(soundBtn, soundEnabled);
+            _syncSound();
             if (soundEnabled)
               setTimeout(function () {
                 snd("ding");
@@ -10398,11 +10442,18 @@
         }
         var vibBtn = document.getElementById("vib-btn");
         if (vibBtn) {
-          _applyToggleStyle(vibBtn, vibEnabled);
+          var vIcon = document.getElementById("vib-icon");
+          var vState = document.getElementById("vib-state");
+          var _syncVib = function () {
+            if (vIcon) vIcon.textContent = vibEnabled ? "📳" : "📴";
+            if (vState) vState.textContent = vibEnabled ? "Açık" : "Kapalı";
+            _applyToggleStyle(vibBtn, vibEnabled);
+          };
+          _syncVib();
           vibBtn.addEventListener("click", function () {
             vibEnabled = !vibEnabled;
             localStorage.setItem("kmVib", vibEnabled ? "true" : "false");
-            _applyToggleStyle(vibBtn, vibEnabled);
+            _syncVib();
             if (vibEnabled) vib(40); // açınca kısa geri bildirim
           });
         }
@@ -10421,16 +10472,23 @@
             vib(20);
           });
         }
+        var themeBtn = document.getElementById("theme-btn");
+        if (themeBtn)
+          themeBtn.addEventListener("click", function () {
+            // Tema renk seçimi PRO özelliği — şimdilik PRO'ya yönlendir
+            if (typeof isPremium !== "undefined" && isPremium) {
+              if (typeof toast === "function")
+                toast("Tema renkleri çok yakında! 🎨");
+            } else {
+              openProModal();
+            }
+          });
         var miSettings = document.getElementById("mi-settings");
         if (miSettings)
           miSettings.addEventListener("click", function () {
-            var p = document.getElementById("settings-panel");
-            var ar = document.getElementById("mi-settings-arrow");
-            if (p) {
-              var open = p.style.display === "none";
-              p.style.display = open ? "" : "none";
-              if (ar) ar.textContent = open ? "▾" : "▸";
-            }
+            closeMenu();
+            var m = document.getElementById("modal-settings");
+            if (m) m.classList.add("on");
           });
 
         // ── PRO MODAL backdrop + skip ──
@@ -10763,73 +10821,86 @@
         </button>
         <button class="menu-item" id="mi-settings">
           <span class="menu-item-icon">⚙️</span> Ayarlar
-          <span
-            id="mi-settings-arrow"
-            style="margin-left: auto; color: #a78bfa; font-size: 16px"
-            >▸</span
-          >
+          <span style="margin-left: auto; color: #a78bfa; font-size: 18px">›</span>
         </button>
-        <div
-          id="settings-panel"
-          style="display: none; background: #faf8ff; border-bottom: 1px solid #f0eeff"
-        >
-        <div style="display: flex; gap: 8px; padding: 2px 16px 12px">
-          <button
-            id="sound-btn"
-            style="
-              flex: 1;
-              display: flex;
-              align-items: center;
-              justify-content: center;
-              gap: 6px;
-              padding: 11px;
-              background: #f5f0ff;
-              border: 1.5px solid #e0d5ff;
-              border-radius: 12px;
-              font-weight: 800;
-              color: #5b21b6;
-              font-family: 'Nunito', sans-serif;
-              cursor: pointer;
-            "
-          >
-            <span id="sound-icon">🔊</span> Ses
-          </button>
-          <button
-            id="vib-btn"
-            style="
-              flex: 1;
-              display: flex;
-              align-items: center;
-              justify-content: center;
-              gap: 6px;
-              padding: 11px;
-              background: #f5f0ff;
-              border: 1.5px solid #e0d5ff;
-              border-radius: 12px;
-              font-weight: 800;
-              color: #5b21b6;
-              font-family: 'Nunito', sans-serif;
-              cursor: pointer;
-            "
-          >
-            <span id="vib-icon">📳</span> Titreşim
-          </button>
-        </div>
-        <button class="menu-item" id="dark-btn">
-          <span class="menu-item-icon">🌙</span> Karanlık Mod
-          <span
-            id="dark-state"
-            style="margin-left: auto; font-size: 12px; color: #a78bfa; font-weight: 800"
-            >Kapalı</span
-          >
-        </button>
-        </div>
         <button
           class="menu-item"
           id="mi-logout"
           style="display: none; border-top: 2px solid #f0eeff"
         >
           <span class="menu-item-icon">🚪</span> Çıkış Yap
+        </button>
+      </div>
+    </div>
+
+    <!-- ═══ AYARLAR MODAL ═══ -->
+    <div class="info-modal" id="modal-settings">
+      <div class="info-modal-box" style="padding: 18px 16px 22px; max-height: 80vh">
+        <div
+          style="display: flex; align-items: center; gap: 8px; margin-bottom: 14px"
+        >
+          <span style="font-size: 20px">⚙️</span>
+          <div
+            style="
+              flex: 1;
+              font-size: 16px;
+              font-weight: 900;
+              color: #4c1d95;
+            "
+          >
+            Ayarlar
+          </div>
+          <button
+            onclick="closeInfoModal('modal-settings')"
+            style="
+              background: #f0eeff;
+              border: none;
+              border-radius: 8px;
+              width: 30px;
+              height: 30px;
+              font-size: 16px;
+              cursor: pointer;
+              color: #5b21b6;
+            "
+          >
+            ✕
+          </button>
+        </div>
+
+        <button class="set-row" id="sound-btn">
+          <span class="set-ic" id="sound-icon">🔊</span>
+          <span class="set-lbl">Ses</span>
+          <span class="set-state" id="sound-state">Açık</span>
+        </button>
+        <button class="set-row" id="vib-btn">
+          <span class="set-ic" id="vib-icon">📳</span>
+          <span class="set-lbl">Titreşim</span>
+          <span class="set-state" id="vib-state">Açık</span>
+        </button>
+        <button class="set-row" id="dark-btn">
+          <span class="set-ic">🌙</span>
+          <span class="set-lbl">Karanlık Mod</span>
+          <span class="set-state" id="dark-state">Kapalı</span>
+        </button>
+        <button class="set-row" id="theme-btn">
+          <span class="set-ic">🎨</span>
+          <span class="set-lbl">
+            Tema Rengi
+            <span
+              style="
+                background: linear-gradient(135deg, #fbbf24, #f59e0b);
+                color: #fff;
+                font-size: 9px;
+                font-weight: 900;
+                padding: 1px 6px;
+                border-radius: 6px;
+                margin-left: 4px;
+                vertical-align: middle;
+              "
+              >PRO</span
+            >
+          </span>
+          <span class="set-state" id="theme-state">Mor</span>
         </button>
       </div>
     </div>
