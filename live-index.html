@@ -112,36 +112,103 @@
       }
       .screen.on {
         display: block;
+        animation: sayfade 0.35s ease;
       }
 
       /* Splash */
       .splash {
         position: fixed;
         inset: 0;
-        background: var(--ac);
+        background: linear-gradient(160deg, var(--ac-d), #8b3ff0 55%, var(--ac-d2));
         z-index: 9999;
         display: flex;
         flex-direction: column;
         align-items: center;
         justify-content: center;
         transition: opacity 0.4s;
+        overflow: hidden;
+      }
+      .splash::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background:
+          radial-gradient(circle at 22% 20%, rgba(255, 255, 255, 0.2), transparent 45%),
+          radial-gradient(circle at 80% 82%, rgba(255, 255, 255, 0.1), transparent 45%);
       }
       .splash.gone {
         opacity: 0;
         pointer-events: none;
       }
+      #splash-merci {
+        position: relative;
+        animation: splashIn 0.9s cubic-bezier(0.2, 1.3, 0.4, 1) both,
+          splashFloat 3s ease-in-out 0.9s infinite;
+      }
+      @keyframes splashIn {
+        0% {
+          opacity: 0;
+          transform: scale(0.4) translateY(20px);
+        }
+        100% {
+          opacity: 1;
+          transform: scale(1) translateY(0);
+        }
+      }
+      @keyframes splashFloat {
+        0%,
+        100% {
+          transform: translateY(0);
+        }
+        50% {
+          transform: translateY(-9px);
+        }
+      }
       .splash-txt {
+        position: relative;
         color: #fff;
-        font-size: 22px;
+        font-size: 24px;
         font-weight: 900;
         margin-top: 16px;
         letter-spacing: 1px;
+        background: linear-gradient(90deg, #fff 30%, #e9d5ff 50%, #fff 70%);
+        background-size: 200% auto;
+        -webkit-background-clip: text;
+        background-clip: text;
+        -webkit-text-fill-color: transparent;
+        animation: splashShine 2.2s linear infinite;
+      }
+      @keyframes splashShine {
+        to {
+          background-position: -200% center;
+        }
       }
       .splash-sub {
-        color: var(--ac-ll);
-        font-size: 12px;
+        position: relative;
+        color: rgba(255, 255, 255, 0.85);
+        font-size: 12.5px;
         font-weight: 700;
-        margin-top: 6px;
+        margin-top: 8px;
+      }
+      .splash-load {
+        position: relative;
+        display: flex;
+        gap: 6px;
+        margin-top: 20px;
+      }
+      .splash-load i {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: #fff;
+        opacity: 0.9;
+        animation: pu 1.1s infinite;
+      }
+      .splash-load i:nth-child(2) {
+        animation-delay: 0.15s;
+      }
+      .splash-load i:nth-child(3) {
+        animation-delay: 0.3s;
       }
 
       /* Onboarding */
@@ -1678,6 +1745,15 @@
         font-size: 13px;
         font-weight: 700;
       }
+      /* Genel hareket: butonlar basışta hafif küçülür (app geneli premium his) */
+      .btn,
+      .abtn {
+        transition: transform 0.12s ease;
+      }
+      .btn:active,
+      .abtn:active {
+        transform: scale(0.97);
+      }
 
       /* AI Chat */
       .ai-intro {
@@ -1747,17 +1823,30 @@
         z-index: 1;
         overflow: visible;
       }
+      .merci-ai-hero-mascot::before {
+        content: "";
+        position: absolute;
+        width: 150px;
+        height: 150px;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: radial-gradient(circle, rgba(255, 255, 255, 0.28), transparent 65%);
+        z-index: -1;
+        pointer-events: none;
+      }
       .merci-ai-hero-mascot svg {
         overflow: visible;
       }
       .merci-ai-hero-title {
-        font-size: 20px;
+        font-size: 30px;
         font-weight: 900;
         color: #fff;
-        margin-bottom: 4px;
+        margin-bottom: 7px;
         position: relative;
         z-index: 1;
-        letter-spacing: 0.3px;
+        letter-spacing: 0.5px;
+        text-shadow: 0 2px 10px rgba(20, 6, 40, 0.25);
       }
       .merci-ai-hero-sub {
         font-size: 12px;
@@ -1769,15 +1858,16 @@
       }
       .merci-ai-hero-badge {
         display: inline-block;
-        background: rgba(245, 166, 35, 0.22);
-        border: 1.5px solid rgba(245, 166, 35, 0.5);
-        color: #fcd34d;
-        font-size: 10px;
+        background: rgba(255, 255, 255, 0.2);
+        border: 1px solid rgba(255, 255, 255, 0.32);
+        color: #fff;
+        font-size: 11px;
         font-weight: 900;
-        padding: 3px 10px;
+        padding: 4px 12px;
         border-radius: 20px;
         margin-bottom: 10px;
-        letter-spacing: 0.8px;
+        letter-spacing: 0.6px;
+        backdrop-filter: blur(6px);
         position: relative;
         z-index: 1;
       }
@@ -1789,21 +1879,22 @@
         margin-bottom: 14px;
       }
       .ai-quick-btn {
-        padding: 10px 8px;
-        border-radius: 12px;
-        font-size: 11.5px;
+        padding: 12px 11px;
+        border-radius: 15px;
+        font-size: 12px;
         font-weight: 800;
-        background: var(--ac-bg2);
-        border: 2px solid var(--ac-lll);
-        color: var(--ac-d);
+        background: #fff;
+        border: none;
+        color: #1a1a2e;
         cursor: pointer;
         font-family: "Nunito", sans-serif;
-        transition: all 0.15s;
+        transition: transform 0.13s, box-shadow 0.13s;
         text-align: left;
         display: flex;
         align-items: center;
-        gap: 7px;
+        gap: 9px;
         line-height: 1.3;
+        box-shadow: 0 4px 12px rgba(124, 58, 237, 0.1);
       }
       .ai-quick-btn:hover,
       .ai-quick-btn:active {
@@ -3027,7 +3118,8 @@
     <div class="splash" id="splash">
       <div id="splash-merci"></div>
       <div class="splash-txt">Karar Mercii</div>
-      <div class="splash-sub">Yükleniyor...</div>
+      <div class="splash-sub">Kararı Merci'ye bırak 🐙</div>
+      <div class="splash-load"><i></i><i></i><i></i></div>
     </div>
 
     <div class="cfw" id="cfw"></div>
@@ -3207,7 +3299,7 @@
             <div class="wcap">
               <div id="merci-wheel"></div>
               <div class="cap-txt" id="wheel-cap-txt">
-                Çarkı saat yönünde çevir 👆 ya da ortadaki ↻ tuşuna bas!
+                Çarkı parmağınla çevir 👆 ya da ortadaki ↻ tuşuna bas!
               </div>
             </div>
           </div>
@@ -3902,11 +3994,11 @@
             <!-- Hero banner -->
             <div class="merci-ai-hero">
               <div class="merci-ai-hero-mascot" id="ai-hero-merci"></div>
-              <div class="merci-ai-hero-badge">✨ Merci Aklı</div>
-              <div class="merci-ai-hero-title">Merci'ye Sor!</div>
+              <div class="merci-ai-hero-title">Merci</div>
+              <div class="merci-ai-hero-badge">✨ Akıllı Karar Asistanın</div>
               <div class="merci-ai-hero-sub">
-                Kararsız mısınız? Durumu anlat,<br />Merci seçenekler üretir —
-                hatta seçer!
+                Kararsız mısın? Durumu anlat — saniyede seçenek üretir,
+                istersen senin için seçer.
               </div>
             </div>
 
@@ -6020,7 +6112,7 @@
             sel: '.tab[data-tab="wheel"]',
             pose: "celebrate",
             title: "🎡 Çark",
-            body: "Karar veremeyince çarkı saat yönünde çevir — kader seçsin! İşte ana karar aracın.",
+            body: "Karar veremeyince çarkı çevir — kader seçsin! İşte ana karar aracın.",
           },
           {
             tab: "wheel",
@@ -6721,13 +6813,10 @@
         var idle = performance.now() - lastT,
           v = idle > 180 ? 0 : vel; // vel işaretli: pozitif=saat yönü
 
-        // Sadece SAATYÖNÜNDEKİ (pozitif) harekette launch
-        if (dragAccum > 0.08 && v > 0.001) {
+        // Her iki yönde de fırlatma çarkı başlatır (soldan-sağa da çevrilebilsin)
+        if (Math.abs(dragAccum) > 0.08 && Math.abs(v) > 0.001) {
           hideHint();
           launch(Math.abs(v));
-        } else if (dragAccum < -0.08 && v < -0.001) {
-          // Ters yön: hafifçe geri dönsün, oyun başlamasın
-          freeCoast(-Math.abs(v));
         } else {
           showHint();
         }
@@ -6735,11 +6824,9 @@
       function wCancel() {
         if (!dragging) return;
         dragging = false;
-        if (dragAccum > 0.08) {
+        if (Math.abs(dragAccum) > 0.08) {
           hideHint();
           launch(Math.abs(vel) || 0);
-        } else if (dragAccum < -0.08) {
-          freeCoast(-(Math.abs(vel) || 0));
         } else {
           showHint();
         }
