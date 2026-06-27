@@ -102,6 +102,15 @@ async function authAndQuota(req, res, next) {
     const decoded = await getAuth().verifyIdToken(token);
     const uid = decoded.uid;
 
+    // Anonim oturumlar AI uçlarını KULLANAMAZ: signInAnonymously sınırsız taze kimlik
+    // üretir → her biri için yeni kota = maliyet/abuse. Anonim auth yalnız oda yazımı
+    // içindir; AI için Google girişi şart.
+    if (decoded.firebase && decoded.firebase.sign_in_provider === "anonymous") {
+      return res
+        .status(401)
+        .json({ error: "Merci'ye danışmak için Google ile giriş yap." });
+    }
+
     const userSnap = await adminDb.collection("users").doc(uid).get();
     const isPro = userSnap.exists && userSnap.data().isPro === true;
     const limit = isPro ? PRO_DAILY_LIMIT : FREE_DAILY_LIMIT;
@@ -299,42 +308,11 @@ ASLA: "Tabii ki!", "Harika bir soru!" gibi yapay girişler — aynı kalıpla ba
   }
 });
 
-// ── GEÇİCİ DOSYA YÜKLEME ARACI ──
-const fs = require("fs");
-app.get("/dev-upload", (req, res) => {
-  res.send(`<!DOCTYPE html><html><head><meta charset="utf-8">
-<title>Dosya Yükle</title>
-<style>body{font-family:sans-serif;max-width:500px;margin:60px auto;padding:20px}
-button{background:#7c3aed;color:#fff;border:none;padding:12px 28px;border-radius:8px;font-size:16px;cursor:pointer}
-select,input{width:100%;padding:8px;margin:8px 0 16px;font-size:15px;border:1px solid #ccc;border-radius:6px}
-#status{margin-top:20px;font-weight:bold;font-size:15px}</style></head>
-<body><h2>📁 HTML Dosyası Yükle</h2>
-<label>Dosya adı:</label>
-<select id="fname"><option value="index.html">index.html</option><option value="live-index.html">live-index.html</option></select>
-<label>Dosyayı seç:</label>
-<input type="file" id="f" accept=".html">
-<button onclick="upload()">Yükle</button>
-<div id="status"></div>
-<script>
-async function upload(){
-  var file=document.getElementById('f').files[0];
-  var fname=document.getElementById('fname').value;
-  if(!file)return alert('Önce dosya seç');
-  document.getElementById('status').textContent='Yükleniyor...';
-  var text=await file.text();
-  var r=await fetch('/dev-upload?file='+fname,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:text});
-  var msg=await r.text();
-  document.getElementById('status').textContent=msg;
-}
-</script></body></html>`);
-});
-app.post("/dev-upload", express.text({ limit: "50mb", type: "text/plain" }), (req, res) => {
-  const allowed = ["index.html", "live-index.html"];
-  const fname = allowed.includes(req.query.file) ? req.query.file : "index.html";
-  const dest = path.join(__dirname, "public", fname);
-  fs.writeFileSync(dest, req.body, "utf8");
-  res.send(`✅ ${fname} başarıyla yüklendi! (${(req.body.length / 1024).toFixed(1)} KB)`);
-});
+// ── /dev-upload KALDIRILDI (GÜVENLİK) ──
+// Eski geçici dosya yükleme aracıydı; auth/token/rate-limit YOKTU → internetteki
+// herkes sunulan index.html'i ezebiliyordu (uygulama ele geçirme riski). Deploy
+// artık GitHub köprüsü + curl ile yapılıyor (replit-deploy-github-bridge), bu uca
+// gerek yok. Geri EKLENMEMELİ; gerekirse güçlü env-token + rateLimit + dev-only ile.
 
 // ── MERCİ SEÇENEK ÜRETİCİSİ (çark/oylama için hızlı + ucuz: Haiku, web_search yok) ──
 app.post("/options", rateLimit, authAndQuota, async (req, res) => {
@@ -442,6 +420,11 @@ app.post("/nearby", rateLimit, async (req, res) => {
     try {
       const decoded = await getAuth().verifyIdToken(token);
       uid = decoded.uid;
+      if (decoded.firebase && decoded.firebase.sign_in_provider === "anonymous") {
+        return res
+          .status(401)
+          .json({ error: "Konum önerisi için Google ile giriş yap." });
+      }
       const us = await adminDb.collection("users").doc(uid).get();
       isPro = us.exists && us.data().isPro === true;
     } catch (e) {
