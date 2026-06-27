@@ -7934,7 +7934,7 @@
         btn.style.cssText =
           "display:inline-flex;align-items:center;gap:6px;background:linear-gradient(135deg,var(--ac),var(--ac-l));" +
           "color:#fff;border:none;padding:12px 18px;border-radius:14px;font-size:15px;font-weight:700;" +
-          "cursor:pointer;box-shadow:0 4px 14px rgba(124,58,237,.35)";
+          "cursor:pointer;box-shadow:0 4px 14px rgba(var(--ac-shadow),.35)";
         btn.innerHTML = "📍 Konumu aç, " + lbl + " öner";
         btn.onclick = function () {
           wrap.remove();
@@ -7958,7 +7958,7 @@
             try {
               localStorage.setItem(
                 "kmUserGeo",
-                JSON.stringify({ lat: pos.lat, lng: pos.lng }),
+                JSON.stringify({ lat: pos.lat, lng: pos.lng, t: Date.now() }),
               );
             } catch (e) {}
             fetch(
@@ -8178,25 +8178,33 @@
           return;
         }
         appendMsg("merci", "📍 Konumuna bakıyorum...", false);
-        var pos = null;
-        // Önce cache'li konum (kmUserGeo) — "konum açık ama anlık GPS okunamadı"
-        // durumunda da gerçek mekan gelsin. Yoksa taze getGeo()'ya düş.
+        var pos = null,
+          cachedPos = null;
+        // Cache'li konum (kmUserGeo): TAZE ise (<6 saat) direkt kullan → anlık GPS
+        // okunamasa bile mekan gelir. BAYAT ise taze GPS dene, o da olmazsa bayata düş.
         try {
           var cachedGeo = JSON.parse(localStorage.getItem("kmUserGeo") || "null");
           if (cachedGeo && isFinite(cachedGeo.lat) && isFinite(cachedGeo.lng)) {
-            pos = { lat: cachedGeo.lat, lng: cachedGeo.lng };
+            cachedPos = { lat: cachedGeo.lat, lng: cachedGeo.lng };
+            if (cachedGeo.t && Date.now() - cachedGeo.t < 6 * 60 * 60 * 1000) {
+              pos = cachedPos; // taze cache
+            }
           }
         } catch (e) {}
         if (!pos) {
           try {
             pos = await getGeo();
           } catch (e) {
-            appendMsg(
-              "merci",
-              "Konumuna ulaşamadım — konum iznini açman gerek 📍",
-              false,
-            );
-            return;
+            if (cachedPos) {
+              pos = cachedPos; // taze GPS yok → bayat cache son çare
+            } else {
+              appendMsg(
+                "merci",
+                "Konumuna ulaşamadım — konum iznini açman gerek 📍",
+                false,
+              );
+              return;
+            }
           }
         }
         try {
@@ -8334,12 +8342,13 @@
             // İşaretler: [[NEED_LOCATION:type]] (konum YOK → onay butonu) +
             // [[NEARBY:type]] (konum VAR → direkt gerçek mekan listesi) +
             // [[SECENEKLER: a | b | c]] (çark/oylama köprüsü)
-            var locMatch = reply.match(/\[\[NEED_LOCATION:([a-z]+)\]\]/i);
-            var nearbyMatch = reply.match(/\[\[NEARBY:([a-z]+)\]\]/i);
+            var locMatch = reply.match(/\[\[\s*NEED_LOCATION\s*:\s*([a-z]+)\s*\]\]/i);
+            var nearbyMatch = reply.match(/\[\[\s*NEARBY\s*:\s*([a-z]+)\s*\]\]/i);
             var optMatch = reply.match(/\[\[SECENEKLER:([^\]]+)\]\]/i);
+            // Güvenlik ağı: tip eksik/bozuk (alt çizgi, boşluk, tipsiz) olsa bile ham işaret sızmasın
             var cleanReply = reply
-              .replace(/\[\[NEED_LOCATION:[a-z]+\]\]/gi, "")
-              .replace(/\[\[NEARBY:[a-z]+\]\]/gi, "")
+              .replace(/\[\[\s*NEED_LOCATION\s*:?\s*[a-z_]*\s*\]\]/gi, "")
+              .replace(/\[\[\s*NEARBY\s*:?\s*[a-z_]*\s*\]\]/gi, "")
               .replace(/\[\[SECENEKLER:[^\]]*\]\]/gi, "")
               .trim();
             if (!cleanReply) {
