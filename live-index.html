@@ -31,11 +31,27 @@
       content="Grubunuzun karar ustası — çark çevirin, oylayın, Merci'ye danışın!"
     />
     <link rel="manifest" href="/manifest.json" />
-    <script
-      async
-      src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-2604503622179334"
-      crossorigin="anonymous"
-    ></script>
+    <script>
+      // AdSense YALNIZCA tarayıcıda yüklensin. Uygulama (Capacitor) içinde AdSense
+      // yasak (politika ihlali) — app'te reklam AdMob ile gösterilir. window.Capacitor
+      // köprüsü app'te sayfa yüklenmeden ENJEKTE edildiği için bu kontrol güvenilir.
+      (function () {
+        try {
+          var inApp = !!(
+            window.Capacitor &&
+            window.Capacitor.isNativePlatform &&
+            window.Capacitor.isNativePlatform()
+          );
+          if (inApp) return; // app içinde AdSense'i hiç yükleme
+          var s = document.createElement("script");
+          s.async = true;
+          s.src =
+            "https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-2604503622179334";
+          s.crossOrigin = "anonymous";
+          document.head.appendChild(s);
+        } catch (e) {}
+      })();
+    </script>
     <link
       href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@700;800;900&display=swap"
       rel="stylesheet"
