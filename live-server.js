@@ -187,7 +187,7 @@ app.post("/merci", rateLimit, authAndQuota, async (req, res) => {
 
     // ── KONUM ── (konum artık sohbette ONAY ile alınır; işaret koyup butonla iste)
     const locationContext = location
-      ? `\nKullanıcının konumu: ${location}.`
+      ? `\nKullanıcının konumu: ${location}. NOT: Konum SİSTEMDE VAR. Kullanıcı yakındaki bir mekanı YA DA "nereye gidelim / gezelim / dışarı çıkalım / takılalım / bir şeyler yiyelim/içelim" gibi bir yeri soruyorsa, cevabının EN BAŞINA tam olarak şu işareti koy: [[NEARBY:TUR]] — TUR şunlardan biri: food, cafe, dessert, bar, activity (emin değilsen activity). Bu işaret, civardaki GERÇEK mekanları (isim, mesafe, telefon) otomatik gösterir; sen mekan İSMİ/TELEFONU UYDURMA — gerçek liste ayrıca gösterilecek. Sadece sohbet/yorum sorusuysa işaret KOYMA.`
       : `\nKONUM: Kullanıcının konumu sistemde YOK. Kullanıcı yakındaki bir mekanı YA DA "nereye gidelim / gezelim / dışarı çıkalım / takılalım" gibi bir yeri soruyorsa, cevabının EN BAŞINA tam olarak şu işareti koy: [[NEED_LOCATION:TUR]] — TUR şunlardan biri: food, cafe, dessert, bar, activity (emin değilsen activity). İşaretten sonra TEK cümleyle "konumunu açarsan civarındaki gerçek mekanları telefonlarıyla öneririm, ya da şehrini/semtini yaz" de; mekan İSMİ uydurma. Kullanıcı zaten şehir/semt yazdıysa işaret KOYMA, direkt o bölgeye göre öner (bölge o iş için cılızsa daha hareketli bir civar semt öner).`;
 
     // ── SONUÇ BAĞLAMI (Merci'ye Sor'dan geliyorsa) ──
@@ -245,6 +245,7 @@ ${historyContext}${locationContext}${resultPrompt}${winnerEspriPrompt}
 
 MEKAN / KONUM:
 - Yakındaki gerçek mekan listesi (isim, mesafe, telefon, yol tarifi) kullanıcı konumunu açınca AYRI gösterilir — sen sohbette mekan ismi/telefonu UYDURMA.
+- Kullanıcı yakında bir yer/mekan sorarsa VEYA "nereye gidelim / dışarı çıkalım / bir şeyler yiyelim/içelim" derse VE konumu verili ise (yukarıda "Konum SİSTEMDE VAR" yazıyorsa), cevabının EN BAŞINA uygun [[NEARBY:TUR]] işaretini koy (TUR: food|cafe|dessert|bar|activity); gerçek mekan listesi ayrıca gösterilecek, sen isim/telefon UYDURMA.
 - Bulunduğu semt o iş için cılızsa dürüst ol ve daha iyi bir civar semt öner (örn. "Burada pek mekan yok, biraz öteye İstiklal/Kadıköy tarafına geç" gibi) — abartma, 1 cümle.
 
 SEÇENEK İŞARETİ — ÇOK ÖNEMLİ (uygulamanın özel özelliği, SIK kullan):
@@ -266,7 +267,7 @@ ASLA: "Tabii ki!", "Harika bir soru!" gibi yapay girişler — aynı kalıpla ba
 
     const response = await anthropic.messages.create({
       model: "claude-haiku-4-5-20251001",
-      max_tokens: 500,
+      max_tokens: 1000,
       system: systemPrompt,
       messages: messages,
     });
@@ -275,6 +276,21 @@ ASLA: "Tabii ki!", "Harika bir soru!" gibi yapay girişler — aynı kalıpla ba
     response.content.forEach((block) => {
       if (block.type === "text") text += block.text;
     });
+
+    // Türkçe-kesilme koruması: yanıt max_tokens limitine takılıp kesildiyse,
+    // yarım kalan son cümleyi kırp (yoksa "anlaşılmıyor" hissi olur).
+    // Model DEĞİŞMİYOR — sadece kesik çıktıyı zarifçe toparlıyoruz.
+    if (response.stop_reason === "max_tokens" && text) {
+      const trimmed = text.trimEnd();
+      const lastStop = Math.max(
+        trimmed.lastIndexOf("."),
+        trimmed.lastIndexOf("!"),
+        trimmed.lastIndexOf("?"),
+        trimmed.lastIndexOf("…"),
+      );
+      // Son tam cümleye kadar kırp; hiç cümle sonu yoksa kibar devam ibaresi ekle.
+      text = lastStop > 20 ? trimmed.slice(0, lastStop + 1) : trimmed + " …";
+    }
 
     res.json({ text: text || "Bir şeyler ters gitti, tekrar dene!" });
   } catch (error) {
@@ -393,8 +409,14 @@ const OVERPASS_FILTERS = {
   food: '["amenity"~"restaurant|fast_food"]',
   cafe: '["amenity"~"cafe"]',
   bar: '["amenity"~"bar|pub"]',
-  dessert: '["amenity"~"ice_cream"]',
-  activity: '["leisure"~"park|sports_centre|fitness_centre"]',
+  dessert: '["shop"~"pastry|confectionery|bakery"]',
+  activity: '["leisure"~"park|sports_centre|fitness_centre|bowling_alley|amusement_arcade"]',
+};
+// dessert/activity için ek filtreler (Overpass tek selektör aldığından, bu türlerde
+// birden fazla node/way bloğu üretmek üzere ALTERNATİF selektörler):
+const OVERPASS_EXTRA = {
+  dessert: ['["amenity"~"cafe|ice_cream"]'],
+  activity: ['["amenity"~"cinema"]'],
 };
 
 function haversine(la1, lo1, la2, lo2) {
@@ -460,10 +482,15 @@ app.post("/nearby", rateLimit, async (req, res) => {
 
     // Overpass sorgusu (boş dönerse radius'u büyütüp 1 kez daha dene → "bulamadım" azalır)
     const sel = OVERPASS_FILTERS[typeKey] || OVERPASS_FILTERS.food;
+    const selectors = [sel, ...((OVERPASS_EXTRA[typeKey]) || [])];
     async function runOverpass(r) {
-      const q =
-        `[out:json][timeout:20];(node${sel}(around:${r},${lat},${lng});` +
-        `way${sel}(around:${r},${lat},${lng}););out center 60;`;
+      const blocks = selectors
+        .map(
+          (s) =>
+            `node${s}(around:${r},${lat},${lng});way${s}(around:${r},${lat},${lng});`,
+        )
+        .join("");
+      const q = `[out:json][timeout:20];(${blocks});out center 60;`;
       try {
         const ovr = await fetch("https://overpass-api.de/api/interpreter", {
           method: "POST",
@@ -473,6 +500,7 @@ app.post("/nearby", rateLimit, async (req, res) => {
         const d = await ovr.json();
         return (d && d.elements) || [];
       } catch (e) {
+        console.error("Overpass fetch error:", e.message);
         return [];
       }
     }
@@ -559,7 +587,9 @@ app.post("/nearby", rateLimit, async (req, res) => {
           if (b.type === "text") merciComment += b.text;
         });
       }
-    } catch (e) {}
+    } catch (e) {
+      console.error("Nearby Merci comment error:", e.message);
+    }
 
     res.json({ places, merciComment: merciComment.trim(), isPro });
   } catch (e) {
