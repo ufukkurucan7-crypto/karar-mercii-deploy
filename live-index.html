@@ -67,8 +67,8 @@
         --border: var(--ac-bg);
         --radius: 16px;
         --radius-sm: 12px;
-        --shadow-sm: 0 2px 10px rgba(124, 58, 237, 0.1);
-        --shadow-md: 0 8px 24px rgba(124, 58, 237, 0.16);
+        --shadow-sm: 0 2px 10px rgba(var(--ac-shadow),0.1);
+        --shadow-md: 0 8px 24px rgba(var(--ac-shadow),0.16);
       }
       body {
         background: #fff;
@@ -119,7 +119,7 @@
       .splash {
         position: fixed;
         inset: 0;
-        background: linear-gradient(160deg, var(--ac-d), #8b3ff0 55%, var(--ac-d2));
+        background: linear-gradient(160deg, var(--ac-d), var(--ac-d2) 55%, var(--ac-d2));
         z-index: 9999;
         display: flex;
         flex-direction: column;
@@ -267,7 +267,7 @@
         font-weight: 900;
         font-family: "Nunito", sans-serif;
         cursor: pointer;
-        box-shadow: 0 8px 22px rgba(124, 58, 237, 0.32);
+        box-shadow: 0 8px 22px rgba(var(--ac-shadow),0.32);
       }
 
       /* Header */
@@ -339,7 +339,7 @@
         justify-content: center;
         font-family: "Nunito", sans-serif;
         line-height: 1;
-        box-shadow: 0 3px 10px rgba(124, 58, 237, 0.3);
+        box-shadow: 0 3px 10px rgba(var(--ac-shadow),0.3);
       }
       .menu-overlay {
         display: none;
@@ -358,7 +358,7 @@
         bottom: 0;
         width: 260px;
         background: #fff;
-        box-shadow: -4px 0 28px rgba(124, 58, 237, 0.18);
+        box-shadow: -4px 0 28px rgba(var(--ac-shadow),0.18);
         z-index: 19999;
         transform: translateX(100%);
         transition: transform 0.26s cubic-bezier(0.4, 0, 0.2, 1);
@@ -410,7 +410,7 @@
         border-bottom: 1px solid var(--ac-bg2);
         font-size: 14px;
         font-weight: 800;
-        color: #3b0764;
+        color: var(--ac-dd);
         font-family: "Nunito", sans-serif;
         cursor: pointer;
         text-align: left;
@@ -460,8 +460,8 @@
         gap: 12px;
         padding: 14px 14px;
         margin-bottom: 9px;
-        background: #f7f5ff;
-        border: 1.5px solid #e3dcff;
+        background: var(--ac-bg2);
+        border: 1.5px solid var(--ac-bd);
         border-radius: 14px;
         font-family: "Nunito", sans-serif;
         font-weight: 800;
@@ -500,13 +500,13 @@
         align-items: center;
         gap: 8px;
         padding: 14px 8px;
-        background: #f7f5ff;
-        border: 2.5px solid #e3dcff;
+        background: var(--ac-bg2);
+        border: 2.5px solid var(--ac-bd);
         border-radius: 14px;
         font-family: "Nunito", sans-serif;
         font-weight: 800;
         font-size: 13px;
-        color: #4c1d95;
+        color: var(--ac-dd);
         cursor: pointer;
         transition: border-color 0.15s, transform 0.1s;
       }
@@ -534,7 +534,7 @@
       .info-modal-body {
         font-size: 13px;
         font-weight: 700;
-        color: #3b0764;
+        color: var(--ac-dd);
         line-height: 1.75;
         margin-bottom: 20px;
       }
@@ -602,7 +602,7 @@
         font-size: 13px;
         font-weight: 700;
         font-family: "Nunito", sans-serif;
-        color: #3b0764;
+        color: var(--ac-dd);
         resize: none;
         outline: none;
         min-height: 80px;
@@ -751,7 +751,7 @@
         text-align: center;
         max-height: 90vh;
         overflow-y: auto;
-        box-shadow: 0 12px 48px rgba(124, 58, 237, 0.28);
+        box-shadow: 0 12px 48px rgba(var(--ac-shadow),0.28);
         position: relative;
       }
       .pro-badge {
@@ -791,7 +791,7 @@
         gap: 10px;
         font-size: 13px;
         font-weight: 700;
-        color: #3b0764;
+        color: var(--ac-dd);
         margin-bottom: 8px;
       }
       .pro-perk:last-child {
@@ -868,7 +868,7 @@
         font-family: "Nunito", sans-serif;
         cursor: pointer;
         margin-bottom: 10px;
-        box-shadow: 0 6px 20px rgba(124, 58, 237, 0.35);
+        box-shadow: 0 6px 20px rgba(var(--ac-shadow),0.35);
       }
       .pro-skip {
         font-size: 12px;
@@ -918,7 +918,7 @@
         font-size: 14px;
         font-weight: 900;
         font-family: "Nunito", sans-serif;
-        color: #3b0764;
+        color: var(--ac-dd);
         cursor: pointer;
         display: flex;
         align-items: center;
@@ -973,7 +973,7 @@
         max-width: 320px;
         width: 90%;
         text-align: center;
-        box-shadow: 0 8px 40px rgba(124, 58, 237, 0.18);
+        box-shadow: 0 8px 40px rgba(var(--ac-shadow),0.18);
       }
       .auth-logo {
         margin-bottom: 8px;
@@ -1003,7 +1003,7 @@
         gap: 8px;
         font-size: 13px;
         font-weight: 700;
-        color: #3b0764;
+        color: var(--ac-dd);
         margin-bottom: 8px;
       }
       .auth-perk-icon {
@@ -1018,7 +1018,7 @@
         font-size: 14px;
         font-weight: 900;
         font-family: "Nunito", sans-serif;
-        color: #3b0764;
+        color: var(--ac-dd);
         cursor: pointer;
         display: flex;
         align-items: center;
@@ -1125,7 +1125,7 @@
         max-width: 300px;
         width: 88%;
         text-align: center;
-        box-shadow: 0 8px 32px rgba(124, 58, 237, 0.2);
+        box-shadow: 0 8px 32px rgba(var(--ac-shadow),0.2);
       }
       .confirm-title {
         font-size: 17px;
@@ -1213,7 +1213,7 @@
         font-weight: 900;
         border: 2px solid var(--ac-lll);
         border-radius: 16px;
-        background: #faf8ff;
+        background: var(--ac-bg2);
         color: var(--ac);
         cursor: pointer;
         text-align: center;
@@ -1245,10 +1245,10 @@
         letter-spacing: 0.3px;
       }
       .tab.on {
-        background: linear-gradient(145deg, var(--ac-d2), #9333ea);
+        background: linear-gradient(145deg, var(--ac-d2), var(--ac-d2));
         border-color: var(--ac-d);
         color: #fff;
-        box-shadow: 0 6px 20px rgba(109, 40, 217, 0.38);
+        box-shadow: 0 6px 20px rgba(var(--ac-shadow),0.38);
         transform: translateY(-3px) scale(1.03);
       }
       .tab.on .tab-icon {
@@ -1272,7 +1272,7 @@
       }
       #tab-ai:not(.on) {
         border-color: var(--ac-ll);
-        background: linear-gradient(145deg, var(--ac-bg2), #faf8ff);
+        background: linear-gradient(145deg, var(--ac-bg2), var(--ac-bg));
       }
       #tab-ai:not(.on) .tab-label {
         background: linear-gradient(90deg, var(--ac), var(--ac-l));
@@ -1283,10 +1283,10 @@
       @keyframes tab-pulse {
         0%,
         100% {
-          box-shadow: 0 0 0 0 rgba(124, 58, 237, 0);
+          box-shadow: 0 0 0 0 rgba(var(--ac-shadow),0);
         }
         50% {
-          box-shadow: 0 0 0 4px rgba(124, 58, 237, 0.12);
+          box-shadow: 0 0 0 4px rgba(var(--ac-shadow),0.12);
         }
       }
       #tab-ai:not(.on) {
@@ -1398,9 +1398,9 @@
         align-items: center;
         gap: 3px;
         padding: 7px 8px;
-        border: 2px solid #e0d7ff;
+        border: 2px solid var(--ac-bd);
         border-radius: 10px;
-        background: #f9f7ff;
+        background: var(--ac-bg2);
         font-size: 11px;
         font-weight: 800;
         color: var(--ac-dd);
@@ -1445,9 +1445,9 @@
         flex-direction: column;
         gap: 6px;
         padding: 10px 12px;
-        border: 2px solid #e0d7ff;
+        border: 2px solid var(--ac-bd);
         border-radius: 10px;
-        background: #f9f7ff;
+        background: var(--ac-bg2);
       }
       .oitop {
         display: flex;
@@ -1562,14 +1562,14 @@
         font-weight: 800;
         color: var(--ac);
         padding: 8px;
-        background: #f9f7ff;
+        background: var(--ac-bg2);
         border-radius: 10px;
         margin-bottom: 6px;
       }
 
       /* Share box */
       .share-box {
-        background: #f9f7ff;
+        background: var(--ac-bg2);
         border: 2px dashed var(--ac-ll);
         border-radius: 14px;
         padding: 16px;
@@ -1793,7 +1793,7 @@
         position: relative;
         overflow: visible;
         text-align: center;
-        box-shadow: 0 8px 28px rgba(109, 40, 217, 0.32);
+        box-shadow: 0 8px 28px rgba(var(--ac-shadow),0.32);
       }
       .merci-ai-hero::before {
         content: "";
@@ -1894,7 +1894,7 @@
         align-items: center;
         gap: 9px;
         line-height: 1.3;
-        box-shadow: 0 4px 12px rgba(124, 58, 237, 0.1);
+        box-shadow: 0 4px 12px rgba(var(--ac-shadow),0.1);
       }
       .ai-quick-btn:hover,
       .ai-quick-btn:active {
@@ -1933,7 +1933,7 @@
       }
       .ai-wall-perks {
         text-align: left;
-        background: #faf8ff;
+        background: var(--ac-bg2);
         border: 2px solid var(--ac-bg3);
         border-radius: 14px;
         padding: 12px 14px;
@@ -1945,7 +1945,7 @@
         gap: 10px;
         font-size: 12.5px;
         font-weight: 700;
-        color: #3b0764;
+        color: var(--ac-dd);
         margin-bottom: 8px;
       }
       .ai-wall-perk:last-child {
@@ -1984,7 +1984,7 @@
         border-color: var(--ac);
       }
       .chat-wrap {
-        border: 2px solid #e0d7ff;
+        border: 2px solid var(--ac-bd);
         border-radius: 14px;
         overflow: hidden;
         margin-bottom: 10px;
@@ -2038,7 +2038,7 @@
         display: flex;
         align-items: center;
         justify-content: center;
-        box-shadow: 0 3px 8px rgba(124, 58, 237, 0.22);
+        box-shadow: 0 3px 8px rgba(var(--ac-shadow),0.22);
       }
       .chat-av-merci svg {
         width: 30px;
@@ -2076,7 +2076,7 @@
         font-weight: 500;
         line-height: 1.5;
         word-break: break-word;
-        box-shadow: 0 6px 18px rgba(124, 58, 237, 0.4);
+        box-shadow: 0 6px 18px rgba(var(--ac-shadow),0.4);
       }
       .chat-bubble-u b {
         font-weight: 800;
@@ -2172,7 +2172,7 @@
       /* Wheel */
       .divhr {
         height: 1px;
-        background: #e0d7ff;
+        background: var(--ac-bd);
         margin: 14px 0;
       }
       .wscene {
@@ -2231,7 +2231,7 @@
         border: 3px solid #fff;
         box-shadow:
           0 3px 12px rgba(76, 29, 149, 0.3),
-          inset 0 0 0 1.5px rgba(124, 58, 237, 0.15);
+          inset 0 0 0 1.5px rgba(var(--ac-shadow),0.15);
         display: flex;
         align-items: center;
         justify-content: center;
@@ -2282,8 +2282,8 @@
         align-items: center;
         justify-content: space-between;
         gap: 8px;
-        background: #f7f5ff;
-        border: 1.5px solid #e3dcff;
+        background: var(--ac-bg2);
+        border: 1.5px solid var(--ac-bd);
         border-radius: 14px;
         padding: 10px 12px;
       }
@@ -2400,7 +2400,7 @@
         align-items: center;
         justify-content: center;
         box-shadow:
-          0 4px 16px rgba(124, 58, 237, 0.5),
+          0 4px 16px rgba(var(--ac-shadow),0.5),
           inset 0 1px 0 rgba(255, 255, 255, 0.45);
         transition:
           transform 0.1s,
@@ -2598,7 +2598,7 @@
         font-weight: 900;
         border-radius: 9px;
         border: 2px solid var(--ac-ll);
-        background: #f9f7ff;
+        background: var(--ac-bg2);
         color: var(--ac-d);
         cursor: pointer;
         font-family: "Nunito", sans-serif;
@@ -2624,8 +2624,8 @@
         color: #fff;
       }
       .hist-chart-wrap {
-        background: #f9f7ff;
-        border: 2px solid #e0d7ff;
+        background: var(--ac-bg2);
+        border: 2px solid var(--ac-bd);
         border-radius: 12px;
         padding: 12px 10px 6px;
         margin-bottom: 8px;
@@ -2645,9 +2645,9 @@
         align-items: flex-start;
         gap: 10px;
         padding: 9px 12px;
-        border: 2px solid #e0d7ff;
+        border: 2px solid var(--ac-bd);
         border-radius: 10px;
-        background: #f9f7ff;
+        background: var(--ac-bg2);
         margin-bottom: 6px;
       }
       .hist-txt {
@@ -2704,7 +2704,7 @@
         color: var(--ac-dd);
         transition: all 0.15s;
         width: 100%;
-        box-shadow: 0 3px 14px rgba(124, 58, 237, 0.08);
+        box-shadow: 0 3px 14px rgba(var(--ac-shadow),0.08);
       }
       .vote-mode-btn:hover,
       .vote-mode-btn.on {
@@ -2816,7 +2816,7 @@
         max-width: 400px;
         max-height: 88vh;
         overflow-y: auto;
-        box-shadow: 0 12px 48px rgba(109, 40, 217, 0.22);
+        box-shadow: 0 12px 48px rgba(var(--ac-shadow),0.22);
         animation: popIn 0.22s cubic-bezier(0.34, 1.4, 0.64, 1);
       }
       @keyframes popIn {
@@ -2912,7 +2912,7 @@
       }
       html.dark .tab.on {
         color: #fff;
-        background: linear-gradient(145deg, var(--ac-d2), #9333ea);
+        background: linear-gradient(145deg, var(--ac-d2), var(--ac-d2));
         border-color: var(--ac-d);
       }
       html.dark .sec {
@@ -3036,6 +3036,24 @@
         color: #d8cef5;
         border-color: #3a2f55;
       }
+      /* AI hızlı butonları (beyaz bg/koyu metin) dark'a uydur */
+      html.dark .ai-quick-btn {
+        background: #271d3f;
+        color: #ece8f7;
+      }
+      html.dark .ai-quick-btn:hover,
+      html.dark .ai-quick-btn:active {
+        background: var(--ac);
+        color: #fff;
+      }
+      /* Oda/oylama overlay (inline background:#fff idi) */
+      html.dark #room-overlay {
+        background: #100c1c !important;
+        color: #ece8f7;
+      }
+      html.dark #room-overlay .lbl {
+        color: #c9b8ff;
+      }
       /* ═══ ACCENT TEMA DEĞİŞKENLERİ (varsayılan: Mor) ═══ */
       :root {
         --ac: #7c3aed;
@@ -3051,6 +3069,7 @@
         --ac-bg2: #f5f0ff;
         --ac-bg: #f0eeff;
         --ac-bd: #e0d7ff;
+        --ac-shadow: 124, 58, 237;
       }
       /* MAVI */
       html[data-theme="mavi"] {
@@ -3067,6 +3086,7 @@
         --ac-bg2: #eff6ff;
         --ac-bg: #eef5ff;
         --ac-bd: #c7ddff;
+        --ac-shadow: 37, 99, 235;
       }
       /* YEŞİL / TURKUAZ */
       html[data-theme="yesil"] {
@@ -3083,6 +3103,7 @@
         --ac-bg2: #f0fdfa;
         --ac-bg: #effdf9;
         --ac-bd: #bbf0e6;
+        --ac-shadow: 13, 148, 136;
       }
       /* PEMBE / MERCAN */
       html[data-theme="pembe"] {
@@ -3099,6 +3120,7 @@
         --ac-bg2: #fdf2f8;
         --ac-bg: #fdf2f8;
         --ac-bd: #f9c6e0;
+        --ac-shadow: 219, 39, 119;
       }
     </style>
     <script>
@@ -3268,7 +3290,7 @@
           <button
             id="merci-fill-btn"
             onclick="merciFillWheel()"
-            style="width: 100%; margin: 8px 0 4px; padding: 11px; border: none; border-radius: 14px; background: linear-gradient(135deg, var(--ac), #ec4899); color: #fff; font-family: Fredoka, Nunito, sans-serif; font-weight: 700; font-size: 14px; cursor: pointer; box-shadow: 0 4px 14px rgba(124, 58, 237, 0.32)"
+            style="width: 100%; margin: 8px 0 4px; padding: 11px; border: none; border-radius: 14px; background: linear-gradient(135deg, var(--ac), var(--ac-l)); color: #fff; font-family: Fredoka, Nunito, sans-serif; font-weight: 700; font-size: 14px; cursor: pointer; box-shadow: 0 4px 14px rgba(var(--ac-shadow),0.32)"
           >
             ✨ Merci doldursun
           </button>
@@ -3378,7 +3400,7 @@
           <button
             id="cekilis-start"
             onclick="startCekilis()"
-            style="width: 100%; margin: 10px 0 4px; padding: 14px; border: none; border-radius: 16px; background: linear-gradient(135deg, var(--ac), #ec4899); color: #fff; font-family: 'Nunito', sans-serif; font-weight: 900; font-size: 16px; cursor: pointer; box-shadow: 0 4px 14px rgba(124, 58, 237, 0.32)"
+            style="width: 100%; margin: 10px 0 4px; padding: 14px; border: none; border-radius: 16px; background: linear-gradient(135deg, var(--ac), var(--ac-l)); color: #fff; font-family: 'Nunito', sans-serif; font-weight: 900; font-size: 16px; cursor: pointer; box-shadow: 0 4px 14px rgba(var(--ac-shadow),0.32)"
           >
             🎉 Çekilişi Başlat
           </button>
@@ -8156,16 +8178,26 @@
           return;
         }
         appendMsg("merci", "📍 Konumuna bakıyorum...", false);
-        var pos;
+        var pos = null;
+        // Önce cache'li konum (kmUserGeo) — "konum açık ama anlık GPS okunamadı"
+        // durumunda da gerçek mekan gelsin. Yoksa taze getGeo()'ya düş.
         try {
-          pos = await getGeo();
-        } catch (e) {
-          appendMsg(
-            "merci",
-            "Konumuna ulaşamadım — konum iznini açman gerek 📍",
-            false,
-          );
-          return;
+          var cachedGeo = JSON.parse(localStorage.getItem("kmUserGeo") || "null");
+          if (cachedGeo && isFinite(cachedGeo.lat) && isFinite(cachedGeo.lng)) {
+            pos = { lat: cachedGeo.lat, lng: cachedGeo.lng };
+          }
+        } catch (e) {}
+        if (!pos) {
+          try {
+            pos = await getGeo();
+          } catch (e) {
+            appendMsg(
+              "merci",
+              "Konumuna ulaşamadım — konum iznini açman gerek 📍",
+              false,
+            );
+            return;
+          }
         }
         try {
           var token = await currentUser.getIdToken();
@@ -8299,21 +8331,32 @@
               return;
             }
             var reply = data.error || data.text || "Bir hata oluştu!";
-            // İşaretler: [[NEED_LOCATION:type]] (konum onayı) + [[SECENEKLER: a | b | c]] (çark/oylama köprüsü)
+            // İşaretler: [[NEED_LOCATION:type]] (konum YOK → onay butonu) +
+            // [[NEARBY:type]] (konum VAR → direkt gerçek mekan listesi) +
+            // [[SECENEKLER: a | b | c]] (çark/oylama köprüsü)
             var locMatch = reply.match(/\[\[NEED_LOCATION:([a-z]+)\]\]/i);
+            var nearbyMatch = reply.match(/\[\[NEARBY:([a-z]+)\]\]/i);
             var optMatch = reply.match(/\[\[SECENEKLER:([^\]]+)\]\]/i);
-            var cleanReply =
-              reply
-                .replace(/\[\[NEED_LOCATION:[a-z]+\]\]/gi, "")
-                .replace(/\[\[SECENEKLER:[^\]]*\]\]/gi, "")
-                .trim() ||
-              "Civarındaki gerçek mekanları telefonlarıyla önerebilirim — konumunu açar mısın? 🐙";
+            var cleanReply = reply
+              .replace(/\[\[NEED_LOCATION:[a-z]+\]\]/gi, "")
+              .replace(/\[\[NEARBY:[a-z]+\]\]/gi, "")
+              .replace(/\[\[SECENEKLER:[^\]]*\]\]/gi, "")
+              .trim();
+            if (!cleanReply) {
+              cleanReply = nearbyMatch
+                ? "Civarındaki gerçek mekanlara bakıyorum 🐙"
+                : "Civarındaki gerçek mekanları telefonlarıyla önerebilirim — konumunu açar mısın? 🐙";
+            }
             // Modelin kendi işaretini sonraki turda görmemesi için temiz hali sakla
             aiMessages.push({ role: "assistant", content: cleanReply });
             appendMsg("merci", cleanReply, true);
             saveCurrentChat(); // her cevaptan sonra sohbeti kaydet (kaybolmasın)
             if (locMatch) {
               appendLocationConsent(locMatch[1].toLowerCase());
+            }
+            // Konum zaten cache'li → onay butonu GÖSTERME, direkt gerçek mekanları getir
+            if (nearbyMatch) {
+              merciNearby(nearbyMatch[1].toLowerCase());
             }
             if (optMatch) {
               var opts = optMatch[1]
