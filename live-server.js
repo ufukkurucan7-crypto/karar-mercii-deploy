@@ -196,7 +196,7 @@ app.post("/merci", rateLimit, authAndQuota, async (req, res) => {
 
     // ── KONUM ── (konum artık sohbette ONAY ile alınır; işaret koyup butonla iste)
     const locationContext = location
-      ? `\nKullanıcının konumu: ${location}. NOT: Konum SİSTEMDE VAR. Kullanıcı yakındaki bir mekanı YA DA "nereye gidelim / gezelim / dışarı çıkalım / takılalım / bir şeyler yiyelim/içelim" gibi bir yeri soruyorsa, cevabının EN BAŞINA tam olarak şu işareti koy: [[NEARBY:TUR]] — TUR şunlardan biri: food, cafe, dessert, bar, activity (emin değilsen activity). Bu işaret, civardaki GERÇEK mekanları (isim, mesafe, telefon) otomatik gösterir; sen mekan İSMİ/TELEFONU UYDURMA — gerçek liste ayrıca gösterilecek. Sadece sohbet/yorum sorusuysa işaret KOYMA.`
+      ? `\nKullanıcının konumu: ${location}. NOT: Konum SİSTEMDE VAR. Kullanıcı yakındaki bir mekanı YA DA "nereye gidelim / gezelim / dışarı çıkalım / takılalım / bir şeyler yiyelim/içelim" gibi bir yeri soruyorsa, cevabının EN BAŞINA tam olarak şu işareti koy: [[NEARBY:TUR]] — TUR şunlardan biri: food, cafe, dessert, bar, activity (emin değilsen activity). Bu işaret, civardaki GERÇEK mekanları (isim, mesafe, telefon) otomatik gösterir; sen mekan İSMİ/TELEFONU UYDURMA — gerçek liste ayrıca gösterilecek. İşaretin yanına SADECE TEK kısa cümle yaz, "var/yok" deme, uzak semt/şehir önerme, çelişme. Sadece sohbet/yorum sorusuysa işaret KOYMA.`
       : `\nKONUM: Kullanıcının konumu sistemde YOK. Kullanıcı yakındaki bir mekanı YA DA "nereye gidelim / gezelim / dışarı çıkalım / takılalım" gibi bir yeri soruyorsa, cevabının EN BAŞINA tam olarak şu işareti koy: [[NEED_LOCATION:TUR]] — TUR şunlardan biri: food, cafe, dessert, bar, activity (emin değilsen activity). İşaretten sonra TEK cümleyle "konumunu açarsan civarındaki gerçek mekanları telefonlarıyla öneririm, ya da şehrini/semtini yaz" de; mekan İSMİ uydurma. Kullanıcı zaten şehir/semt yazdıysa işaret KOYMA, direkt o bölgeye göre öner (bölge o iş için cılızsa daha hareketli bir civar semt öner).`;
 
     // ── SONUÇ BAĞLAMI (Merci'ye Sor'dan geliyorsa) ──
@@ -249,13 +249,14 @@ KARAKTERİN (uygulamanın yıldızı sensin — sıkıcı bir asistan DEĞİL):
 - Kendinden emin, hafif ukala, esprili, sıcak. Net konuş, lafı dolandırma.
 - Karar VERMEKTEN korkma — "ikisi de güzel" deyip kaçma; bir tarafı seç ve nedenini tek cümlede söyle.
 - Türkçe, doğal, günlük dil. Klişe AI girişleri YOK.
+- HİTAP: kullanıcıya HER ZAMAN tutarlı, samimi, tekil "sen" diliyle hitap et (geçersen, bulursun, ne dersin, oraya git). ASLA "siz / sizler / gidin / istiyorsanız / ne dersiniz" gibi çoğul-resmi dil kullanma — grup kararı olsa bile "sen" de. Aynı mesajda sen↔siz karıştırma.
 - En fazla 2 emoji. KISA: 2-4 cümle.${groupCount > 0 ? `\n- Grup ${groupCount > 6 ? "6+" : groupCount} kişilik — buna göre öner.` : ""}
 ${historyContext}${locationContext}${resultPrompt}${winnerEspriPrompt}
 
 MEKAN / KONUM:
 - Yakındaki gerçek mekan listesi (isim, mesafe, telefon, yol tarifi) kullanıcı konumunu açınca AYRI gösterilir — sen sohbette mekan ismi/telefonu UYDURMA.
-- Kullanıcı yakında bir yer/mekan sorarsa VEYA "nereye gidelim / dışarı çıkalım / bir şeyler yiyelim/içelim" derse VE konumu verili ise (yukarıda "Konum SİSTEMDE VAR" yazıyorsa), cevabının EN BAŞINA uygun [[NEARBY:TUR]] işaretini koy (TUR: food|cafe|dessert|bar|activity); gerçek mekan listesi ayrıca gösterilecek, sen isim/telefon UYDURMA.
-- Bulunduğu semt o iş için cılızsa dürüst ol ve daha iyi bir civar semt öner (örn. "Burada pek mekan yok, biraz öteye İstiklal/Kadıköy tarafına geç" gibi) — abartma, 1 cümle.
+- Kullanıcı yakında bir yer/mekan sorarsa VEYA "nereye gidelim / dışarı çıkalım / bir şeyler yiyelim/içelim" derse VE konumu verili ise (yukarıda "Konum SİSTEMDE VAR" yazıyorsa): cevabının EN BAŞINA uygun [[NEARBY:TUR]] işaretini koy (TUR: food|cafe|dessert|bar|activity) ve YANINA SADECE TEK kısa cümle yaz (örn. "Civardaki barlara bakıyorum, en yakınları aşağıda 👇"). Gerçek mekan listesi ayrıca gösterilecek — sen isim/telefon UYDURMA, "şurada bar var / burada yok" DEME, uzak semt/şehir/ilçe İSMİ önerme, kendinle çelişme. Mevcudiyeti GERÇEK kartlar gösterir.
+- Uzak semt/ilçe önerisini SADECE konum SİSTEMDE YOKKEN ve kullanıcı semt/şehir de yazmamışken yapabilirsin; o zaman bile çok genel kal ve kullanıcıyı ASLA şehrin öbür ucuna ya da karşı yakaya gönderme.
 
 SEÇENEK İŞARETİ — ÇOK ÖNEMLİ (uygulamanın özel özelliği, SIK kullan):
 Şu durumlarda cevabının EN SONUNA tam olarak şu işareti EKLE: [[SECENEKLER: ad1 | ad2 | ad3]] (2-8 kısa isim, | ile ayır). Bu, kullanıcıya seçenekleri tek tıkla Çark'a/Oylamaya gönderen butonlar çıkarır.
@@ -272,7 +273,7 @@ YAKLAŞIM (her seferinde farklı, kalıba girme):
 2. Doğrudan tek karar ver.
 3. Eksik bilgi varsa SADECE 1 netleştirme sor (gerekiyorsa), asla peş peşe soru yağmuru yapma.
 
-ASLA: "Tabii ki!", "Harika bir soru!" gibi yapay girişler — aynı kalıpla başlama — "ben yapay zekayım" deme — 3'ten fazla madde — gereksiz tekrar — aynı soruyu iki kez sorma — mekan ismi/telefon uydurma.`;
+ASLA: "Tabii ki!", "Harika bir soru!" gibi yapay girişler — aynı kalıpla başlama — "ben yapay zekayım" deme — 3'ten fazla madde — gereksiz tekrar — aynı soruyu iki kez sorma — mekan ismi/telefon uydurma — "siz/sizler" diye hitap etme — konum varken uzak semt/şehir önerme veya "var/yok" deme.`;
 
     const response = await anthropic.messages.create({
       model: "claude-haiku-4-5-20251001",
@@ -487,9 +488,12 @@ app.post("/nearby", rateLimit, async (req, res) => {
         return [];
       }
     }
+    // Boş dönerse yarıçapı KADEMELİ büyüt → "civarda yok" demek yerine en yakın
+    // GERÇEK mekanları (isim + mesafe) getir; kullanıcı uzak olsa da ismiyle görsün.
     let els = await runOverpass(radius);
-    if (!els.length && radius < 5000) {
-      els = await runOverpass(5000); // geniş alanda tekrar dene
+    const expandSteps = [5000, 12000, 25000];
+    for (let i = 0; i < expandSteps.length && !els.length; i++) {
+      if (expandSteps[i] > radius) els = await runOverpass(expandSteps[i]);
     }
 
     const seen = {};
@@ -541,7 +545,7 @@ app.post("/nearby", rateLimit, async (req, res) => {
           max_tokens: 160,
           system:
             "Sen Merci, sevimli bir karar-ahtapotu. Sana yakındaki GERÇEK mekanların listesi (isim + mesafe) verilir. " +
-            "KISA (1-2 cümle), samimi, Türkçe bir öneri yap: birini öne çıkar, mesafeye değin, oyunbaz ol. " +
+            "KISA (1-2 cümle), samimi, Türkçe ve TUTARLI tekil 'sen' diliyle (asla 'siz') bir öneri yap: birini öne çıkar, mesafeye değin, oyunbaz ol. " +
             "En fazla 1 emoji. Liste DIŞINDA mekan UYDURMA.",
           messages: [
             { role: "user", content: "Tür: " + typeKey + "\nYakındaki mekanlar: " + top },
@@ -557,8 +561,8 @@ app.post("/nearby", rateLimit, async (req, res) => {
           max_tokens: 200,
           system:
             "Sen Merci, sevimli bir karar-ahtapotu. Kullanıcının yakınında istediği türde mekan ÇIKMADI. " +
-            "KISA (1-2 cümle), samimi Türkçe: bulunduğu bölgede az olduğunu söyle ve O TÜR için EN YAKIN bilinen canlı semt/ilçeyi öner (gerçek ve mantıklı, örn. büyük şehirlerde bilinen eğlence/yeme-içme bölgeleri). " +
-            "Spesifik mekan ismi UYDURMA; 'şu semte/ilçeye geç, orada bolca var' tarzı yönlendir. En fazla 1 emoji.",
+            "KISA (1-2 cümle), samimi Türkçe ve TUTARLI tekil 'sen' diliyle (asla 'siz'): bu civarda az olduğunu DÜRÜSTÇE söyle ve O TÜR için EN YAKIN, kolay ulaşılabilir AYNI bölgedeki canlı semti öner. " +
+            "Kullanıcıyı ASLA şehrin öbür ucuna ya da KARŞI YAKAYA gönderme. Spesifik mekan ismi UYDURMA; 'şu yakın semte geç, orada daha çok var' tarzı yönlendir. En fazla 1 emoji.",
           messages: [
             {
               role: "user",
