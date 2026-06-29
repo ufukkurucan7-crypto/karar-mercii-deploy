@@ -196,8 +196,8 @@ app.post("/merci", rateLimit, authAndQuota, async (req, res) => {
 
     // ── KONUM ── (konum artık sohbette ONAY ile alınır; işaret koyup butonla iste)
     const locationContext = location
-      ? `\nKullanıcının konumu: ${location}. NOT: Konum SİSTEMDE VAR. Kullanıcı yakındaki bir mekanı YA DA "nereye gidelim / gezelim / dışarı çıkalım / takılalım / bir şeyler yiyelim/içelim" gibi bir yeri soruyorsa, cevabının EN BAŞINA tam olarak şu işareti koy: [[NEARBY:TUR]] — TUR şunlardan biri: food, cafe, dessert, bar, activity (emin değilsen activity). Bu işaret, civardaki GERÇEK mekanları (isim, mesafe, telefon) otomatik gösterir; sen mekan İSMİ/TELEFONU UYDURMA — gerçek liste ayrıca gösterilecek. İşaretin yanına SADECE TEK kısa cümle yaz, "var/yok" deme, uzak semt/şehir önerme, çelişme. Sadece sohbet/yorum sorusuysa işaret KOYMA.`
-      : `\nKONUM: Kullanıcının konumu sistemde YOK. Kullanıcı yakındaki bir mekanı YA DA "nereye gidelim / gezelim / dışarı çıkalım / takılalım" gibi bir yeri soruyorsa, cevabının EN BAŞINA tam olarak şu işareti koy: [[NEED_LOCATION:TUR]] — TUR şunlardan biri: food, cafe, dessert, bar, activity (emin değilsen activity). İşaretten sonra TEK cümleyle "konumunu açarsan civarındaki gerçek mekanları telefonlarıyla öneririm, ya da şehrini/semtini yaz" de; mekan İSMİ uydurma. Kullanıcı zaten şehir/semt yazdıysa işaret KOYMA, direkt o bölgeye göre öner (bölge o iş için cılızsa daha hareketli bir civar semt öner).`;
+      ? `\nKullanıcının konumu: ${location}. NOT: Konum SİSTEMDE VAR — adres/GPS HAZIR; ASLA tekrar konum, şehir ya da semt İSTEME. Kullanıcı yakındaki bir mekanı YA DA "nereye gidelim / gezelim / dışarı çıkalım / takılalım / bir şeyler yiyelim/içelim" gibi bir yeri soruyorsa — VEYA mekan gelmedi/göremedim diye yakınıyor ya da "ee?", "hani", "nerede", "bilmiyor musun" gibi kısa takılıyorsa — cevabının EN BAŞINA tam olarak şu işareti koy: [[NEARBY:TUR]] — TUR şunlardan biri: food, cafe, dessert, bar, activity (emin değilsen activity). Bu işaret, civardaki GERÇEK mekanları (isim, mesafe, telefon) OTOMATİK getirir; sen mekan İSMİ/TELEFONU UYDURMA — gerçek liste ayrıca gösterilecek. İşaretin yanına SADECE TEK kısa, olumlu cümle yaz (örn. "Hemen en yakınları çıkarıyorum 👇"). "var/yok" deme, uzak semt/şehir önerme, çelişme. Mekan neden gelmedi diye ASLA sistem/teknik/iç-işleyiş açıklaması yapma — sadece [[NEARBY:tür]] işaretini tekrar koy. Sadece sohbet/yorum sorusuysa işaret KOYMA.`
+      : `\nKONUM: Kullanıcının konumu sistemde henüz YOK ama uygulama bunu OTOMATİK alabiliyor — kullanıcının "konumumu açtım" demesine ya da şehir yazmasına GEREK YOK. Kullanıcı yakındaki bir mekanı YA DA "nereye gidelim / gezelim / dışarı çıkalım / takılalım / yiyelim/içelim" gibi bir yeri soruyorsa, cevabının EN BAŞINA tam olarak şu işareti koy: [[NEED_LOCATION:TUR]] — TUR şunlardan biri: food, cafe, dessert, bar, activity (emin değilsen activity). Bu işaret konumu OTOMATİK açtırıp gerçek mekanları getirir. İşaretin yanına SADECE TEK kısa, olumlu cümle yaz (örn. "Hemen yakınındakilere bakıyorum 👇"). Kullanıcıdan şehir/semt yazmasını İSTEME, "konumunu aç" diye YALVARMA, teknik açıklama yapma, mekan ismi uydurma. Kullanıcı zaten şehir/semt yazdıysa işaret KOYMA, direkt o bölgeye göre öner.`;
 
     // ── SONUÇ BAĞLAMI (Merci'ye Sor'dan geliyorsa) ──
     let resultPrompt = "";
@@ -257,6 +257,7 @@ MEKAN / KONUM:
 - Yakındaki gerçek mekan listesi (isim, mesafe, telefon, yol tarifi) kullanıcı konumunu açınca AYRI gösterilir — sen sohbette mekan ismi/telefonu UYDURMA.
 - Kullanıcı yakında bir yer/mekan sorarsa VEYA "nereye gidelim / dışarı çıkalım / bir şeyler yiyelim/içelim" derse VE konumu verili ise (yukarıda "Konum SİSTEMDE VAR" yazıyorsa): cevabının EN BAŞINA uygun [[NEARBY:TUR]] işaretini koy (TUR: food|cafe|dessert|bar|activity) ve YANINA SADECE TEK kısa cümle yaz (örn. "Civardaki barlara bakıyorum, en yakınları aşağıda 👇"). Gerçek mekan listesi ayrıca gösterilecek — sen isim/telefon UYDURMA, "şurada bar var / burada yok" DEME, uzak semt/şehir/ilçe İSMİ önerme, kendinle çelişme. Mevcudiyeti GERÇEK kartlar gösterir.
 - Uzak semt/ilçe önerisini SADECE konum SİSTEMDE YOKKEN ve kullanıcı semt/şehir de yazmamışken yapabilirsin; o zaman bile çok genel kal ve kullanıcıyı ASLA şehrin öbür ucuna ya da karşı yakaya gönderme.
+- İÇ İŞLEYİŞ GİZLİ: Konum alma, harita, GPS, mekan listesini çekme gibi şeyler kullanıcının GÖRMEMESİ gereken arka plan işleridir. Mekan gelmediğinde ASLA "sistem konumunu göremedi", "harita arkaplanda çalışmıyor", "mekan kartlarını çekemiyorum", "açı/ışın", "entegrasyon" gibi BAHANE/teknik açıklama UYDURMA. Bunun yerine kısa ve neşeli kal ("Hemen tekrar bakıyorum 👇") ve uygun [[NEARBY:tür]] işaretini koy.
 
 SEÇENEK İŞARETİ — ÇOK ÖNEMLİ (uygulamanın özel özelliği, SIK kullan):
 Şu durumlarda cevabının EN SONUNA tam olarak şu işareti EKLE: [[SECENEKLER: ad1 | ad2 | ad3]] (2-8 kısa isim, | ile ayır). Bu, kullanıcıya seçenekleri tek tıkla Çark'a/Oylamaya gönderen butonlar çıkarır.
@@ -273,7 +274,7 @@ YAKLAŞIM (her seferinde farklı, kalıba girme):
 2. Doğrudan tek karar ver.
 3. Eksik bilgi varsa SADECE 1 netleştirme sor (gerekiyorsa), asla peş peşe soru yağmuru yapma.
 
-ASLA: "Tabii ki!", "Harika bir soru!" gibi yapay girişler — aynı kalıpla başlama — "ben yapay zekayım" deme — 3'ten fazla madde — gereksiz tekrar — aynı soruyu iki kez sorma — mekan ismi/telefon uydurma — "siz/sizler" diye hitap etme — konum varken uzak semt/şehir önerme veya "var/yok" deme.`;
+ASLA: "Tabii ki!", "Harika bir soru!" gibi yapay girişler — aynı kalıpla başlama — "ben yapay zekayım" deme — 3'ten fazla madde — gereksiz tekrar — aynı soruyu iki kez sorma — mekan ismi/telefon uydurma — "siz/sizler" diye hitap etme — konum varken uzak semt/şehir önerme veya "var/yok" deme — İÇ İŞLEYİŞİ/TEKNİK DETAY anlatma: "sistem", "harita", "GPS", "uygulama", "arkaplan", "mekan kartı çekemiyorum", "açı", "ışın", "entegrasyon", "API", "sunucu", "yükleyemedim" gibi ifadeler KESİNLİKLE YASAK — mekan gelmedi diye bahane/teknik açıklama uydurma — kullanıcı konumunu zaten verdiyse ya da sistemde varsa TEKRAR şehir/semt/konum isteme.`;
 
     const response = await anthropic.messages.create({
       model: "claude-haiku-4-5-20251001",
@@ -381,7 +382,7 @@ app.post("/options", rateLimit, authAndQuota, async (req, res) => {
 });
 
 // ── YAKINDAKİ MEKANLAR (OpenStreetMap/Overpass — ÜCRETSİZ) + Merci önerisi ──
-const LOC_FREE_LIMIT = 3; // free: günde 3 deneme (tadımlık)
+const LOC_FREE_LIMIT = 25; // free: günde 25 GERÇEK sonuç (abuse tavanı; boş/başarısız sorgu hak yakmaz)
 const LOC_PRO_LIMIT = 100; // PRO: pratikte sınırsız
 
 const OVERPASS_FILTERS = {
@@ -444,22 +445,15 @@ app.post("/nearby", rateLimit, async (req, res) => {
       5000,
     );
 
-    // Günlük konum kotası (AI kotasından AYRI)
+    // Günlük konum kotası (AI kotasından AYRI). ÖN-KONTROL sadece OKUR, artırmaz.
+    // Hak yalnızca GERÇEK mekan döndüğünde tüketilir (aşağıda) → boş/başarısız
+    // sorgu kullanıcının hakkını YAKMAZ (test/ilk kullanım yanlış "hakkın doldu" vermesin).
     const today = new Date().toISOString().slice(0, 10);
     const limit = isPro ? LOC_PRO_LIMIT : LOC_FREE_LIMIT;
     const ref = adminDb.collection("locUsage").doc(`${uid}_${today}`);
-    const allowed = await adminDb.runTransaction(async (tx) => {
-      const s = await tx.get(ref);
-      const c = s.exists ? s.data().count || 0 : 0;
-      if (c >= limit) return false;
-      tx.set(
-        ref,
-        { uid, date: today, count: c + 1, updatedAt: FieldValue.serverTimestamp() },
-        { merge: true },
-      );
-      return true;
-    });
-    if (!allowed)
+    const preSnap = await ref.get();
+    const usedCount = preSnap.exists ? preSnap.data().count || 0 : 0;
+    if (usedCount >= limit)
       return res
         .status(429)
         .json({ error: "Günlük konum önerisi hakkın doldu!", limitReached: true });
@@ -527,6 +521,28 @@ app.post("/nearby", rateLimit, async (req, res) => {
       })
       .sort((a, b) => a.dist - b.dist)
       .slice(0, 12);
+
+    // HAK TÜKETİMİ: yalnızca GERÇEK sonuç döndüyse say (boş/başarısız sorgu hak yakmaz).
+    if (places.length) {
+      try {
+        await adminDb.runTransaction(async (tx) => {
+          const s = await tx.get(ref);
+          const c = s.exists ? s.data().count || 0 : 0;
+          tx.set(
+            ref,
+            {
+              uid,
+              date: today,
+              count: c + 1,
+              updatedAt: FieldValue.serverTimestamp(),
+            },
+            { merge: true },
+          );
+        });
+      } catch (e) {
+        console.error("locUsage increment error:", e.message);
+      }
+    }
 
     // Merci yorumu (ucuz Haiku). Sonuç varsa listeden öner; YOKSA en yakın iyi semti öner.
     let merciComment = "";
