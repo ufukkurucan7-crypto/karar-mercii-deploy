@@ -1412,6 +1412,235 @@
         border-color: var(--ac);
       }
 
+      /* ═══ Boş çark — Davet Kartı (empty-state) ═══ */
+      @keyframes weBreathe {
+        0%, 100% { transform: translateY(0) scale(1); }
+        50%      { transform: translateY(-4px) scale(1.03); }
+      }
+      @keyframes weChipIn {
+        0%   { opacity: 0; transform: translateY(8px); }
+        100% { opacity: 1; transform: translateY(0); }
+      }
+      @keyframes weHaloPulse {
+        0%, 100% { transform: scale(1); opacity: .55; }
+        50%      { transform: scale(1.12); opacity: .25; }
+      }
+      @keyframes weSparkleGlow {
+        0%, 100% { box-shadow: 0 2px 8px rgba(var(--ac-shadow), .18); }
+        50%      { box-shadow: 0 4px 16px rgba(var(--ac-shadow), .34); }
+      }
+      .v1-card {
+        position: relative;
+        border-radius: 22px;
+        padding: 20px 18px 18px;
+        margin-bottom: 14px;
+        background:
+          radial-gradient(120% 90% at 80% -10%, rgba(var(--ac-shadow), .10), transparent 60%),
+          linear-gradient(180deg, #ffffff, var(--ac-bg2));
+        border: 1px solid var(--ac-bd);
+        box-shadow: 0 14px 34px -18px rgba(var(--ac-shadow), .45), inset 0 1px 0 rgba(255,255,255,.9);
+        overflow: hidden;
+        animation: popIn .5s both;
+      }
+      html.dark .v1-card {
+        background:
+          radial-gradient(120% 90% at 80% -10%, rgba(var(--ac-shadow), .22), transparent 60%),
+          linear-gradient(180deg, #221d33, #1a1626);
+        border-color: #352c52;
+        box-shadow: 0 14px 34px -18px rgba(0,0,0,.7), inset 0 1px 0 rgba(255,255,255,.05);
+      }
+      .v1-card::before {
+        content: "";
+        position: absolute;
+        top: -50px;
+        right: -40px;
+        width: 150px;
+        height: 150px;
+        border-radius: 50%;
+        background: radial-gradient(circle, rgba(var(--ac-shadow), .18), transparent 70%);
+        pointer-events: none;
+      }
+      html.dark .v1-card::before {
+        background: radial-gradient(circle, rgba(var(--ac-shadow), .32), transparent 70%);
+      }
+      .v1-head {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+      }
+      .v1-merci-wrap {
+        position: relative;
+        width: 96px;
+        height: 80px;
+        margin-bottom: 6px;
+        animation: weBreathe 4s ease-in-out infinite;
+      }
+      .v1-merci-wrap::before {
+        content: "";
+        position: absolute;
+        inset: 8px 14px 2px;
+        border-radius: 50%;
+        z-index: 0;
+        background: radial-gradient(circle, rgba(var(--ac-shadow), .35), transparent 65%);
+        animation: weHaloPulse 4s ease-in-out infinite;
+      }
+      html.dark .v1-merci-wrap::before {
+        background: radial-gradient(circle, rgba(var(--ac-shadow), .5), transparent 65%);
+      }
+      .v1-merci-wrap svg {
+        position: relative;
+        z-index: 1;
+        display: block;
+      }
+      .v1-title {
+        font-family: "Fredoka", "Nunito", sans-serif;
+        font-weight: 700;
+        font-size: 17px;
+        color: var(--ac-d);
+        margin: 0;
+      }
+      html.dark .v1-title {
+        color: var(--ac-l2);
+      }
+      .v1-sub {
+        font-size: 12.5px;
+        color: #6b7280;
+        margin: 3px 0 16px;
+        line-height: 1.45;
+        max-width: 240px;
+      }
+      html.dark .v1-sub {
+        color: #9a93ad;
+      }
+      .wd-title {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 12px;
+        font-weight: 800;
+        color: var(--ac);
+        letter-spacing: .2px;
+        margin: 2px 0 10px;
+      }
+      html.dark .wd-title {
+        color: var(--ac-l2);
+      }
+      .wd-title::after {
+        content: "";
+        flex: 1;
+        height: 1px;
+        background: linear-gradient(90deg, var(--ac-bd), transparent);
+      }
+      .wd-chips {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 7px;
+      }
+      .wd-chip {
+        border: 1px solid var(--ac-bd);
+        background: var(--ac-bg);
+        color: var(--ac-d);
+        border-radius: 999px;
+        padding: 8px 13px;
+        font-family: "Nunito", sans-serif;
+        font-weight: 700;
+        font-size: 12.5px;
+        cursor: pointer;
+        transition: transform .12s ease, box-shadow .15s ease, background .15s ease;
+        animation: weChipIn .4s both;
+      }
+      html.dark .wd-chip {
+        background: rgba(var(--ac-shadow), .10);
+        border-color: #3d3460;
+        color: var(--ac-ll);
+      }
+      .wd-chip:hover {
+        background: var(--ac-bg2);
+        box-shadow: 0 4px 12px rgba(var(--ac-shadow), .14);
+      }
+      html.dark .wd-chip:hover {
+        background: rgba(var(--ac-shadow), .20);
+      }
+      .wd-chip:active {
+        transform: scale(.95);
+      }
+      .wd-chip.hot {
+        background: linear-gradient(180deg, var(--ac-bg2), var(--ac-bg));
+        border-color: var(--ac-l2);
+        color: var(--ac-d);
+        animation: weChipIn .4s both, weSparkleGlow 3.2s ease-in-out infinite;
+      }
+      html.dark .wd-chip.hot {
+        background: linear-gradient(180deg, rgba(var(--ac-shadow), .22), rgba(var(--ac-shadow), .10));
+        border-color: var(--ac-l);
+        color: #efe9ff;
+      }
+      .wd-chip.hot::before {
+        content: "⭐ ";
+        font-size: 10px;
+      }
+      .v1-divider {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin: 16px 0 12px;
+        color: #aab;
+        font-size: 11px;
+        font-weight: 700;
+      }
+      html.dark .v1-divider {
+        color: #6b6582;
+      }
+      .v1-divider::before,
+      .v1-divider::after {
+        content: "";
+        flex: 1;
+        height: 1px;
+        background: #e6e3f0;
+      }
+      html.dark .v1-divider::before,
+      html.dark .v1-divider::after {
+        background: #322c48;
+      }
+      .v1-merci-btn {
+        width: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 7px;
+        padding: 11px;
+        border-radius: 14px;
+        cursor: pointer;
+        font-family: "Fredoka", "Nunito", sans-serif;
+        font-weight: 700;
+        font-size: 13.5px;
+        color: var(--ac-d);
+        background: rgba(255, 255, 255, .7);
+        border: 1.5px solid var(--ac-bd);
+        backdrop-filter: blur(4px);
+        transition: transform .12s ease, box-shadow .15s ease, background .15s;
+      }
+      html.dark .v1-merci-btn {
+        background: rgba(255, 255, 255, .04);
+        border-color: #3d3460;
+        color: var(--ac-ll);
+      }
+      .v1-merci-btn:hover {
+        background: #fff;
+        box-shadow: 0 6px 16px rgba(var(--ac-shadow), .16);
+      }
+      html.dark .v1-merci-btn:hover {
+        background: rgba(var(--ac-shadow), .18);
+      }
+      .v1-merci-btn:active {
+        transform: scale(.97);
+      }
+      .v1-merci-btn:disabled {
+        opacity: .7;
+        cursor: default;
+      }
+
       /* Inputs */
       .irow {
         display: flex;
@@ -3374,8 +3603,24 @@
 
         <!-- ÇARK -->
         <div class="sec on" id="s-wheel">
-          <p class="lbl">Kategori seç</p>
-          <div class="cats" id="cats-wheel"></div>
+          <!-- Boş çark — Davet Kartı (empty-state) -->
+          <div class="v1-card" id="wheel-empty-card">
+            <div class="v1-head">
+              <div class="v1-merci-wrap" id="wheel-card-merci"></div>
+              <h2 class="v1-title">Çark boş, hadi dolduralım! 🎡</h2>
+              <p class="v1-sub">Hazır bir konu seç ya da kendin ekle 👇</p>
+            </div>
+            <div class="wd-title">⚡ Hızlı Başlat</div>
+            <div class="wd-chips" id="wheel-daily"></div>
+            <div class="v1-divider">ya da</div>
+            <button
+              id="merci-fill-btn"
+              class="v1-merci-btn"
+              onclick="merciFillWheel()"
+            >
+              ✨ Merci doldursun
+            </button>
+          </div>
           <p class="lbl">Seçenek ekle</p>
           <div class="irow">
             <input id="ri" type="text" placeholder="Seçenek yaz..." /><button
@@ -3385,14 +3630,6 @@
               +
             </button>
           </div>
-          <button
-            id="merci-fill-btn"
-            onclick="merciFillWheel()"
-            style="width: 100%; margin: 8px 0 4px; padding: 11px; border: none; border-radius: 14px; background: linear-gradient(135deg, var(--ac), var(--ac-l)); color: #fff; font-family: Fredoka, Nunito, sans-serif; font-weight: 700; font-size: 14px; cursor: pointer; box-shadow: 0 4px 14px rgba(var(--ac-shadow),0.32)"
-          >
-            ✨ Merci doldursun
-          </button>
-          <div id="wheel-daily" style="margin: 8px 0 2px"></div>
           <div class="ogrid" id="wl"></div>
           <button
             id="wheel-clear"
@@ -6269,10 +6506,10 @@
           },
           {
             tab: "wheel",
-            sel: "#cats-wheel",
+            sel: "#wheel-empty-card",
             pose: "default",
-            title: "📂 Hazır kategoriler",
-            body: "Buradan hazır listelerden (yemek, film, aktivite...) tek dokunuşla çarkı doldurabilirsin.",
+            title: "⚡ Hızlı Başlat",
+            body: "Buradan hazır konulardan (yemek, film, aktivite...) tek dokunuşla çarkı doldurabilirsin.",
           },
           {
             tab: "wheel",
@@ -6518,8 +6755,11 @@
 
       // ═══════════════════ CATEGORIES ═══════════════════
       function renderCats() {
-        ["wheel", "vote"].forEach((m) => {
+        // Çark artık "Hızlı Başlat" davet kartını kullanıyor (cats-wheel kaldırıldı).
+        // Kategori çipleri yalnızca Oylama (cats-vote) için çiziliyor.
+        ["vote"].forEach((m) => {
           var c = document.getElementById("cats-" + m);
+          if (!c) return;
           c.innerHTML = "";
           CATEGORIES.forEach((cat, i) => {
             var el = document.createElement("span");
@@ -7357,30 +7597,30 @@
           stage.scrollIntoView({ block: "center", behavior: "smooth" });
         } catch (e) {}
         var names = S.cekilis.slice();
-        // Kazananı baştan seç ama animasyon TAM bu ismin üstünde dursun
-        // (eskiden rastgele index'te durup ekrana farklı 'winner' basıyordu →
-        //  "durduğu isim ≠ kazanan" şikayeti). Artık süre dolunca kazanan
-        //  index'e gelene kadar dönmeye devam eder, böylece görsel olarak da
-        //  son durulan isim = kazanan olur.
-        var winnerIdx = Math.floor(Math.random() * names.length);
-        var winner = names[winnerIdx];
+        // Rastgelelik baştaki OFSET ile sağlanır; animasyon süre dolunca NEREDE
+        // duruyorsa O isim kazanır → görsel son isim = kazanan (eskiden baştan
+        // ayrı 'winner' seçilip ekrana basılıyordu, durduğu isimden farklı
+        // oluyordu). Ofset rastgele olduğu için kazanan da rastgele, ama hizalama
+        // için fazladan dönmeye gerek kalmaz → süre liste boyundan bağımsız ~2.6s.
+        var off = Math.floor(Math.random() * names.length);
         var i = 0,
           elapsed = 0,
           total = 2600,
-          delay = 60;
+          delay = 60,
+          winner;
         function tick() {
-          var idx = i % names.length;
+          var idx = (i + off) % names.length;
           disp.textContent = names[idx];
           vib(5);
           elapsed += delay;
-          // Süre dolduysa VE tam kazananın üstündeysek dur
-          if (elapsed >= total && idx === winnerIdx) {
+          if (elapsed >= total) {
+            winner = names[idx];
             disp.textContent = "🎉 " + winner;
             finishCekilis(winner);
             return;
           }
           i++;
-          delay = 60 + (Math.min(elapsed, total) / total) * 260; // giderek yavaşla
+          delay = 60 + (elapsed / total) * 260; // giderek yavaşla
           setTimeout(tick, delay);
         }
         tick();
@@ -10203,28 +10443,39 @@
       }
       function renderDailySuggestions() {
         var wrap = document.getElementById("wheel-daily");
+        var card = document.getElementById("wheel-empty-card");
         if (!wrap || typeof WHEEL_SUGGESTIONS === "undefined" || !WHEEL_SUGGESTIONS)
           return;
+        // Çark doluysa davet kartını tümüyle gizle
         if (S.wheel.length > 0) {
-          wrap.style.display = "none";
+          if (card) card.style.display = "none";
           return;
         }
-        wrap.style.display = "";
-        var idxs = dailySuggestionIndices(4);
-        var html =
-          '<div style="font-size:11.5px;color:var(--ac);font-weight:700;margin:0 0 6px">💡 Bugünün önerileri</div><div style="display:flex;flex-wrap:wrap;gap:6px">';
-        idxs.forEach(function (i) {
+        if (card) card.style.display = "";
+        // Maskotu kart içine bas (bir kez)
+        var m = document.getElementById("wheel-card-merci");
+        if (m && !m.innerHTML && typeof merciSVG === "function")
+          m.innerHTML = merciSVG(96);
+        // Tek raf "Hızlı Başlat" çipleri — ilk 2'si ⭐ öne çıkan (.hot)
+        var idxs = dailySuggestionIndices(8);
+        var html = "";
+        idxs.forEach(function (i, pos) {
           var s = WHEEL_SUGGESTIONS[i];
+          var hot = pos < 2 ? " hot" : "";
+          var delay = (0.04 * (pos + 1)).toFixed(2);
           html +=
-            '<button class="wd-chip" onclick="applySuggestion(' +
+            '<button class="wd-chip' +
+            hot +
+            '" style="animation-delay:' +
+            delay +
+            's" onclick="applySuggestion(' +
             i +
-            ')" style="border:1px solid var(--ac-bd,#e0d7ff);background:var(--ac-bg,#f5f0ff);color:var(--ac-d,#5b21b6);border-radius:999px;padding:7px 12px;font-family:Nunito,sans-serif;font-weight:700;font-size:12.5px;cursor:pointer">' +
+            ')">' +
             s.e +
             " " +
             s.t +
             "</button>";
         });
-        html += "</div>";
         wrap.innerHTML = html;
       }
       function render(mode) {
