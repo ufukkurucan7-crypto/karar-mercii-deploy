@@ -3390,7 +3390,15 @@
           >
             ✨ Merci doldursun
           </button>
+          <div id="wheel-daily" style="margin: 8px 0 2px"></div>
           <div class="ogrid" id="wl"></div>
+          <button
+            id="wheel-clear"
+            onclick="clearWheel()"
+            style="display: none; width: 100%; margin: 2px 0 6px; padding: 9px; border: 1px solid #f0d6d6; border-radius: 12px; background: #fff5f5; color: #d9534f; font-family: Nunito, sans-serif; font-weight: 700; font-size: 13px; cursor: pointer"
+          >
+            🗑 Tüm seçenekleri temizle
+          </button>
           <div class="wscene" id="wscene">
             <div class="wstage">
               <div class="wptr"></div>
@@ -4647,16 +4655,27 @@
               .catch(function (err) {
                 // Kullanıcı iptal ettiyse sessiz geç
                 var m = (err && (err.message || err.code) + "") || "";
-                if (/cancel|12501|sign[_ ]?in[_ ]?cancel/i.test(m)) return;
-                // İnternet/credential sorunu → ham native hata yerine anlaşılır mesaj
+                if (/cancel|12501|sign[_ ]?in[_ ]?cancel|canceled/i.test(m))
+                  return;
+                // GERÇEK ağ sorunu
                 if (
                   navigator.onLine === false ||
-                  /no credential|credential.*available|network|unavailable|timeout|7:|getCredential/i.test(
+                  /network|unavailable|timeout|host|connection|offline/i.test(m)
+                ) {
+                  alert(
+                    "İnternet bağlantısı yok ya da zayıf 📡\nBağlantını kontrol edip tekrar dene.",
+                  );
+                  return;
+                }
+                // Credential Manager: cihazda Google hesabı yok / giriş açılamadı
+                // (özellikle Honor/Huawei gibi cihazlarda olur — ağ sorunu DEĞİL)
+                if (
+                  /no credential|credential.*available|getCredential|^7:|^16:|play services|google api/i.test(
                     m,
                   )
                 ) {
                   alert(
-                    "İnternet bağlantısı yok ya da zayıf 📡\nBağlantını kontrol edip tekrar dene.",
+                    "Google hesabı bulunamadı 📵\nTelefonunda Ayarlar → Hesaplar bölümünde ekli bir Google hesabı olduğundan emin ol, sonra tekrar dene.\n(Bazı cihazlarda ilk denemede açılmaz — bir daha bas.)",
                   );
                   return;
                 }
@@ -6762,6 +6781,10 @@
         } else {
           drawW("wcanvas", S.wheel, wAngle, wheelHi);
         }
+        // Günlük öneri çipleri (boşken) + tümünü temizle butonu (doluyken)
+        if (typeof renderDailySuggestions === "function") renderDailySuggestions();
+        var _clr = document.getElementById("wheel-clear");
+        if (_clr) _clr.style.display = has ? "" : "none";
       }
       function drawWEmpty(id) {
         var cv = document.getElementById(id);
@@ -10070,6 +10093,99 @@
         render(mode);
         if (mode === "wheel") updW();
         snd("click");
+      }
+      // ── TÜM SEÇENEKLERİ TEMİZLE ──
+      function clearWheel() {
+        if (spinning) return;
+        if (!S.wheel.length) return;
+        showConfirm(
+          "Tüm seçenekler silinsin mi?",
+          "Çarktaki " + S.wheel.length + " seçeneğin hepsi silinecek.",
+          function () {
+            S.wheel = [];
+            wheelHi = -1;
+            render("wheel");
+            updW();
+            snd("click");
+          },
+        );
+      }
+      // ── GÜNLÜK ÇARK ÖNERİLERİ (her gün farklı; tıkla → çarka ekle) ──
+      var WHEEL_SUGGESTIONS = [
+        { e: "🍔", t: "Ne yesek?", o: ["Pizza", "Burger", "Döner", "Makarna", "Sushi", "Çiğ köfte"] },
+        { e: "🎬", t: "Film mi dizi mi?", o: ["Film", "Dizi", "Belgesel", "Anime", "YouTube"] },
+        { e: "☕", t: "Ne içsek?", o: ["Çay", "Kahve", "Kola", "Ayran", "Limonata", "Su"] },
+        { e: "🎉", t: "Hafta sonu ne yapsak?", o: ["Sinema", "Kafe", "Yürüyüş", "Evde dinlen", "Alışveriş", "Arkadaş"] },
+        { e: "✈️", t: "Tatile nereye?", o: ["Antalya", "Bodrum", "İstanbul", "Kapadokya", "Trabzon", "Fethiye"] },
+        { e: "🍳", t: "Kahvaltıda ne?", o: ["Menemen", "Yumurta", "Simit", "Peynir-zeytin", "Bal-kaymak"] },
+        { e: "🍰", t: "Hangi tatlı?", o: ["Baklava", "Sütlaç", "Dondurma", "Künefe", "Kek", "Profiterol"] },
+        { e: "💪", t: "Hangi spor?", o: ["Koşu", "Yüzme", "Bisiklet", "Yoga", "Ağırlık", "Futbol"] },
+        { e: "🎵", t: "Ne dinlesek?", o: ["Pop", "Rock", "Rap", "Türkü", "Jazz", "Arabesk"] },
+        { e: "🌍", t: "Bugün nereye?", o: ["Deniz", "Dağ", "Şehir turu", "Park", "Kamp", "Müze"] },
+        { e: "🎮", t: "Ne oynasak?", o: ["FIFA", "Minecraft", "Kutu oyunu", "Mobil oyun", "Satranç"] },
+        { e: "📚", t: "Ne okusak?", o: ["Roman", "Polisiye", "Bilim kurgu", "Kişisel gelişim", "Şiir"] },
+        { e: "🐾", t: "Hangi evcil hayvan?", o: ["Kedi", "Köpek", "Kuş", "Balık", "Hamster", "Tavşan"] },
+        { e: "🍕", t: "Hangi pizza?", o: ["Margarita", "Sucuklu", "Karışık", "Ton balıklı", "Mantarlı"] },
+        { e: "👕", t: "Ne giysek?", o: ["Spor", "Şık", "Rahat", "Klasik", "Renkli", "Siyah"] },
+        { e: "💑", t: "Buluşmada ne yapsak?", o: ["Yemek", "Sinema", "Sahil", "Kafe", "Konser", "Piknik"] },
+      ];
+      function dailySuggestionIndices(count) {
+        var d = new Date();
+        var doy = Math.floor((d - new Date(d.getFullYear(), 0, 0)) / 86400000);
+        var seed = d.getFullYear() * 1000 + doy;
+        var n = WHEEL_SUGGESTIONS.length,
+          idxs = [],
+          k = seed % n;
+        while (idxs.length < Math.min(count, n)) {
+          if (idxs.indexOf(k) < 0) idxs.push(k);
+          k = (k + 7) % n;
+        }
+        return idxs;
+      }
+      function applySuggestion(i) {
+        if (spinning) return;
+        var s = WHEEL_SUGGESTIONS[i];
+        if (!s) return;
+        var added = 0;
+        s.o.forEach(function (o) {
+          if (S.wheel.indexOf(o) < 0 && S.wheel.length < 14) {
+            S.wheel.push(o);
+            added++;
+          }
+        });
+        wheelHi = -1;
+        render("wheel");
+        updW();
+        if (added) {
+          snd("add");
+          vib(25);
+        }
+      }
+      function renderDailySuggestions() {
+        var wrap = document.getElementById("wheel-daily");
+        if (!wrap || typeof WHEEL_SUGGESTIONS === "undefined" || !WHEEL_SUGGESTIONS)
+          return;
+        if (S.wheel.length > 0) {
+          wrap.style.display = "none";
+          return;
+        }
+        wrap.style.display = "";
+        var idxs = dailySuggestionIndices(4);
+        var html =
+          '<div style="font-size:11.5px;color:var(--ac);font-weight:700;margin:0 0 6px">💡 Bugünün önerileri</div><div style="display:flex;flex-wrap:wrap;gap:6px">';
+        idxs.forEach(function (i) {
+          var s = WHEEL_SUGGESTIONS[i];
+          html +=
+            '<button class="wd-chip" onclick="applySuggestion(' +
+            i +
+            ')" style="border:1px solid var(--ac-bd,#e0d7ff);background:var(--ac-bg,#f5f0ff);color:var(--ac-d,#5b21b6);border-radius:999px;padding:7px 12px;font-family:Nunito,sans-serif;font-weight:700;font-size:12.5px;cursor:pointer">' +
+            s.e +
+            " " +
+            s.t +
+            "</button>";
+        });
+        html += "</div>";
+        wrap.innerHTML = html;
       }
       function render(mode) {
         if (mode === "wheel") {
