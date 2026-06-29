@@ -5402,6 +5402,13 @@
           var AdMob = this.plugin();
           if (!AdMob) return;
           var self = this;
+          // Bu AdMob sürümünde bannerAdSizeChanged event'i gelmeyebilir → içerik
+          // banner'ın ALTINDA kalıp seçenek/butonları örtmesin diye HEMEN makul bir
+          // varsayılan boşluk rezerve et (event gelirse gerçek yükseklik bunu ezer).
+          var _curAd = document.documentElement.style.getPropertyValue("--ad-bottom");
+          if (!_curAd || _curAd === "0px") {
+            document.documentElement.style.setProperty("--ad-bottom", "60px");
+          }
           // Banner yüksekliğini öğrenip içeriğe o kadar alt boşluk bırak
           // (banner alttaki seçenek/butonların üstüne binmesin).
           if (!this._sizeListenerAdded && AdMob.addListener) {
@@ -5459,9 +5466,10 @@
             return false;
           }
         },
+        _kbOpen: false, // klavye açık mı (açıkken banner gizli kalsın, observer geri açmasın)
         refreshBanner: function () {
           if (!this.inApp() || !this.bannerCreated || isPremium) return;
-          this.setBannerVisible(!this.anyModalOpen());
+          this.setBannerVisible(!this.anyModalOpen() && !this._kbOpen);
         },
         watchModals: function () {
           if (!window.MutationObserver) return;
@@ -11005,34 +11013,61 @@
         window.addEventListener("online", hideOff);
         if (navigator.onLine === false) showOff();
       })();
-      // Klavye açılınca (chat input'a basınca) native banner ekranın ORTASINA
-      // kayıyordu. Çözüm: input odaklanınca banner'ı gizle, odak çıkınca geri getir
-      // (alttaki yerine dönsün, ortada durmasın).
+      // Klavye açılınca native banner ekranın ORTASINA kayıyor + içeriği örtüyordu.
+      // Keyboard resize:'none' olduğu için visualViewport sinyali GELMEZ; ayrıca eski
+      // kod yalnız chat input'unu (#ai-ctx) yakalıyordu → çark/oylama input'larında
+      // banner gizlenmiyordu. Çözüm: HERHANGİ bir metin alanına odaklanınca banner'ı
+      // gizle ve _kbOpen işaretle (MutationObserver klavye açıkken geri AÇMASIN).
       (function () {
-        var ctx = document.getElementById("ai-ctx");
-        if (!ctx) return;
-        ctx.addEventListener("focus", function () {
-          if (typeof KM_AD !== "undefined" && KM_AD.hideBanner) KM_AD.hideBanner();
-        });
-        ctx.addEventListener("blur", function () {
-          if (typeof KM_AD !== "undefined" && KM_AD.refreshBanner)
+        function isTextField(el) {
+          if (!el) return false;
+          var t = (el.tagName || "").toUpperCase();
+          if (t === "TEXTAREA") return true;
+          if (t === "INPUT") {
+            var ty = (el.type || "text").toLowerCase();
+            return /^(text|search|email|url|tel|number|password|)$/.test(ty);
+          }
+          return el.isContentEditable === true;
+        }
+        document.addEventListener(
+          "focusin",
+          function (e) {
+            if (!isTextField(e.target) || typeof KM_AD === "undefined") return;
+            KM_AD._kbOpen = true;
+            if (KM_AD.hideBanner) KM_AD.hideBanner();
+          },
+          true,
+        );
+        document.addEventListener(
+          "focusout",
+          function (e) {
+            if (!isTextField(e.target) || typeof KM_AD === "undefined") return;
+            // Odak başka bir metin alanına geçtiyse klavye kapanmaz → açık say
             setTimeout(function () {
-              KM_AD.refreshBanner();
-            }, 200);
-        });
+              if (isTextField(document.activeElement)) return;
+              KM_AD._kbOpen = false;
+              if (KM_AD.refreshBanner) KM_AD.refreshBanner();
+            }, 250);
+          },
+          true,
+        );
       })();
-      // Klavye açılınca visualViewport küçülür → banner'ı gizle (ortaya kaymasın),
-      // klavye kapanınca geri getir. focus/blur'dan daha güvenilir sinyal.
+      // Ek sinyal: visualViewport küçülürse (resize modu 'none' değilse) de yakala.
       if (window.visualViewport) {
         var _baseVH = window.visualViewport.height;
         window.visualViewport.addEventListener("resize", function () {
           var h = window.visualViewport.height;
           if (h < _baseVH - 120) {
-            if (typeof KM_AD !== "undefined" && KM_AD.hideBanner) KM_AD.hideBanner();
+            if (typeof KM_AD !== "undefined") {
+              KM_AD._kbOpen = true;
+              if (KM_AD.hideBanner) KM_AD.hideBanner();
+            }
           } else {
             _baseVH = Math.max(_baseVH, h);
-            if (typeof KM_AD !== "undefined" && KM_AD.refreshBanner)
-              KM_AD.refreshBanner();
+            if (typeof KM_AD !== "undefined") {
+              KM_AD._kbOpen = false;
+              if (KM_AD.refreshBanner) KM_AD.refreshBanner();
+            }
           }
         });
       }
