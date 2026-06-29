@@ -2415,6 +2415,8 @@
       body.wheel-spinning #s-wheel .cats,
       body.wheel-spinning #s-wheel .irow,
       body.wheel-spinning #s-wheel #merci-fill-btn,
+      body.wheel-spinning #s-wheel #wheel-clear,
+      body.wheel-spinning #s-wheel #wheel-daily,
       body.wheel-spinning #s-wheel .ogrid,
       body.wheel-spinning #s-wheel .wcap {
         opacity: 0.16;
@@ -7355,23 +7357,31 @@
           stage.scrollIntoView({ block: "center", behavior: "smooth" });
         } catch (e) {}
         var names = S.cekilis.slice();
-        var winner = names[Math.floor(Math.random() * names.length)];
+        // Kazananı baştan seç ama animasyon TAM bu ismin üstünde dursun
+        // (eskiden rastgele index'te durup ekrana farklı 'winner' basıyordu →
+        //  "durduğu isim ≠ kazanan" şikayeti). Artık süre dolunca kazanan
+        //  index'e gelene kadar dönmeye devam eder, böylece görsel olarak da
+        //  son durulan isim = kazanan olur.
+        var winnerIdx = Math.floor(Math.random() * names.length);
+        var winner = names[winnerIdx];
         var i = 0,
           elapsed = 0,
           total = 2600,
           delay = 60;
         function tick() {
-          disp.textContent = names[i % names.length];
-          i++;
+          var idx = i % names.length;
+          disp.textContent = names[idx];
           vib(5);
           elapsed += delay;
-          if (elapsed < total) {
-            delay = 60 + (elapsed / total) * 260; // giderek yavaşla
-            setTimeout(tick, delay);
-          } else {
+          // Süre dolduysa VE tam kazananın üstündeysek dur
+          if (elapsed >= total && idx === winnerIdx) {
             disp.textContent = "🎉 " + winner;
             finishCekilis(winner);
+            return;
           }
+          i++;
+          delay = 60 + (Math.min(elapsed, total) / total) * 260; // giderek yavaşla
+          setTimeout(tick, delay);
         }
         tick();
       }
@@ -8496,7 +8506,29 @@
             appendMsg("merci", cleanReply, true);
             saveCurrentChat(); // her cevaptan sonra sohbeti kaydet (kaybolmasın)
             if (locMatch) {
-              appendLocationConsent(locMatch[1].toLowerCase());
+              var _lt = locMatch[1].toLowerCase();
+              // PROAKTİF KONUM: kullanıcı "konum aç" yazmak ya da şehir söylemek ZORUNDA
+              // değil. Konum zaten varsa direkt getir; yoksa native izni OTOMATİK iste,
+              // izin verilince mekanları getir; reddedilirse TEK seferlik buton göster
+              // (Merci'nin "şehrini yaz" diye yalvardığı döngü tamamen biter).
+              if (
+                localStorage.getItem("kmUserLocation") ||
+                localStorage.getItem("kmUserGeo")
+              ) {
+                merciNearby(_lt);
+              } else if (localStorage.getItem("kmLocDenied")) {
+                appendLocationConsent(_lt);
+              } else {
+                captureLocationOnce(function (ok, loc, errCode) {
+                  if (ok) {
+                    merciNearby(_lt);
+                  } else {
+                    if (errCode === "DENIED")
+                      localStorage.setItem("kmLocDenied", "1");
+                    appendLocationConsent(_lt);
+                  }
+                });
+              }
             }
             // Konum zaten cache'li → onay butonu GÖSTERME, direkt gerçek mekanları getir
             if (nearbyMatch) {
