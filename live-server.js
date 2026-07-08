@@ -196,7 +196,9 @@ app.post("/merci", rateLimit, authAndQuota, async (req, res) => {
 
     // ── KONUM ── (konum artık sohbette ONAY ile alınır; işaret koyup butonla iste)
     const locationContext = location
-      ? `\nKullanıcının konumu: ${location}. NOT: Konum SİSTEMDE VAR — adres/GPS HAZIR; ASLA tekrar konum, şehir ya da semt İSTEME. Kullanıcı yakındaki bir mekanı YA DA "nereye gidelim / gezelim / dışarı çıkalım / takılalım / bir şeyler yiyelim/içelim" gibi bir yeri soruyorsa — VEYA mekan gelmedi/göremedim diye yakınıyor ya da "ee?", "hani", "nerede", "bilmiyor musun" gibi kısa takılıyorsa — cevabının EN BAŞINA tam olarak şu işareti koy: [[NEARBY:TUR]] — TUR şunlardan biri: food, cafe, dessert, bar, activity (emin değilsen activity). Bu işaret, civardaki GERÇEK mekanları (isim, mesafe, telefon) OTOMATİK getirir; sen mekan İSMİ/TELEFONU UYDURMA — gerçek liste ayrıca gösterilecek. İşaretin yanına SADECE TEK kısa, olumlu cümle yaz (örn. "Hemen en yakınları çıkarıyorum 👇"). "var/yok" deme, uzak semt/şehir önerme, çelişme. Mekan neden gelmedi diye ASLA sistem/teknik/iç-işleyiş açıklaması yapma — sadece [[NEARBY:tür]] işaretini tekrar koy. Sadece sohbet/yorum sorusuysa işaret KOYMA.`
+      ? `\nKullanıcının konumu: ${location}. Kullanıcı BURADA, ${location} içinde — başka semtte/ilçede DEĞİL. NOT: Konum SİSTEMDE VAR — adres/GPS HAZIR; ASLA tekrar konum, şehir ya da semt İSTEME. Kullanıcı yakındaki bir mekanı YA DA "nereye gidelim / gezelim / dışarı çıkalım / takılalım / bir şeyler yiyelim/içelim / bar / bira / kahve / tatlı" gibi bir yeri soruyorsa — VEYA mekan gelmedi/göremedim diye yakınıyor ya da "ee?", "hani", "nerede", "bilmiyor musun" gibi kısa takılıyorsa — cevabının EN BAŞINA tam olarak şu işareti koy: [[NEARBY:TUR]] — TUR şunlardan biri: food, cafe, dessert, bar, activity (emin değilsen activity). Bu işaret, kullanıcının BULUNDUĞU yerin civarındaki GERÇEK mekanları (isim, mesafe, telefon) OTOMATİK getirir; mahallede o tür yoksa en yakın gerçek mekanları (komşu semt/ilçede olabilir) bulur — bu SORUN DEĞİL.
+UYDURMA YASAK: Semt/ilçe/mekan İSMİNİ ya da MESAFEYİ KENDİN UYDURMA. "Bağlarbaşı'na geç", "Ataşehir dolu dolu bar", "merkeze doğru daha canlı" gibi gerçek kart verisine dayanmayan yönlendirmeler YASAK — çünkü bunlar hayali. Bir yeri nerede bulacağını, mesafesini SADECE [[NEARBY]] işaretinin getirdiği GERÇEK kartlar söyleyebilir. Sen sohbet metninde spesifik semt/ilçe ismi ya da mesafe YAZMA; sadece [[NEARBY:tür]] işaretini koy + TEK kısa olumlu cümle yaz (örn. "Hemen en yakınları çıkarıyorum 👇" / "Mahallende bar az olabilir ama sana en yakınları aşağıda 👇").
+Ayrıca: mekan İSMİ/TELEFONU UYDURMA — gerçek liste ayrıca gösterilecek. "burada hiç yok / kültürü gelişmemiş" gibi kesin olumsuz hüküm VERME (mevcudiyeti kart belirler). Mekan neden gelmedi diye ASLA sistem/teknik/iç-işleyiş açıklaması yapma — sadece [[NEARBY:tür]] işaretini tekrar koy. Sadece sohbet/yorum sorusuysa (mekan sorulmadıysa) işaret KOYMA.`
       : `\nKONUM: Kullanıcının konumu sistemde henüz YOK ama uygulama bunu OTOMATİK alabiliyor — kullanıcının "konumumu açtım" demesine ya da şehir yazmasına GEREK YOK. Kullanıcı yakındaki bir mekanı YA DA "nereye gidelim / gezelim / dışarı çıkalım / takılalım / yiyelim/içelim" gibi bir yeri soruyorsa, cevabının EN BAŞINA tam olarak şu işareti koy: [[NEED_LOCATION:TUR]] — TUR şunlardan biri: food, cafe, dessert, bar, activity (emin değilsen activity). Bu işaret konumu OTOMATİK açtırıp gerçek mekanları getirir. İşaretin yanına SADECE TEK kısa, olumlu cümle yaz (örn. "Hemen yakınındakilere bakıyorum 👇"). Kullanıcıdan şehir/semt yazmasını İSTEME, "konumunu aç" diye YALVARMA, teknik açıklama yapma, mekan ismi uydurma. Kullanıcı zaten şehir/semt yazdıysa işaret KOYMA, direkt o bölgeye göre öner.`;
 
     // ── SONUÇ BAĞLAMI (Merci'ye Sor'dan geliyorsa) ──
@@ -256,7 +258,7 @@ ${historyContext}${locationContext}${resultPrompt}${winnerEspriPrompt}
 MEKAN / KONUM:
 - Yakındaki gerçek mekan listesi (isim, mesafe, telefon, yol tarifi) kullanıcı konumunu açınca AYRI gösterilir — sen sohbette mekan ismi/telefonu UYDURMA.
 - Kullanıcı yakında bir yer/mekan sorarsa VEYA "nereye gidelim / dışarı çıkalım / bir şeyler yiyelim/içelim" derse VE konumu verili ise (yukarıda "Konum SİSTEMDE VAR" yazıyorsa): cevabının EN BAŞINA uygun [[NEARBY:TUR]] işaretini koy (TUR: food|cafe|dessert|bar|activity) ve YANINA SADECE TEK kısa cümle yaz (örn. "Civardaki barlara bakıyorum, en yakınları aşağıda 👇"). Gerçek mekan listesi ayrıca gösterilecek — sen isim/telefon UYDURMA, "şurada bar var / burada yok" DEME, uzak semt/şehir/ilçe İSMİ önerme, kendinle çelişme. Mevcudiyeti GERÇEK kartlar gösterir.
-- Uzak semt/ilçe önerisini SADECE konum SİSTEMDE YOKKEN ve kullanıcı semt/şehir de yazmamışken yapabilirsin; o zaman bile çok genel kal ve kullanıcıyı ASLA şehrin öbür ucuna ya da karşı yakaya gönderme.
+- Konum SİSTEMDE VARKEN sohbet metninde kendi kafandan semt/ilçe/cadde İSMİ ya da mesafe UYDURMA — mahallede o tür yoksa [[NEARBY]] işareti en yakın GERÇEK mekanları getirir (komşu semt/ilçede olabilir, sorun değil) ve mesafeyi kart gösterir. Yani "başka semte git" bilgisini SEN metinle verme; kartlar versin. Genel/uzak bölge önerisini SADECE konum SİSTEMDE YOKKEN ve kullanıcı semt/şehir de yazmamışken yapabilirsin.
 - İÇ İŞLEYİŞ GİZLİ: Konum alma, harita, GPS, mekan listesini çekme gibi şeyler kullanıcının GÖRMEMESİ gereken arka plan işleridir. Mekan gelmediğinde ASLA "sistem konumunu göremedi", "harita arkaplanda çalışmıyor", "mekan kartlarını çekemiyorum", "açı/ışın", "entegrasyon" gibi BAHANE/teknik açıklama UYDURMA. Bunun yerine kısa ve neşeli kal ("Hemen tekrar bakıyorum 👇") ve uygun [[NEARBY:tür]] işaretini koy.
 
 SEÇENEK İŞARETİ — ÇOK ÖNEMLİ (uygulamanın özel özelliği, SIK kullan):
@@ -461,6 +463,16 @@ app.post("/nearby", rateLimit, async (req, res) => {
     // Overpass sorgusu (boş dönerse radius'u büyütüp 1 kez daha dene → "bulamadım" azalır)
     const sel = OVERPASS_FILTERS[typeKey] || OVERPASS_FILTERS.food;
     const selectors = [sel, ...((OVERPASS_EXTRA[typeKey]) || [])];
+    // ÇOKLU ENDPOINT: overpass-api.de sık sık "server too busy" (Dispatcher timeout)
+    // verip JSON yerine HTML döndürüyordu → .json() patlıyor → boş liste → hiç mekan
+    // gelmiyordu (ANA BUG). Şimdi birden fazla mirror'ı sırayla deniyoruz ve dönen
+    // gövdenin GERÇEKTEN JSON olduğunu doğruluyoruz (HTML hata sayfası = başarısız say).
+    const OVERPASS_ENDPOINTS = [
+      "https://overpass-api.de/api/interpreter",
+      "https://overpass.kumi.systems/api/interpreter",
+      "https://overpass.private.coffee/api/interpreter",
+      "https://maps.mail.ru/osm/tools/overpass/api/interpreter",
+    ];
     async function runOverpass(r) {
       const blocks = selectors
         .map(
@@ -468,19 +480,48 @@ app.post("/nearby", rateLimit, async (req, res) => {
             `node${s}(around:${r},${lat},${lng});way${s}(around:${r},${lat},${lng});`,
         )
         .join("");
-      const q = `[out:json][timeout:20];(${blocks});out center 60;`;
-      try {
-        const ovr = await fetch("https://overpass-api.de/api/interpreter", {
-          method: "POST",
-          headers: { "Content-Type": "application/x-www-form-urlencoded" },
-          body: "data=" + encodeURIComponent(q),
-        });
-        const d = await ovr.json();
-        return (d && d.elements) || [];
-      } catch (e) {
-        console.error("Overpass fetch error:", e.message);
-        return [];
+      const q = `[out:json][timeout:25];(${blocks});out center 60;`;
+      for (const endpoint of OVERPASS_ENDPOINTS) {
+        try {
+          const ctrl = new AbortController();
+          const timer = setTimeout(() => ctrl.abort(), 30000);
+          let ovr;
+          try {
+            ovr = await fetch(endpoint, {
+              method: "POST",
+              headers: { "Content-Type": "application/x-www-form-urlencoded" },
+              body: "data=" + encodeURIComponent(q),
+              signal: ctrl.signal,
+            });
+          } finally {
+            clearTimeout(timer);
+          }
+          // Gövdeyi ÖNCE text al: Overpass hata durumunda 200 dönüp HTML gövde
+          // (<?xml ... "server too busy") verebiliyor. JSON değilse bu endpoint'i
+          // başarısız say ve bir sonrakine geç.
+          const body = await ovr.text();
+          const trimmed = body.trimStart();
+          if (!trimmed.startsWith("{")) {
+            console.error(
+              `Overpass non-JSON from ${endpoint} (status ${ovr.status}): ${trimmed.slice(0, 80)}`,
+            );
+            continue;
+          }
+          let d;
+          try {
+            d = JSON.parse(body);
+          } catch (pe) {
+            console.error(`Overpass JSON parse fail from ${endpoint}:`, pe.message);
+            continue;
+          }
+          if (d && Array.isArray(d.elements)) return d.elements;
+          // elements yoksa (remark/hata alanı) → sıradaki endpoint
+        } catch (e) {
+          console.error(`Overpass fetch error (${endpoint}):`, e.message);
+          continue;
+        }
       }
+      return [];
     }
     // Boş dönerse yarıçapı KADEMELİ büyüt → "civarda yok" demek yerine en yakın
     // GERÇEK mekanları (isim + mesafe) getir; kullanıcı uzak olsa da ismiyle görsün.
@@ -560,35 +601,22 @@ app.post("/nearby", rateLimit, async (req, res) => {
           model: "claude-haiku-4-5-20251001",
           max_tokens: 160,
           system:
-            "Sen Merci, sevimli bir karar-ahtapotu. Sana yakındaki GERÇEK mekanların listesi (isim + mesafe) verilir. " +
-            "KISA (1-2 cümle), samimi, Türkçe ve TUTARLI tekil 'sen' diliyle (asla 'siz') bir öneri yap: birini öne çıkar, mesafeye değin, oyunbaz ol. " +
-            "En fazla 1 emoji. Liste DIŞINDA mekan UYDURMA.",
+            "Sen Merci, sevimli bir karar-ahtapotu. Sana kullanıcıya EN YAKIN GERÇEK mekanların listesi (isim + mesafe) verilir. " +
+            "KISA (1-2 cümle), samimi, Türkçe ve TUTARLI tekil 'sen' diliyle (asla 'siz') bir öneri yap: birini öne çıkar, GERÇEK mesafeye değin (uzaksa dürüstçe söyle, örn. '~3 km, taksiyle kısa'), oyunbaz ol. " +
+            "Mekanlar mahallende değil komşu semtte olabilir — bu normal, listedeki gerçek mesafeyi kullan. Listedeki isimler/mesafeler DIŞINDA hiçbir mekan/semt/mesafe UYDURMA. En fazla 1 emoji.",
           messages: [
-            { role: "user", content: "Tür: " + typeKey + "\nYakındaki mekanlar: " + top },
+            { role: "user", content: "Tür: " + typeKey + "\nEn yakın gerçek mekanlar (isim + mesafe): " + top },
           ],
         });
         cr.content.forEach((b) => {
           if (b.type === "text") merciComment += b.text;
         });
       } else {
-        // Yakında sonuç YOK → en yakın bilinen canlı semt/ilçeyi öner (genel bilgi)
-        const cr = await anthropic.messages.create({
-          model: "claude-haiku-4-5-20251001",
-          max_tokens: 200,
-          system:
-            "Sen Merci, sevimli bir karar-ahtapotu. Kullanıcının yakınında istediği türde mekan ÇIKMADI. " +
-            "KISA (1-2 cümle), samimi Türkçe ve TUTARLI tekil 'sen' diliyle (asla 'siz'): bu civarda az olduğunu DÜRÜSTÇE söyle ve O TÜR için EN YAKIN, kolay ulaşılabilir AYNI bölgedeki canlı semti öner. " +
-            "Kullanıcıyı ASLA şehrin öbür ucuna ya da KARŞI YAKAYA gönderme. Spesifik mekan ismi UYDURMA; 'şu yakın semte geç, orada daha çok var' tarzı yönlendir. En fazla 1 emoji.",
-          messages: [
-            {
-              role: "user",
-              content: `Konum: ${locName || "bilinmiyor"}. Tür: ${typeLabel}. Yakında bulunamadı — en yakın iyi semt/ilçe neresi, oraya yönlendir.`,
-            },
-          ],
-        });
-        cr.content.forEach((b) => {
-          if (b.type === "text") merciComment += b.text;
-        });
+        // 25km'ye kadar bakıldı ve HİÇ gerçek mekan çıkmadı (çok nadir). Gerçek veri
+        // olmadan semt/mekan UYDURMAK yasak → yer ismi verme; başka tür ya da çarka
+        // yönlendir. (Gerçek mekan bulunduğunda uzak da olsa yukarıdaki dal kartları döndürür.)
+        merciComment =
+          `Bu civarda ${typeLabel} pek çıkmadı 🐙 Başka bir tür dene — kafe, yemek ya da aktivite gibi — ya da çarkı çevir, ne çıkarsa o!`;
       }
     } catch (e) {
       console.error("Nearby Merci comment error:", e.message);
