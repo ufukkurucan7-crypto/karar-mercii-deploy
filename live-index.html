@@ -4188,6 +4188,14 @@
             <button class="btn" id="masa-finish" style="display: none">
               🗳️ Oyumu ver ve sonucu gör!
             </button>
+            <button
+              class="btn ghost"
+              id="masa-cancel"
+              style="display: none; margin-top: 6px"
+              onclick="cancelVote()"
+            >
+              ✕ Oylamayı iptal et
+            </button>
           </div>
 
           <!-- Online Oylama -->
@@ -7706,6 +7714,7 @@
             w = [x];
           } else if (s === mx && s > 0) w.push(x);
         });
+        voteClosed = true;
         w.length === 1 ? showVWin(w[0]) : openTb(w);
       }
       function masaNext() {
@@ -7753,6 +7762,8 @@
         totals = {};
         voteTurn = 1;
         k.forEach((x) => (S.vote[x] = 0));
+        voteClosed = true; // tur bitti → tekrar oy/sıradaki kişi kapansın
+        document.getElementById("vote-local").style.display = "none";
         render("vote");
         w.length === 1 ? showVWin(w[0]) : openTb(w);
       }
@@ -7891,6 +7902,7 @@
         S.vote = {};
         totals = {};
         voteTurn = 1;
+        voteClosed = false;
         masaPeopleConfirmed = false;
         masaOn = false;
         voteMode = "";
@@ -8121,6 +8133,7 @@
           if (idx !== li) {
             li = idx;
             casinoTick();
+            vib(9); // her dilim geçişinde tık titreşimi (çark yavaşladıkça seyrelir)
           }
           if (t < 1) requestAnimationFrame(fr);
           else {
@@ -8178,6 +8191,7 @@
             ctx.textAlign = "center";
             ctx.textBaseline = "middle";
             ctx.fillText("?", 90, 90);
+            if (f % 6 === 0) vib(7); // küre dönerken hafif nabız titreşimi
             requestAnimationFrame(draw);
           } else {
             ctx.fillStyle = "#fff";
@@ -9121,6 +9135,7 @@
       }
       function confirmMasaPeople() {
         masaPeopleConfirmed = true;
+        voteClosed = false;
         document.getElementById("masa-people-wrap").style.display = "none";
         var locked = document.getElementById("masa-people-locked");
         if (locked) {
@@ -9137,6 +9152,18 @@
       // updateVoteUI'yi güncelle - kişi sayısı onaylanmadan çalışmasın
       function updateVoteUI() {
         var has = Object.keys(S.vote).length > 0;
+        var cancelBtn = document.getElementById("masa-cancel");
+        // Oylama bitti (sonuç gösterildi) → TÜM oy kontrollerini kapat:
+        // tekrar oy verme / "sıradaki kişi" ile ilerleme engellenir.
+        if (voteClosed) {
+          ["calc-vote", "masa-next", "masa-finish", "masa-status", "masa-cancel"].forEach(
+            function (id) {
+              var e = document.getElementById(id);
+              if (e) e.style.display = "none";
+            },
+          );
+          return;
+        }
         // Tek cihaz modunda kişi sayısı onaylanmamışsa butonu gizle
         if (masaOn && !masaPeopleConfirmed) {
           document.getElementById("calc-vote").style.display = "none";
@@ -9144,6 +9171,7 @@
           document.getElementById("masa-finish").style.display = "none";
           var st = document.getElementById("masa-status");
           if (st) st.style.display = "none";
+          if (cancelBtn) cancelBtn.style.display = "none";
           return;
         }
         document.getElementById("calc-vote").style.display =
@@ -9159,6 +9187,10 @@
           st.innerHTML =
             "🎯 Sıra: <b>" + voteTurn + "</b>/" + masaPeopleCount + ". kişi";
         } else if (st) st.style.display = "none";
+        // Başlayan masa oylamasını iptal butonu (kişi sayısı onaylandıysa)
+        if (cancelBtn)
+          cancelBtn.style.display =
+            masaOn && masaPeopleConfirmed ? "block" : "none";
       }
       function unlockMasaPeople() {
         function doUnlock() {
@@ -9187,6 +9219,17 @@
       }
 
       var voteMode = "";
+      var voteClosed = false; // sonuç gösterildi → tekrar oy/sıradaki kişi engellensin
+      function cancelVote() {
+        showConfirm(
+          "Oylamayı iptal et?",
+          "Bu oylama tamamen iptal edilecek, baştan başlayacaksın. Emin misin?",
+          function () {
+            resetVoteScreen();
+            snd("click");
+          },
+        );
+      }
       function setVoteMode(mode) {
         // Biten/başlamamış (idle) turda aynı moda tekrar basınca UI yeniden
         // açılsın: tur bitince voteMode "masa" kalıyordu → tekrar "Tek Cihaz"a
@@ -9257,6 +9300,7 @@
         masaPeopleConfirmed = false;
         voteTurn = 1;
         totals = {};
+        voteClosed = false;
         updateVoteUI();
         snd("click");
       }
