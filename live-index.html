@@ -6,7 +6,7 @@
       name="viewport"
       content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"
     />
-    <meta name="theme-color" content="var(--ac)" />
+    <meta name="theme-color" content="#7c3aed" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta
       name="apple-mobile-web-app-status-bar-style"
@@ -1363,6 +1363,18 @@
       }
       .sec.on {
         display: block;
+        animation: secIn 0.28s cubic-bezier(0.34, 1.56, 0.64, 1);
+      }
+      @keyframes secIn {
+        from {
+          opacity: 0;
+          transform: translateY(6px);
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .sec.on {
+          animation: none;
+        }
       }
       .lbl {
         font-size: 10px;
@@ -1798,20 +1810,30 @@
         font-family: "Nunito", sans-serif;
         border: none;
         border-radius: 12px;
-        background: var(--ac);
+        background: linear-gradient(145deg, var(--ac-l), var(--ac));
         color: #fff;
         cursor: pointer;
         margin-top: 8px;
         text-align: center;
-        transition: background 0.15s;
+        box-shadow:
+          0 6px 16px rgba(var(--ac-shadow), 0.3),
+          inset 0 1px 0 rgba(255, 255, 255, 0.25);
+        transition:
+          background 0.15s,
+          box-shadow 0.13s,
+          transform 0.12s;
       }
       .btn:hover {
         background: var(--ac-d);
+      }
+      .btn:active {
+        box-shadow: 0 2px 6px rgba(var(--ac-shadow), 0.25);
       }
       .btn.ghost {
         background: var(--ac-bg);
         color: var(--ac-d);
         border: 2px solid var(--ac-ll);
+        box-shadow: none;
       }
       .btn.gold {
         background: #f5a623;
@@ -2185,10 +2207,12 @@
           mbreath 4.2s ease-in-out infinite;
       }
       .m-idle .eye-white {
+        transform-box: fill-box;
         transform-origin: center;
         animation: mblink 5.2s ease-in-out infinite;
       }
       .m-idle .m-arm {
+        transform-box: view-box;
         transform-origin: 340px 400px;
         animation: marm 4s ease-in-out infinite;
       }
@@ -2842,7 +2866,7 @@
         background: linear-gradient(160deg, #fbbf24, #f59e0b);
         clip-path: polygon(50% 100%, 0 0, 100% 0);
         z-index: 8;
-        filter: drop-shadow(0 3px 4px rgba(76, 29, 149, 0.35));
+        filter: drop-shadow(0 3px 4px rgba(var(--ac-shadow), 0.35));
         transform-origin: 50% 0;
       }
       .wptr.tick {
@@ -3443,9 +3467,17 @@
         color: #ece8f7;
       }
       html.dark .btn {
+        background: linear-gradient(145deg, var(--ac), var(--ac-d2));
+        color: #fff;
+        box-shadow:
+          0 6px 16px rgba(0, 0, 0, 0.4),
+          inset 0 1px 0 rgba(255, 255, 255, 0.12);
+      }
+      html.dark .btn.ghost {
         background: #271d3f;
         color: #ece8f7;
         border-color: #3a2f55;
+        box-shadow: none;
       }
       html.dark .rcard {
         border-color: #3a2f55;
@@ -3701,7 +3733,7 @@
       <!-- ONBOARDING 1 -->
       <div class="screen on" id="scr-ob1">
         <div class="ob">
-          <div id="ob1-merci"></div>
+          <div id="ob1-merci" class="m-idle"></div>
           <div class="ob-title">Merhaba, ben Merci!</div>
           <div class="ob-sub">
             Grubunuzun resmi karar ustasıyım.<br />Kararsız kaldığınızda bana
@@ -3800,7 +3832,7 @@
           <!-- Boş çark — Davet Kartı (empty-state) -->
           <div class="v1-card" id="wheel-empty-card">
             <div class="v1-head">
-              <div class="v1-merci-wrap" id="wheel-card-merci"></div>
+              <div class="v1-merci-wrap m-idle" id="wheel-card-merci"></div>
               <h2 class="v1-title">Çark boş, hadi dolduralım! 🎡</h2>
               <p class="v1-sub">Hazır bir konu seç ya da kendin ekle 👇</p>
             </div>
@@ -3933,7 +3965,7 @@
             class="empty empty-hint"
             style="font-size: 12px; margin: 2px 0 8px; text-align: center"
           >
-            <div class="empty-hint-merci" id="cekilis-empty-merci"></div>
+            <div class="empty-hint-merci m-idle" id="cekilis-empty-merci"></div>
             <span class="empty-hint-txt"
               >☝️ Yukarıdan en az 2 isim/seçenek ekle</span
             >
@@ -4176,7 +4208,7 @@
             ></div>
             <div class="olist" id="vl"></div>
             <div id="ve" class="empty empty-hint">
-              <div class="empty-hint-merci" id="ve-merci"></div>
+              <div class="empty-hint-merci m-idle" id="ve-merci"></div>
               <span class="empty-hint-txt">Seçenek ekle ve yıldız ver! ⭐</span>
             </div>
             <button class="btn" id="calc-vote" style="display: none">
@@ -5215,7 +5247,7 @@
           say +
           '"' +
           details +
-          "\n\nSiz de karar verin → kararmercii.com";
+          "\n\nSen de karar ver 👉 https://play.google.com/store/apps/details?id=app.kararmercii.com";
         if (navigator.share) {
           navigator
             .share({ title: "Karar Mercii — " + win, text: text })
@@ -6244,9 +6276,9 @@
   <path d="M295 375Q270 410 262 450Q256 485 272 512Q284 527 298 516Q294 496 290 472Q292 442 305 410Q314 388 318 378Z" fill="#7F77DD"/>
   <path d="M385 375Q410 410 418 450Q424 485 408 512Q396 527 382 516Q386 496 390 472Q388 442 375 410Q366 388 362 378Z" fill="#7F77DD"/>
   <path d="M425 360Q475 380 495 425Q510 460 492 495Q482 512 465 505Q458 488 470 468Q475 440 455 415Q435 392 418 378Z" fill="#7F77DD"/>
-  <path d="M250 300Q190 270 165 215Q150 180 175 165Q200 175 205 205Q215 240 255 275Q272 290 268 305Z" fill="#7F77DD" stroke="#534AB7" stroke-width="1.5"/>
+  <path class="m-arm" d="M250 300Q190 270 165 215Q150 180 175 165Q200 175 205 205Q215 240 255 275Q272 290 268 305Z" fill="#7F77DD" stroke="#534AB7" stroke-width="1.5"/>
   <circle cx="172" cy="172" r="26" fill="#AFA9EC" stroke="#534AB7" stroke-width="2"/>
-  <path d="M430 300Q490 270 515 215Q530 180 505 165Q480 175 475 205Q465 240 425 275Q408 290 412 305Z" fill="#7F77DD" stroke="#534AB7" stroke-width="1.5"/>
+  <path class="m-arm r" d="M430 300Q490 270 515 215Q530 180 505 165Q480 175 475 205Q465 240 425 275Q408 290 412 305Z" fill="#7F77DD" stroke="#534AB7" stroke-width="1.5"/>
   <circle cx="508" cy="172" r="26" fill="#AFA9EC" stroke="#534AB7" stroke-width="2"/>
   <ellipse cx="340" cy="265" rx="130" ry="135" fill="url(#hd${uid})"/>
   <ellipse cx="340" cy="300" rx="78" ry="80" fill="url(#bl${uid})" fill-opacity=".6"/>
@@ -6277,8 +6309,8 @@
 
       function _eyesNormal(uid) {
         return `
-  <ellipse cx="302" cy="255" rx="34" ry="38" fill="#fff"/>
-  <ellipse cx="378" cy="255" rx="34" ry="38" fill="#fff"/>
+  <ellipse class="eye-white" cx="302" cy="255" rx="34" ry="38" fill="#fff"/>
+  <ellipse class="eye-white" cx="378" cy="255" rx="34" ry="38" fill="#fff"/>
   <circle cx="308" cy="262" r="20" fill="url(#ey${uid})"/>
   <circle cx="372" cy="262" r="20" fill="url(#ey${uid})"/>
   <circle cx="301" cy="253" r="7" fill="white"/>
@@ -7763,6 +7795,7 @@
         voteTurn = 1;
         k.forEach((x) => (S.vote[x] = 0));
         voteClosed = true; // tur bitti → tekrar oy/sıradaki kişi kapansın
+        masaPeopleConfirmed = false; // mod tuşundan da yeni oylama açılabilsin (idle)
         document.getElementById("vote-local").style.display = "none";
         render("vote");
         w.length === 1 ? showVWin(w[0]) : openTb(w);
@@ -8025,6 +8058,7 @@
         }, 120);
       }
       function setStars(n, r) {
+        if (voteClosed) return; // sonuç gösterildikten sonra yıldız değiştirilemez
         S.vote[n] = S.vote[n] === r ? 0 : r;
         render("vote");
         snd("add");
@@ -9021,7 +9055,21 @@
             aiThinking = false;
             document.getElementById("ath").style.display = "none";
             document.getElementById("ask-merci").disabled = false;
-            appendMsg("merci", "Bağlantı sorunu var, tekrar dene!", false);
+            // Ağ hatası: cevapsız soruyu geçmişten çıkar (sonraki turda modele
+            // gitmesin) + yakılan ücretsiz hakkı iade et (offline'da hak yanmasın).
+            if (
+              aiMessages.length &&
+              aiMessages[aiMessages.length - 1].role === "user"
+            )
+              aiMessages.pop();
+            if (!isPremium && premiumResolved) {
+              var _u = getTopicUsage();
+              if (_u.count > 0) {
+                _u.count--;
+                saveTopicUsage(_u);
+              }
+            }
+            appendMsg("merci", "Bağlantı sorunu var, tekrar dene 🐙", false);
           });
       }
 
@@ -10103,7 +10151,8 @@
           "\nKod: " +
           shareCode +
           "\n" +
-          link;
+          link +
+          "\n\nUygulama 👉 https://play.google.com/store/apps/details?id=app.kararmercii.com";
         if (navigator.share) {
           navigator
             .share({ title: "Karar Mercii", text: msg })
@@ -11715,6 +11764,14 @@
           if (a !== "mor")
             document.documentElement.setAttribute("data-theme", a);
           else document.documentElement.removeAttribute("data-theme");
+          // native durum çubuğu rengini temaya göre güncelle
+          try {
+            var _acHex = getComputedStyle(document.documentElement)
+              .getPropertyValue("--ac")
+              .trim();
+            var _mc = document.querySelector('meta[name="theme-color"]');
+            if (_mc && _acHex) _mc.setAttribute("content", _acHex);
+          } catch (e) {}
           localStorage.setItem("kmAccent", a);
           var ts = document.getElementById("theme-state");
           if (ts) ts.textContent = THEME_NAMES[a];
