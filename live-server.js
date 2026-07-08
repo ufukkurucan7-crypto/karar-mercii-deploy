@@ -387,18 +387,58 @@ app.post("/options", rateLimit, authAndQuota, async (req, res) => {
 const LOC_FREE_LIMIT = 25; // free: günde 25 GERÇEK sonuç (abuse tavanı; boş/başarısız sorgu hak yakmaz)
 const LOC_PRO_LIMIT = 100; // PRO: pratikte sınırsız
 
+// ── OVERPASS TAG SETLERİ ──
+// ÖNEMLİ: regex-CONTAINS (~"bar") KULLANMA — substring eşleştiği için alakasız POI
+// getiriyordu: ~"bar" → "bar association" (İstanbul Barosu / hukuk), ~"pub" →
+// "public_bath" (hamam). Bunun yerine her tür için TAM-EŞLEŞME (="deger") selektör
+// DİZİSİ kullan; her selektör ayrı node/way bloğu üretir. Böylece yalnız gerçek
+// içki barları / doğru mekanlar döner.
 const OVERPASS_FILTERS = {
-  food: '["amenity"~"restaurant|fast_food"]',
-  cafe: '["amenity"~"cafe"]',
-  bar: '["amenity"~"bar|pub"]',
-  dessert: '["shop"~"pastry|confectionery|bakery"]',
-  activity: '["leisure"~"park|sports_centre|fitness_centre|bowling_alley|amusement_arcade"]',
+  food: ['["amenity"="restaurant"]', '["amenity"="fast_food"]'],
+  cafe: ['["amenity"="cafe"]', '["amenity"="ice_cream"]'],
+  bar: [
+    '["amenity"="bar"]',
+    '["amenity"="pub"]',
+    '["amenity"="biergarten"]',
+    '["amenity"="nightclub"]',
+  ],
+  dessert: [
+    '["shop"="pastry"]',
+    '["shop"="confectionery"]',
+    '["shop"="bakery"]',
+    '["amenity"="ice_cream"]',
+  ],
+  activity: [
+    '["leisure"="park"]',
+    '["leisure"="sports_centre"]',
+    '["leisure"="fitness_centre"]',
+    '["leisure"="bowling_alley"]',
+    '["leisure"="amusement_arcade"]',
+    '["amenity"="cinema"]',
+  ],
 };
-// dessert/activity için ek filtreler (Overpass tek selektör aldığından, bu türlerde
-// birden fazla node/way bloğu üretmek üzere ALTERNATİF selektörler):
-const OVERPASS_EXTRA = {
-  dessert: ['["amenity"~"cafe|ice_cream"]'],
-  activity: ['["amenity"~"cinema"]'],
+
+// Kartta gösterilecek Türkçe kategori. Ham OSM tag'i (ör. "bar association",
+// "fast_food") KULLANICIYA GÖSTERİLMEZ. Bu haritada OLMAYAN bir amenity/shop/leisure
+// değeri = beklenmedik/alakasız POI → mekan LİSTEDEN ELENİR (gösterilmez).
+const KIND_TR = {
+  restaurant: "restoran",
+  fast_food: "fast food",
+  cafe: "kafe",
+  ice_cream: "dondurma",
+  bar: "bar",
+  pub: "pub",
+  biergarten: "bira bahçesi",
+  nightclub: "gece kulübü",
+  pastry: "pastane",
+  confectionery: "şekerci",
+  bakery: "fırın",
+  park: "park",
+  sports_centre: "spor merkezi",
+  fitness_centre: "spor salonu",
+  bowling_alley: "bowling",
+  amusement_arcade: "oyun salonu",
+  cinema: "sinema",
 };
 
 function haversine(la1, lo1, la2, lo2) {
@@ -461,8 +501,8 @@ app.post("/nearby", rateLimit, async (req, res) => {
         .json({ error: "Günlük konum önerisi hakkın doldu!", limitReached: true });
 
     // Overpass sorgusu (boş dönerse radius'u büyütüp 1 kez daha dene → "bulamadım" azalır)
-    const sel = OVERPASS_FILTERS[typeKey] || OVERPASS_FILTERS.food;
-    const selectors = [sel, ...((OVERPASS_EXTRA[typeKey]) || [])];
+    // selectors artık TAM-EŞLEŞME selektör DİZİSİ (regex-contains DEĞİL) → her biri ayrı blok.
+    const selectors = OVERPASS_FILTERS[typeKey] || OVERPASS_FILTERS.food;
     // ÇOKLU ENDPOINT: overpass-api.de sık sık "server too busy" (Dispatcher timeout)
     // verip JSON yerine HTML döndürüyordu → .json() patlıyor → boş liste → hiç mekan
     // gelmiyordu (ANA BUG). Şimdi birden fazla mirror'ı sırayla deniyoruz ve dönen
@@ -532,12 +572,23 @@ app.post("/nearby", rateLimit, async (req, res) => {
     }
 
     const seen = {};
+    // Adı "baro / barosu / association / hukuk / avukat" içeren POI'ler = hukuk
+    // kurumu (İstanbul Barosu gibi) → bar araması sonucuna KESİN sızmasın.
+    const NAME_BLOCKLIST = /(baro(su)?\b|bar association|avukat|hukuk)/i;
     const places = els
       .map((e) => {
         const plat = e.lat != null ? e.lat : e.center && e.center.lat;
         const plng = e.lon != null ? e.lon : e.center && e.center.lon;
         const name = e.tags && (e.tags["name:tr"] || e.tags.name);
         if (!name || plat == null || plng == null) return null;
+        // Kategori: SADECE bilinen amenity/shop/leisure değerini Türkçeye çevir.
+        // Ham İngilizce tag ("bar association", "fast_food") kullanıcıya GÖSTERİLMEZ;
+        // haritada olmayan (beklenmedik/alakasız) tag varsa POI listeden ELENİR.
+        const tag =
+          e.tags && (e.tags.amenity || e.tags.shop || e.tags.leisure);
+        const kindTr = tag && KIND_TR[tag];
+        if (!kindTr) return null; // tanınmayan/alakasız kategori → gösterme
+        if (NAME_BLOCKLIST.test(String(name))) return null; // baro/hukuk kurumu → ele
         const phone =
           (e.tags &&
             (e.tags["contact:phone"] ||
@@ -546,7 +597,7 @@ app.post("/nearby", rateLimit, async (req, res) => {
           "";
         return {
           name: String(name).slice(0, 60),
-          kind: (e.tags && (e.tags.cuisine || e.tags.amenity || e.tags.leisure)) || "",
+          kind: kindTr,
           phone: String(phone).slice(0, 30),
           lat: plat,
           lng: plng,
