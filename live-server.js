@@ -4,6 +4,28 @@ const Anthropic = require("@anthropic-ai/sdk");
 
 const app = express();
 app.use(express.json());
+
+// assetlinks.json - Play Store app-link doğrulaması.
+// ⚠️ express.static'TEN ÖNCE olmalı: public/ içindeki eski/eksik static
+// assetlinks dosyası (yalnız F3:22+6B:72, 48:F0 eksik) bu route'u EZMESIN diye.
+// 48:F0 = Play App Signing anahtarı → Play'den inen sürümün oda linklerini açar.
+app.get("/.well-known/assetlinks.json", (req, res) => {
+  res.json([
+    {
+      relation: ["delegate_permission/common.handle_all_urls"],
+      target: {
+        namespace: "android_app",
+        package_name: "app.kararmercii.com",
+        sha256_cert_fingerprints: [
+          "48:F0:02:63:71:0B:5D:29:DD:4F:47:2B:10:97:CA:8F:B2:4D:85:B2:05:05:8B:EE:16:38:74:A8:C3:58:68:CA",
+          "F3:22:1C:C7:F2:2F:25:6E:8E:D1:34:E9:BC:F7:B8:B7:64:8D:AD:A4:59:02:0B:B6:BC:0A:F5:DE:F1:0A:B5:93",
+          "6B:72:30:89:9A:F8:BE:A7:84:91:93:70:C6:81:37:62:1A:19:B9:2F:E2:47:17:DD:86:BA:5A:8B:4F:B5:30:64",
+        ],
+      },
+    },
+  ]);
+});
+
 app.use(express.static(path.join(__dirname, "public")));
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
@@ -67,24 +89,6 @@ setInterval(
   },
   5 * 60 * 1000,
 );
-
-// assetlinks.json - Play Store doğrulaması için
-app.get("/.well-known/assetlinks.json", (req, res) => {
-  res.json([
-    {
-      relation: ["delegate_permission/common.handle_all_urls"],
-      target: {
-        namespace: "android_app",
-        package_name: "app.kararmercii.com",
-        sha256_cert_fingerprints: [
-          "48:F0:02:63:71:0B:5D:29:DD:4F:47:2B:10:97:CA:8F:B2:4D:85:B2:05:05:8B:EE:16:38:74:A8:C3:58:68:CA",
-          "F3:22:1C:C7:F2:2F:25:6E:8E:D1:34:E9:BC:F7:B8:B7:64:8D:AD:A4:59:02:0B:B6:BC:0A:F5:DE:F1:0A:B5:93",
-          "6B:72:30:89:9A:F8:BE:A7:84:91:93:70:C6:81:37:62:1A:19:B9:2F:E2:47:17:DD:86:BA:5A:8B:4F:B5:30:64",
-        ],
-      },
-    },
-  ]);
-});
 
 // ── KULLANICI DOĞRULAMA + GÜNLÜK KOTA ──
 // Her /merci isteğinde Firebase ID token ister, uid çıkarır, isPro'ya göre
