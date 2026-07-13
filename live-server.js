@@ -26,6 +26,14 @@ app.get("/.well-known/assetlinks.json", (req, res) => {
   ]);
 });
 
+// app-ads.txt - AdMob/Google Play uygulama doğrulaması (IAB Tech Lab spec).
+// ⚠️ express.static'TEN ÖNCE: public/ altında dosya yoksa 404 dönmesin.
+// pub-2604503622179334 = AdMob yayıncı kimliği (kararmercii.com geliştirici sitesi).
+app.get("/app-ads.txt", (req, res) => {
+  res.type("text/plain");
+  res.send("google.com, pub-2604503622179334, DIRECT, f08c47fec0942fa0\n");
+});
+
 app.use(express.static(path.join(__dirname, "public")));
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
