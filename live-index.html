@@ -5204,6 +5204,391 @@
         );
       }
 
+      /* ===== Viral görsel sonuç kartı (grafik-tasarim) ===== */
+function drawResultCard(opts) {
+  opts = opts || {};
+  var W = 1080, H = 1350;
+  var type  = opts.type || "wheel";
+  var isVote = type === "vote";
+  var win   = (opts.win || "").trim() || "Kazanan";
+  var say   = (opts.say || "").trim();
+  var scores = opts.scores || {};
+  var people = opts.peopleCount || 0;
+  var style = opts.style === "light" ? "light" : "bold";
+
+  var FAM = "'Fredoka','Nunito','Segoe UI',system-ui,-apple-system,'Helvetica Neue',Arial,sans-serif";
+
+  // ---- tema paleti (canvas gercek hex ister, var() calismaz) ----
+  var T = style === "light" ? {
+    winner:"#331b63", kicker:"#7c3aed", quote:"#4c1d95", sub:"#8b78c4",
+    brand:"#5b21b6", bubbleFill:"#ffffff", bubbleStroke:"#e4dbff",
+    band:"#f1ecff", bandStroke:"#e4dbff", quoteMark:"#c9bcff",
+    barTrack:"#ece5ff", barWin:"#f59e0b", barOther:"#a78bfa",
+    rowWin:"#f4efff", rowWinStroke:"#e0d4ff", pill:"#ede9fe", pillTx:"#5b21b6",
+    shadow:false
+  } : {
+    winner:"#ffffff", kicker:"rgba(255,255,255,.78)", quote:"#ffffff", sub:"rgba(255,255,255,.72)",
+    brand:"#ffffff", bubbleFill:"rgba(255,255,255,.14)", bubbleStroke:"rgba(255,255,255,.24)",
+    band:"rgba(255,255,255,.13)", bandStroke:"rgba(255,255,255,.20)", quoteMark:"rgba(255,255,255,.34)",
+    barTrack:"rgba(255,255,255,.16)", barWin:"#fbbf24", barOther:"rgba(255,255,255,.55)",
+    rowWin:"rgba(255,255,255,.15)", rowWinStroke:"rgba(255,255,255,.20)",
+    pill:"rgba(255,255,255,.16)", pillTx:"#ffffff", shadow:true
+  };
+
+  var cv = document.createElement("canvas");
+  cv.width = W; cv.height = H;
+  var ctx = cv.getContext("2d");
+
+  // ---------- yardimcilar ----------
+  function rr(x, y, w, h, r) {
+    r = Math.min(r, w / 2, h / 2);
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.arcTo(x + w, y, x + w, y + h, r);
+    ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r);
+    ctx.arcTo(x, y, x + w, y, r);
+    ctx.closePath();
+  }
+  function setLS(px) { try { ctx.letterSpacing = px + "px"; } catch (e) {} }
+  function greedyWrap(text, maxW) {
+    var words = String(text).split(/\s+/), lines = [], cur = "";
+    for (var i = 0; i < words.length; i++) {
+      var t = cur ? cur + " " + words[i] : words[i];
+      if (ctx.measureText(t).width <= maxW || !cur) cur = t;
+      else { lines.push(cur); cur = words[i]; }
+    }
+    if (cur) lines.push(cur);
+    return lines;
+  }
+  function maxW_of(lines) {
+    var m = 0;
+    for (var i = 0; i < lines.length; i++) m = Math.max(m, ctx.measureText(lines[i]).width);
+    return m;
+  }
+  // fontu kucultup hem satir sayisi hem genislik sinirina uydur
+  function fitWrap(text, maxW, start, min, weight, maxLines) {
+    for (var s = start; s >= min; s -= 2) {
+      ctx.font = weight + " " + s + "px " + FAM;
+      var lines = greedyWrap(text, maxW);
+      if (lines.length <= maxLines && maxW_of(lines) <= maxW) return { lines: lines, size: s };
+    }
+    ctx.font = weight + " " + min + "px " + FAM;
+    return { lines: greedyWrap(text, maxW), size: min };
+  }
+
+  // ---------- Merci maskotu (uygulamadaki merciSVGCelebrate ile ayni) ----------
+  function mascotSVG() {
+    var uid = "rc";
+    var defs =
+      '<defs>' +
+      '<radialGradient id="hd' + uid + '" cx="42%" cy="32%" r="62%"><stop offset="0%" stop-color="#AFA9EC"/><stop offset="60%" stop-color="#7F77DD"/><stop offset="100%" stop-color="#534AB7"/></radialGradient>' +
+      '<radialGradient id="bl' + uid + '" cx="50%" cy="35%" r="60%"><stop offset="0%" stop-color="#EEEDFE"/><stop offset="100%" stop-color="#CECBF6"/></radialGradient>' +
+      '<radialGradient id="ey' + uid + '" cx="38%" cy="35%" r="55%"><stop offset="0%" stop-color="#3C3489"/><stop offset="100%" stop-color="#26215C"/></radialGradient>' +
+      '</defs>';
+    var body =
+      '<ellipse cx="340" cy="530" rx="135" ry="20" fill="#26215C" fill-opacity=".12"/>' +
+      '<path d="M255 360Q205 380 185 425Q170 460 188 495Q198 512 215 505Q222 488 210 468Q205 440 225 415Q245 392 262 378Z" fill="#7F77DD"/>' +
+      '<path d="M295 375Q270 410 262 450Q256 485 272 512Q284 527 298 516Q294 496 290 472Q292 442 305 410Q314 388 318 378Z" fill="#7F77DD"/>' +
+      '<path d="M385 375Q410 410 418 450Q424 485 408 512Q396 527 382 516Q386 496 390 472Q388 442 375 410Q366 388 362 378Z" fill="#7F77DD"/>' +
+      '<path d="M425 360Q475 380 495 425Q510 460 492 495Q482 512 465 505Q458 488 470 468Q475 440 455 415Q435 392 418 378Z" fill="#7F77DD"/>' +
+      '<path d="M220 268Q165 218 148 163Q138 126 162 116Q182 128 178 160Q182 193 228 253Z" fill="#7F77DD" stroke="#534AB7" stroke-width="1.5"/>' +
+      '<circle cx="152" cy="116" r="26" fill="#AFA9EC" stroke="#534AB7" stroke-width="2"/>' +
+      '<path d="M460 268Q515 218 532 163Q542 126 518 116Q498 128 502 160Q498 193 452 253Z" fill="#7F77DD" stroke="#534AB7" stroke-width="1.5"/>' +
+      '<circle cx="528" cy="116" r="26" fill="#AFA9EC" stroke="#534AB7" stroke-width="2"/>' +
+      '<ellipse cx="340" cy="265" rx="130" ry="135" fill="url(#hd' + uid + ')"/>' +
+      '<ellipse cx="340" cy="300" rx="78" ry="80" fill="url(#bl' + uid + ')" fill-opacity=".6"/>' +
+      '<ellipse cx="295" cy="200" rx="32" ry="22" fill="#EEEDFE" fill-opacity=".3"/>' +
+      '<path d="M278 380Q260 420 255 460Q252 495 268 518Q280 532 292 521Q288 500 286 478Q292 448 304 415Q312 392 305 380Z" fill="#534AB7"/>' +
+      '<path d="M340 392Q332 432 332 470Q332 505 348 525Q360 537 370 525Q364 503 360 480Q360 448 360 415Q360 392 350 382Z" fill="#534AB7"/>' +
+      '<path d="M402 380Q420 420 425 460Q428 495 412 518Q400 532 388 521Q392 500 394 478Q388 448 376 415Q368 392 375 380Z" fill="#534AB7"/>';
+    var eyes =
+      '<ellipse cx="302" cy="255" rx="34" ry="38" fill="#fff"/>' +
+      '<ellipse cx="378" cy="255" rx="34" ry="38" fill="#fff"/>' +
+      '<circle cx="308" cy="262" r="20" fill="url(#ey' + uid + ')"/>' +
+      '<circle cx="372" cy="262" r="20" fill="url(#ey' + uid + ')"/>' +
+      '<circle cx="301" cy="253" r="7" fill="white"/>' +
+      '<circle cx="314" cy="268" r="3" fill="white" fill-opacity=".6"/>' +
+      '<circle cx="365" cy="253" r="7" fill="white"/>' +
+      '<circle cx="378" cy="268" r="3" fill="white" fill-opacity=".6"/>';
+    // kutlama agzi (var(--ac) -> gercek hex)
+    var mouth = '<path d="M305 305Q340 338 375 305Q368 325 340 332Q312 325 305 305Z" fill="#7c3aed" stroke="#26215C" stroke-width="2"/>';
+    var cheeks =
+      '<ellipse cx="278" cy="292" rx="16" ry="9" fill="#D4537E" fill-opacity=".22"/>' +
+      '<ellipse cx="402" cy="292" rx="16" ry="9" fill="#D4537E" fill-opacity=".22"/>';
+    return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 680 560">' +
+      defs + body + eyes + mouth + cheeks + '</svg>';
+  }
+  function loadMascot() {
+    return new Promise(function (resolve) {
+      var img = new Image();
+      img.onload = function () { resolve(img); };
+      img.onerror = function () { resolve(null); };
+      img.src = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(mascotSVG());
+    });
+  }
+
+  // ---------- arka plan ----------
+  function paintBg() {
+    if (style === "light") {
+      var g = ctx.createLinearGradient(0, 0, 0, H);
+      g.addColorStop(0, "#fcfaff"); g.addColorStop(1, "#efe8ff");
+      ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+      blob(200, 250, 520, "#e7dcff", .55);
+      blob(920, 1120, 620, "#ece2ff", .5);
+    } else {
+      var g2 = ctx.createLinearGradient(0, 0, W, H);
+      g2.addColorStop(0, "#8b5cf6"); g2.addColorStop(.55, "#7c3aed"); g2.addColorStop(1, "#5b21b6");
+      ctx.fillStyle = g2; ctx.fillRect(0, 0, W, H);
+      blob(150, 200, 620, "#a855f7", .5);
+      blob(980, 1180, 640, "#4c1d95", .55);
+      // ust isik
+      var r = ctx.createRadialGradient(540, -140, 60, 540, -140, 820);
+      r.addColorStop(0, "rgba(255,255,255,.22)"); r.addColorStop(1, "rgba(255,255,255,0)");
+      ctx.fillStyle = r; ctx.fillRect(0, 0, W, 700);
+    }
+  }
+  function blob(x, y, r, col, a) {
+    var g = ctx.createRadialGradient(x, y, 0, x, y, r);
+    g.addColorStop(0, col); g.addColorStop(1, "rgba(0,0,0,0)");
+    ctx.save(); ctx.globalAlpha = a; ctx.fillStyle = g;
+    ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fill(); ctx.restore();
+  }
+
+  // ---------- konfeti (deterministik) ----------
+  function confetti() {
+    var seed = 0; for (var i = 0; i < win.length; i++) seed += win.charCodeAt(i);
+    var rnd = mulberry32(seed + 99);
+    var cols = style === "light"
+      ? ["#fbbf24", "#f472b6", "#34d399", "#60a5fa", "#a78bfa", "#fb7185"]
+      : ["#fde68a", "#f9a8d4", "#6ee7b7", "#93c5fd", "#ffffff", "#c4b5fd"];
+    for (var n = 0; n < 46; n++) {
+      var x = rnd() * W;
+      // ust bolge + kenarlar yogun, orta-alt seyrek
+      var y = rnd() < .78 ? rnd() * 560 : 560 + rnd() * 720;
+      if (y > 560 && x > 220 && x < 860) continue;
+      var s = 8 + rnd() * 16;
+      ctx.save();
+      ctx.translate(x, y); ctx.rotate(rnd() * 6.28);
+      ctx.globalAlpha = .55 + rnd() * .4;
+      ctx.fillStyle = cols[(rnd() * cols.length) | 0];
+      if (rnd() < .5) { rr(-s / 2, -s / 4, s, s / 2, 3); ctx.fill(); }
+      else { ctx.beginPath(); ctx.arc(0, 0, s / 2.6, 0, 7); ctx.fill(); }
+      ctx.restore();
+    }
+  }
+  function mulberry32(a) {
+    return function () {
+      a |= 0; a = (a + 0x6D2B79F5) | 0;
+      var t = Math.imul(a ^ (a >>> 15), 1 | a);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+
+  // ---------- brand pill (ust) ----------
+  function brandPill() {
+    ctx.textAlign = "left"; ctx.textBaseline = "middle";
+    setLS(2.5);
+    ctx.font = "700 26px " + FAM;
+    var label = "KARAR MERCII";
+    var octo = "🐙 ";
+    var tw = ctx.measureText(label).width;
+    ctx.font = "400 26px " + FAM;
+    var ow = ctx.measureText(octo).width;
+    var padX = 26, pw = ow + tw + padX * 2, ph = 58;
+    var px = (W - pw) / 2, py = 52;
+    ctx.fillStyle = T.pill;
+    rr(px, py, pw, ph, ph / 2); ctx.fill();
+    var cy = py + ph / 2;
+    ctx.font = "400 26px " + FAM; ctx.fillStyle = T.pillTx;
+    ctx.fillText(octo, px + padX, cy + 1);
+    ctx.font = "700 26px " + FAM; ctx.fillStyle = T.pillTx;
+    ctx.fillText(label, px + padX + ow, cy);
+    setLS(0);
+    return py + ph;
+  }
+
+  // ---------- alt marka bandi ----------
+  function footer() {
+    var bh = 118, by = H - bh - 46, bx = 60, bw = W - 120;
+    ctx.fillStyle = T.band; rr(bx, by, bw, bh, 26); ctx.fill();
+    if (style === "light") { ctx.strokeStyle = T.bandStroke; ctx.lineWidth = 2; rr(bx, by, bw, bh, 26); ctx.stroke(); }
+    ctx.textAlign = "center";
+    ctx.textBaseline = "alphabetic";
+    ctx.fillStyle = T.brand;
+    ctx.font = "700 38px " + FAM;
+    ctx.fillText("Kararı Merci'ye bırak 🐙", W / 2, by + 52);
+    ctx.font = "700 30px " + FAM;
+    ctx.fillStyle = style === "light" ? "#7c3aed" : "rgba(255,255,255,.82)";
+    setLS(3);
+    ctx.fillText("KARARMERCII.COM", W / 2, by + 92);
+    setLS(0);
+  }
+
+  // ---------- quote balonu ----------
+  function drawQuote(topY, bw, maxLines) {
+    if (!say) return topY;
+    var pad = 40;
+    var fw = fitWrap(say, bw - pad * 2, 42, 28, "italic 600", maxLines);
+    ctx.font = "italic 600 " + fw.size + "px " + FAM;
+    var lh = fw.size * 1.32;
+    var bh = fw.lines.length * lh + pad * 2 - (lh - fw.size) + 8;
+    var bx = (W - bw) / 2;
+    ctx.fillStyle = T.bubbleFill; rr(bx, topY, bw, bh, 28); ctx.fill();
+    if (style === "light") { ctx.strokeStyle = T.bubbleStroke; ctx.lineWidth = 2; rr(bx, topY, bw, bh, 28); ctx.stroke(); }
+    // acilis tirnak isareti
+    ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
+    ctx.font = "700 110px Georgia,serif"; ctx.fillStyle = T.quoteMark;
+    ctx.fillText("“", bx + 20, topY + 76);
+    // metin
+    ctx.textAlign = "center"; ctx.fillStyle = T.quote;
+    ctx.font = "italic 600 " + fw.size + "px " + FAM;
+    var ty = topY + pad + fw.size;
+    for (var i = 0; i < fw.lines.length; i++) { ctx.fillText(fw.lines[i], W / 2, ty); ty += lh; }
+    return topY + bh;
+  }
+
+  // ---------- oylama tablosu ----------
+  function drawTable(topY) {
+    var keys = Object.keys(scores).filter(function (k) { return scores[k] > 0; });
+    keys.sort(function (a, b) { return scores[b] - scores[a]; });
+    keys = keys.slice(0, 6);
+    if (!keys.length) return topY;
+    var maxv = scores[keys[0]] || 1;
+    var tw = W - 120, tx = 60;
+    var rh = keys.length > 4 ? 82 : 96, gap = 12;
+    var y = topY;
+    for (var i = 0; i < keys.length; i++) {
+      var k = keys[i], v = scores[k], isWin = k === win;
+      // satir zemin
+      if (isWin) {
+        ctx.fillStyle = T.rowWin; rr(tx, y, tw, rh, 18); ctx.fill();
+        if (style === "light") { ctx.strokeStyle = T.rowWinStroke; ctx.lineWidth = 2; rr(tx, y, tw, rh, 18); ctx.stroke(); }
+      }
+      // bar
+      var barX = tx + 24, barY = y + rh - 26, barW = tw - 48, barH = 12;
+      ctx.fillStyle = T.barTrack; rr(barX, barY, barW, barH, 6); ctx.fill();
+      var fillW = Math.max(barH, barW * (v / maxv));
+      ctx.fillStyle = isWin ? T.barWin : T.barOther; rr(barX, barY, fillW, barH, 6); ctx.fill();
+      // isim
+      ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
+      ctx.fillStyle = T.winner;
+      ctx.font = (isWin ? "700 " : "600 ") + (keys.length > 4 ? 36 : 40) + "px " + FAM;
+      var nm = (isWin ? "🏆 " : "") + k;
+      var nmMax = tw - 200;
+      var ns = keys.length > 4 ? 36 : 40;
+      while (ctx.measureText(nm).width > nmMax && ns > 24) { ns -= 2; ctx.font = (isWin ? "700 " : "600 ") + ns + "px " + FAM; }
+      ctx.fillText(nm, barX, y + 42);
+      // puan
+      ctx.textAlign = "right";
+      ctx.fillStyle = isWin ? (style === "light" ? "#b45309" : "#fbbf24") : T.sub;
+      ctx.font = "800 " + (keys.length > 4 ? 34 : 38) + "px " + FAM;
+      ctx.fillText(v + (style === "light" ? " puan" : " puan"), tx + tw - 24, y + 42);
+      y += rh + gap;
+    }
+    return y;
+  }
+
+  // ================= ana cizim =================
+  return loadMascot().then(function (mascot) {
+    var fontReady = (document.fonts && document.fonts.ready) ? document.fonts.ready.catch(function(){}) : Promise.resolve();
+    return fontReady.then(function () {
+      paintBg();
+      confetti();
+      var afterPill = brandPill();
+
+      var mAspect = 680 / 560;
+      if (isVote) {
+        // --- maskot kucuk, ust orta ---
+        var mw = 210, mh = mw / mAspect, mx = (W - mw) / 2, my = afterPill + 14;
+        if (mascot) ctx.drawImage(mascot, mx, my, mw, mh);
+        var y = my + mh + 8;
+        // kicker
+        ctx.textAlign = "center"; ctx.textBaseline = "alphabetic";
+        setLS(4); ctx.font = "700 30px " + FAM; ctx.fillStyle = T.kicker;
+        ctx.fillText("🏆  KAZANAN", W / 2, y + 30); setLS(0);
+        y += 74;
+        // isim
+        var nf = fitWrap(win, W - 160, 92, 46, "700", 2);
+        ctx.font = "700 " + nf.size + "px " + FAM; ctx.fillStyle = T.winner;
+        var nlh = nf.size * 1.04;
+        for (var i = 0; i < nf.lines.length; i++) { ctx.fillText(nf.lines[i], W / 2, y + nf.size); y += nlh; }
+        y += 14;
+        // kisi sayisi
+        if (people > 0) {
+          ctx.font = "700 28px " + FAM; ctx.fillStyle = T.sub;
+          ctx.fillText(people + " kişi oyladı", W / 2, y + 20); y += 52;
+        } else y += 8;
+        // tablo
+        y = drawTable(y + 8);
+        // kisa yorum (yer varsa)
+        if (say && y < 1050) drawQuote(y + 14, W - 150, 2);
+      } else {
+        // --- tek kazanan (cark / cekilis) ---
+        var mw2 = 400, mh2 = mw2 / mAspect, mx2 = (W - mw2) / 2, my2 = afterPill + 18;
+        if (mascot) ctx.drawImage(mascot, mx2, my2, mw2, mh2);
+        var y2 = my2 + mh2 + 20;
+        // kicker
+        ctx.textAlign = "center"; ctx.textBaseline = "alphabetic";
+        var kick = type === "raffle" ? "🎟️  ÇEKİLİŞ KAZANANI" : "🏆  KAZANAN";
+        setLS(4); ctx.font = "700 32px " + FAM; ctx.fillStyle = T.kicker;
+        ctx.fillText(kick, W / 2, y2 + 32); setLS(0);
+        y2 += 92;
+        // isim (buyuk)
+        if (T.shadow) { ctx.save(); ctx.shadowColor = "rgba(30,10,60,.35)"; ctx.shadowBlur = 18; ctx.shadowOffsetY = 6; }
+        var nf2 = fitWrap(win, W - 150, 128, 56, "700", 2);
+        ctx.font = "700 " + nf2.size + "px " + FAM; ctx.fillStyle = T.winner;
+        var nlh2 = nf2.size * 1.06;
+        for (var j = 0; j < nf2.lines.length; j++) { ctx.fillText(nf2.lines[j], W / 2, y2 + nf2.size); y2 += nlh2; }
+        if (T.shadow) ctx.restore();
+        y2 += 40;
+        // yorum balonu
+        drawQuote(y2, W - 130, 4);
+      }
+
+      footer();
+
+      return new Promise(function (resolve) {
+        cv.toBlob(function (b) { resolve(b); }, "image/png");
+      });
+    });
+  });
+}
+/* ====================== /drawResultCard ====================== */
+
+      // ── Görsel sonuç kartı paylaşımı (viral) ──
+      // drawResultCard ile PNG üretip navigator.share({files}) ile paylaşır.
+      // Desteklenmiyorsa/hata olursa mevcut metin paylaşımına düşer (fallback).
+      function _shareResultCard(type, win, say, scores, peopleCount, text) {
+        function doText() {
+          if (navigator.share) {
+            navigator.share({ title: "Karar Mercii — " + win, text: text }).catch(function () {});
+          } else if (navigator.clipboard) {
+            navigator.clipboard.writeText(text).then(function () {
+              alert("Sonuç panoya kopyalandı! 📋");
+            }).catch(function () { prompt("Kopyalayın:", text); });
+          } else { prompt("Kopyalayın:", text); }
+        }
+        var supportsFiles = false;
+        try {
+          supportsFiles = !!(navigator.canShare && window.File &&
+            navigator.canShare({ files: [new File([new Blob([""])], "x.png", { type: "image/png" })] }));
+        } catch (e) { supportsFiles = false; }
+        if (!supportsFiles || typeof drawResultCard !== "function") { doText(); return; }
+        try {
+          drawResultCard({ type: type, win: win, say: say, scores: scores, peopleCount: peopleCount })
+            .then(function (blob) {
+              if (!blob) { doText(); return; }
+              var file = new File([blob], "karar-mercii.png", { type: "image/png" });
+              if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                navigator.share({ files: [file], text: text }).catch(function () {});
+              } else { doText(); }
+            })
+            .catch(function () { doText(); });
+        } catch (e) { doText(); }
+      }
+
       // shareResult - sonuç ekranına gönder, detaylı bilgi
       function shareResult(type) {
         var win,
@@ -5248,20 +5633,10 @@
           '"' +
           details +
           "\n\nSen de karar ver 👉 https://play.google.com/store/apps/details?id=app.kararmercii.com";
-        if (navigator.share) {
-          navigator
-            .share({ title: "Karar Mercii — " + win, text: text })
-            .catch(() => {});
-        } else {
-          navigator.clipboard
-            .writeText(text)
-            .then(function () {
-              alert("Sonuç panoya kopyalandı! 📋");
-            })
-            .catch(function () {
-              prompt("Kopyalayın:", text);
-            });
-        }
+        // Görsel kart paylaşımı (destekleniyorsa), yoksa metin fallback
+        var _cs = type === "wheel" ? null : (_lastVoteScores || {});
+        var _cp = type === "wheel" ? 0 : (_lastVotePeopleCount || 0);
+        _shareResultCard(type === "wheel" ? "wheel" : "vote", win, say, _cs, _cp, text);
       }
 
       // ── CONFIRM MODAL (premium/auth çıkışı için) ──
