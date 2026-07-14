@@ -247,7 +247,7 @@ app.post("/merci", rateLimit, authAndQuota, async (req, res) => {
     // "[[NEED_LOCATION:TUR:bar]]" gibi bozuk işaret üretti (canlı bug, 13 Tem) →
     // artık birebir örnekle anlatılıyor; "TUR" kelimesi prompt'ta GEÇMİYOR.
     const locationContext = location
-      ? `\nKONUM VAR: Kullanıcı ${location} içinde; konum hazır, tekrar konum/şehir/semt İSTEME. Kullanıcı yakında yer sorarsa ("nereye gidelim / dışarı çıkalım / yiyelim / içelim / bar / kahve / tatlı" vb.) YA DA mekan gelmedi diye takılırsa ("hani / nerede / ee?"), cevabının EN BAŞINA şu biçimde bir işaret koy: [[NEARBY:bar]] — iki nokta sonrasına SADECE şu kelimelerden BİRİNİ yaz: food, cafe, dessert, bar, activity (emin değilsen activity; başka kelime ya da ikinci iki nokta YOK). Örnek cevap: "[[NEARBY:bar]] En yakınları çıkarıyorum 👇". İşaretten sonra TEK kısa olumlu cümle yaz. Bu işaret gerçek mekanları (isim, mesafe) otomatik getirir; komşu semtten gelebilir, sorun değil. Sadece sohbet/yorumsa işaret KOYMA.`
+      ? `\nKONUM VAR: Kullanıcı ${location} içinde; konum hazır, tekrar konum/şehir/semt İSTEME. Kullanıcı yakında yer sorarsa ("nereye gidelim / dışarı çıkalım / yiyelim / içelim / bar / kahve / tatlı" vb.) YA DA mekan gelmedi diye takılırsa ("hani / nerede / ee?") YA DA önerilenleri beğenmeyip başkasını isterse ("beğenmedim / başka öner / farklı yerler / başkası yok mu / bunlar olmadı"), cevabının EN BAŞINA şu biçimde bir işaret koy: [[NEARBY:bar]] — iki nokta sonrasına SADECE şu kelimelerden BİRİNİ yaz: food, cafe, dessert, bar, activity (emin değilsen activity; başka kelime ya da ikinci iki nokta YOK). Örnek cevap: "[[NEARBY:bar]] En yakınları çıkarıyorum 👇". İşaretten sonra TEK kısa olumlu cümle yaz. Bu işaret gerçek mekanları (isim, mesafe) otomatik getirir; komşu semtten gelebilir, sorun değil. Sadece sohbet/yorumsa işaret KOYMA.`
       : `\nKONUM YOK: Uygulama konumu otomatik alabiliyor — kullanıcıya ŞEHİR/SEMT/KONUM SORMA. Kullanıcı yakında yer sorarsa YA DA bir yere gitmek istediğini söylerse ("rakıya gidiyoruz", "kahve içelim" gibi), soru sormadan cevabının EN BAŞINA şu biçimde bir işaret koy: [[NEED_LOCATION:bar]] — iki nokta sonrasına SADECE şu kelimelerden BİRİNİ yaz: food, cafe, dessert, bar, activity (başka kelime ya da ikinci iki nokta YOK). Örnek cevap: "[[NEED_LOCATION:bar]] Yakınındakilere bakıyorum 👇". Tek istisna: kullanıcı zaten şehir/semt yazdıysa işaret KOYMA, o bölgeye göre öner.`;
 
     // ── SONUÇ BAĞLAMI (Merci'ye Sor'dan geliyorsa) ──
@@ -628,9 +628,22 @@ app.post("/nearby", rateLimit, async (req, res) => {
     const query = String((req.body && req.body.query) || "")
       .toLowerCase()
       .slice(0, 80);
+    // "başka öner / beğenmedim" akışı: client daha önce GÖSTERİLEN mekan isimlerini
+    // gönderir → aynı yerleri tekrar önermeyelim, farklı/daha uzak olanları getirelim.
+    const excludeArr = Array.isArray(req.body && req.body.exclude)
+      ? req.body.exclude
+      : [];
+    const excludeSet = new Set(
+      excludeArr
+        .slice(0, 40)
+        .map((x) => String(x || "").toLowerCase().trim())
+        .filter(Boolean),
+    );
+    // exclude varsa kullanıcı "başka" istiyor → daha uzağa bakmaya izin ver (cap yükselir).
+    const radiusCap = excludeSet.size ? 20000 : 5000;
     const radius = Math.min(
       Math.max(parseInt(req.body && req.body.radius) || 2500, 300),
-      5000,
+      radiusCap,
     );
 
     // Günlük konum kotası (AI kotasından AYRI). ÖN-KONTROL sadece OKUR, artırmaz.
@@ -767,6 +780,26 @@ app.post("/nearby", rateLimit, async (req, res) => {
     // Adı "baro / barosu / association / hukuk / avukat" içeren POI'ler = hukuk
     // kurumu (İstanbul Barosu gibi) → bar araması sonucuna KESİN sızmasın.
     const NAME_BLOCKLIST = /(baro(su)?\b|bar association|avukat|hukuk)/i;
+    // BAR bucket'ında amenity=bar/pub etiketli AMA aslında içki mekanı OLMAYAN
+    // yerler sızıyor (tenis/spor kulübü, dernek, community merkezi, otel — çoğu
+    // üye barı için amenity=bar node'u taşır). TAG-tabanlı ele: bu ikincil
+    // sinyaller varsa gerçek bir bar/pub değildir (isim-tabanlı elemekten güvenli;
+    // gerçek "Konak Bar" yanlışlıkla silinmez). Sadece bar aramasında uygulanır.
+    function isNonDrinkVenue(tags) {
+      if (!tags) return false;
+      if (tags.leisure) return true; // sports_centre, fitness_centre, pitch, stadium...
+      if (tags.sport) return true; // tennis, football, basketball...
+      if (tags.club) return true; // club=sport/social/... (dernek/kulüp)
+      if (tags.amenity === "community_centre" || tags.amenity === "social_centre")
+        return true;
+      if (tags.tourism === "hotel" || tags.tourism === "hostel") return true; // otel-lobi barı
+      return false;
+    }
+    // Gerçek bir barın adında NEREDEYSE HİÇ geçmeyen ama mis-tag'li spor/dernek
+    // yerlerinde geçen kelimeler (tag sinyali yoksa son savunma). "Konak/bahçe" gibi
+    // riskli kelimeler DIŞARIDA — yalnız açıkça bar-olmayan ibareler.
+    const BAR_NAME_EXCLUDE =
+      /(spor kul[üu]b|tenis|dernek|cemiyet|vak[ıi]f|spor merkez|fitness|spor salon|kültür merkez|hastane|üniversite|\bokulu\b)/i;
     const places = els
       .map((e) => {
         const plat = e.lat != null ? e.lat : e.center && e.center.lat;
@@ -783,6 +816,14 @@ app.post("/nearby", rateLimit, async (req, res) => {
         const kindTr = forceKind || (tag && KIND_TR[tag]);
         if (!kindTr) return null; // tanınmayan/alakasız kategori → gösterme
         if (NAME_BLOCKLIST.test(String(name))) return null; // baro/hukuk kurumu → ele
+        // BAR aramasında içki mekanı OLMAYAN yerleri ele (spor/dernek/otel).
+        if (typeKey === "bar") {
+          if (isNonDrinkVenue(e.tags)) return null;
+          if (BAR_NAME_EXCLUDE.test(String(name))) return null;
+        }
+        // "başka öner" akışı: daha önce gösterilen mekanları tekrar döndürme.
+        if (excludeSet.size && excludeSet.has(String(name).toLowerCase().trim()))
+          return null;
         const phone =
           (e.tags &&
             (e.tags["contact:phone"] ||
@@ -832,6 +873,7 @@ app.post("/nearby", rateLimit, async (req, res) => {
 
     // Merci yorumu (ucuz Haiku). Sonuç varsa listeden öner; YOKSA en yakın iyi semti öner.
     let merciComment = "";
+    const wantsDifferent = excludeSet.size > 0; // "başka öner / beğenmedim" akışı
     const typeLabel =
       ({ food: "yemek", cafe: "kafe", dessert: "tatlı", bar: "bar/bira", activity: "aktivite" })[
         typeKey
@@ -864,6 +906,9 @@ app.post("/nearby", rateLimit, async (req, res) => {
               role: "user",
               content:
                 (locName ? "Kullanıcı " + locName + " civarında.\n" : "") +
+                (wantsDifferent
+                  ? "Kullanıcı öncekileri beğenmedi, bunlar FARKLI/yeni yerler — 'işte başka seçenekler' tonuyla sun.\n"
+                  : "") +
                 "Tür: " + (rule ? rule.label : typeLabel) +
                 "\nEn yakın gerçek mekanlar (isim + mesafe): " + top,
             },
@@ -872,6 +917,11 @@ app.post("/nearby", rateLimit, async (req, res) => {
         cr.content.forEach((b) => {
           if (b.type === "text") merciComment += b.text;
         });
+      } else if (wantsDifferent) {
+        // "başka öner" istendi ama exclude sonrası (geniş yarıçapta) yeni yer kalmadı.
+        // Dürüstçe söyle, uydurma; başka türe/çarka yönlendir.
+        merciComment =
+          `Buralarda gösterebileceğim başka ${rule ? '"' + rule.label + '"' : typeLabel} kalmadı 🐙 İstersen başka bir tür deneyelim ya da çarkı çevirip şansına bırak!`;
       } else {
         // 25km'ye kadar bakıldı ve HİÇ gerçek mekan çıkmadı (çok nadir). Gerçek veri
         // olmadan semt/mekan UYDURMAK yasak → yer ismi verme; başka tür ya da çarka
