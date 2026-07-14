@@ -4496,6 +4496,66 @@
       html.dark #room-overlay .lbl {
         color: #c9b8ff;
       }
+      /* ═══════════ GRAFİK #17: kalan dark-mode beyaz/okunmaz alanlar ═══════════ */
+      /* (1b) "Çıkış Yap" onay modalı — .confirm-box background:#fff idi */
+      html.dark .confirm-box {
+        background: #1e1733;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.55);
+      }
+      html.dark .confirm-title {
+        color: #f2eefc;
+      }
+      html.dark .confirm-sub {
+        color: #c9bdf0;
+      }
+      html.dark .confirm-yes {
+        background: #271d3f;
+        color: #ece8f7;
+      }
+      /* (1a) Merci sekmesi paywall kutusu metinleri (var(--ac-dd)/var(--ac) koyu
+         kalıp dark zeminde okunmuyordu) */
+      html.dark .paywall-title {
+        color: #f2eefc;
+      }
+      html.dark .paywall-sub {
+        color: #cdbef2;
+      }
+      html.dark .paywall-counter {
+        color: #b9addf;
+      }
+      /* (1a) Merci "Geçmiş Sohbetler" popup — JS inline background:#fff (beyaz kart) */
+      html.dark #chat-hist-overlay > div {
+        background: #1e1733 !important;
+        box-shadow: 0 -8px 40px rgba(0, 0, 0, 0.6) !important;
+      }
+      html.dark #chat-hist-overlay [style*="color:var(--ac-d)"],
+      html.dark #chat-hist-overlay [style*="color:#3b0764"] {
+        color: #f2eefc !important;
+      }
+      html.dark #chat-hist-overlay .chat-hist-item {
+        border-bottom-color: #2d2347 !important;
+      }
+      html.dark #chat-hist-overlay .chat-hist-item:active {
+        background: #271d3f;
+      }
+      /* ═══ GRAFİK #17 (2): MONO + DARK birlikte — üst bar/başlık okunurluğu ═══
+         Mono temada accent değişkenleri gri; koyu accent metinler (var(--ac-dd/-d2/
+         -d/-ac)) dark zeminde görünmez oluyordu. SADECE mono+dark kapsamında bu
+         metinleri açık griye çek. Mono-light ve mor temalara DOKUNULMAZ. */
+      html[data-theme="mono"].dark .hdr-title,
+      html[data-theme="mono"].dark .hdr-sub,
+      html[data-theme="mono"].dark .lbl,
+      html[data-theme="mono"].dark .sec-title,
+      html[data-theme="mono"].dark .v1-title,
+      html[data-theme="mono"].dark .v1-sub,
+      html[data-theme="mono"].dark .wd-title,
+      html[data-theme="mono"].dark [style*="color: var(--ac-dd)"],
+      html[data-theme="mono"].dark [style*="color: var(--ac-d2)"],
+      html[data-theme="mono"].dark [style*="color: var(--ac-d)"],
+      html[data-theme="mono"].dark [style*="color:var(--ac-d)"],
+      html[data-theme="mono"].dark [style*="color: var(--ac)"] {
+        color: #e5e7eb !important;
+      }
       /* ═══ ACCENT TEMA DEĞİŞKENLERİ (varsayılan: Mor) ═══ */
       :root {
         --ac: #7c3aed;
@@ -5631,11 +5691,10 @@
                   </div>
                 </div>
               </div>
-              <div id="chat-starters" class="chat-starters">
-                <button class="chat-starter" onclick="startChat('Bu akşam ne yesem?')">🍔 Bu akşam ne yesem?</button>
-                <button class="chat-starter" onclick="startChat('Film mi dizi mi?')">🎬 Film mi dizi mi?</button>
-                <button class="chat-starter" onclick="startChat('Yakında kafe var mı?')">📍 Yakında kafe var mı?</button>
-              </div>
+              <!-- GRAFİK #17: alttaki tekrar eden 'chat-starters' şablonu kaldırıldı
+                   (üstteki 'ai-chips / Hızlı Başla' karşılama önerileri tek şablon
+                   olarak kaldı). startChat() DOM'da olmayan #chat-starters'ı if(s)
+                   ile güvenle geçer — fonksiyon bağları korunur. -->
               <div class="thinking-inline" id="ath" style="display: none">
                 <div class="dot"></div>
                 <div class="dot"></div>
@@ -6355,7 +6414,7 @@
       function signOut() {
         showConfirm(
           "Çıkış yapılsın mı?",
-          "Google hesabından çıkış yapılacak, tüm geçmiş silinecek ve misafir ekranına döneceksin.",
+          "Google hesabından çıkış yapılacak ve misafir ekranına döneceksin. Karar geçmişin hesabında güvende — aynı hesaba tekrar girince geri gelir.",
           function () {
             // Geçmişi ve yerel verileri sil
             localStorage.clear();
@@ -10213,26 +10272,19 @@ function drawResultCard(opts) {
         var ITEM = 56,
           WIN = 168,
           center = (WIN - ITEM) / 2,
-          loops = 8;
-        // Uzun şerit: birkaç tur rastgele + sonda kazanan (ortada duracak).
+          loops = 10;
+        // ŞERİT (Deploy #17): names SIRASINI koruyarak tekrarla (1-2-3-4-5-1-2-3-4-5…)
+        // → n>1 iken şerit BOYUNCA ardışık ASLA aynı isim olmaz (döngüde komşu indeksler
+        // hep farklı). Eski "üst-komşu dedupe" hack'i (Deploy#16) şeridin başka yerinde
+        // (winnerIdx===n-1'de names[n-2] iki kez) ardışık dup üretiyordu → kaldırıldı.
+        // Kazanan, doğal döngüde winPos%n===winnerIdx konumunda merkeze gelir →
+        // durduğu=kazanan + üniform winner KORUNUR (winner/finishCekilis dokunulmadı).
         var strip = [];
-        for (var L = 0; L < loops; L++)
-          for (var q = 0; q < n; q++) strip.push(names[q]);
-        var winPos = strip.length; // kazananın şeritteki indeksi
-        // LANDING DEDUPE (Deploy #16): kazananın hemen ÜSTÜNDEKİ isim (strip[winPos-1]
-        // = son turun son ismi = names[n-1]) kazananla (winnerIdx===n-1) ya da hemen
-        // ALTINDAKİ isimle (winnerIdx===n-2) AYNI çıkabiliyordu → "üstte/altta aynı
-        // isim" görsel duplicate. n>2'de üst komşuyu kazanandan VE alt komşudan farklı
-        // bir isme sabitle. Kazanan + landing pozisyonu (winPos) DEĞİŞMEZ.
-        if (n > 2 && winPos > 0) {
-          var _below = names[(winnerIdx + 1) % n];
-          var _aboveIdx = (winnerIdx - 1 + n) % n;
-          if (names[_aboveIdx] === _below || names[_aboveIdx] === winner)
-            _aboveIdx = (winnerIdx - 2 + n) % n;
-          strip[winPos - 1] = names[_aboveIdx];
-        }
-        strip.push(winner);
-        for (var e = 1; e <= 3; e++) strip.push(names[(winnerIdx + e) % n]);
+        var _total = loops * n;
+        for (var i = 0; i < _total; i++) strip.push(names[i % n]);
+        // Kazanan konumu: son turlara yakın (dramatik kaydırma), altında ~2 tur item
+        // kalsın ki durunca alt pencere dolu görünsün. winPos%n === winnerIdx.
+        var winPos = (loops - 2) * n + winnerIdx;
         reel.innerHTML = "";
         strip.forEach(function (nm) {
           var it = document.createElement("div");
@@ -11271,8 +11323,6 @@ function drawResultCard(opts) {
           window._shownPlaces = [];
           window._nearbyRadius = 2500;
         }
-        appendMsg("merci", "📍 Konumuna bakıyorum...", false);
-        appendSkeleton(); // I4 — sonuçlar gelene kadar shimmer iskelet
         var pos = null,
           cachedPos = null;
         // Cache'li konum (kmUserGeo): TAZE ise (<6 saat) direkt kullan → anlık GPS
@@ -11286,6 +11336,12 @@ function drawResultCard(opts) {
             }
           }
         } catch (e) {}
+        // "Konumuna bakıyorum" mesajı SADECE gerçekten GPS çekilecekse gösterilir;
+        // taze cache varsa (anında) bu satır her soruda tekrar çıkmasın.
+        if (!pos) {
+          appendMsg("merci", "📍 Konumuna bakıyorum...", false);
+        }
+        appendSkeleton(); // I4 — sonuçlar gelene kadar shimmer iskelet
         if (!pos) {
           try {
             pos = await getGeo();
