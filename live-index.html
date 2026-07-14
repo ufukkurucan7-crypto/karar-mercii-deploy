@@ -3318,14 +3318,17 @@
         top: 50%;
         width: 0;
         height: 0;
-        animation: orbitcw 2.2s linear infinite;
+        /* Çark iki yöne de döndüğü için parmak ipucu YÖN-NÖTR: iki yana salınır
+           (eskiden saat yönünde tam tur atıp "sadece bu yöne çevir" izlenimi
+           veriyordu — yanıltıcıydı). Deploy #14. */
+        animation: swipeHint 2s ease-in-out infinite;
       }
-      @keyframes orbitcw {
-        from {
-          transform: rotate(0deg);
+      @keyframes swipeHint {
+        0%, 100% {
+          transform: rotate(-24deg);
         }
-        to {
-          transform: rotate(360deg);
+        50% {
+          transform: rotate(24deg);
         }
       }
       .orbit-wrap .hand {
@@ -3881,6 +3884,22 @@
         align-items: center;
         justify-content: center;
       }
+      /* Oda oluştur popup — dark mode (Deploy #14) */
+      html.dark .online-popup-box { background: #16121f; box-shadow: 0 12px 48px rgba(0,0,0,0.55); }
+      html.dark .online-popup-title { color: #f2eefc; }
+      html.dark .online-popup-hdr { border-bottom-color: #2a2140; }
+      html.dark .online-popup-close { background: #241b3a; color: var(--ac-ll); }
+      html.dark .masa-people-locked { background: #1a1430; border-color: #33285a; }
+      /* Masa modunda manuel seçenek girişini belirginleştir (Deploy #14 bonus) */
+      .vi-emph {
+        background: radial-gradient(120% 90% at 80% -10%, rgba(var(--ac-shadow),0.08), transparent 60%), linear-gradient(180deg,#fff,var(--ac-bg2));
+        border: 1.5px solid var(--ac-bd);
+        border-radius: 14px;
+        padding: 12px;
+        margin: 10px 0;
+        box-shadow: 0 8px 22px -16px rgba(var(--ac-shadow),0.5);
+      }
+      html.dark .vi-emph { background: linear-gradient(180deg,#221d33,#1a1626); border-color: #352c52; }
       /* Tek Cihaz kişi sayısı confirm durumu */
       .masa-people-locked {
         display: flex;
@@ -4013,6 +4032,26 @@
       }
       html.dark .chat-bubble {
         background: #271d3f;
+        color: #ece8f7;
+      }
+      /* Merci sekmesi dark mode kalan beyaz alanlar (Deploy #14) */
+      html.dark .thinking-inline {
+        background: #100c1c;
+        border-top-color: #2a2140;
+      }
+      html.dark .chat-input-row textarea {
+        background: #1a1430;
+        border-color: #33285a;
+        color: #ece8f7;
+      }
+      html.dark .chat-av-merci {
+        background: #1a1430;
+      }
+      html.dark .ai-intro {
+        background: #1a1430;
+        border-color: #33285a;
+      }
+      html.dark .ai-intro-txt {
         color: #ece8f7;
       }
       html.dark .place-card {
@@ -4561,6 +4600,13 @@
             </button>
           </div>
           <div class="ogrid" id="cl"></div>
+          <button
+            id="cekilis-clear"
+            onclick="clearCekilis()"
+            style="display: none; width: 100%; margin: 2px 0 6px; padding: 9px; border: 1px solid #f0d6d6; border-radius: 12px; background: #fff5f5; color: #d9534f; font-family: Nunito, sans-serif; font-weight: 700; font-size: 13px; cursor: pointer"
+          >
+            <svg class="ic ic-t" viewBox="0 0 24 24"><use href="#i-trash"/></svg> Tüm isimleri sil
+          </button>
           <div
             id="cekilis-empty"
             class="empty empty-hint"
@@ -4733,14 +4779,16 @@
                 Değiştir
               </button>
             </div>
-            <p class="lbl">Seçenek ekle & yıldız ver</p>
-            <div class="irow">
-              <input id="vi" type="text" placeholder="Seçenek ekle..." /><button
-                class="abtn"
-                data-add="vote"
-              >
-                +
-              </button>
+            <div class="vi-emph">
+              <p class="lbl" style="margin: 0 0 6px">✍️ Seçenek ekle & yıldız ver</p>
+              <div class="irow">
+                <input id="vi" type="text" placeholder="Seçenek ekle..." /><button
+                  class="abtn"
+                  data-add="vote"
+                >
+                  +
+                </button>
+              </div>
             </div>
             <div
               class="masa-status"
@@ -5815,48 +5863,75 @@
             window.Capacitor.Plugins &&
             window.Capacitor.Plugins.FirebaseAuthentication;
           if (FBAuth) {
+            // Kimlik bilgisini Firebase'e ilet
+            var _afterCred = function (result) {
+              var idToken =
+                result && result.credential && result.credential.idToken;
+              if (!idToken) throw new Error("Google kimlik bilgisi alınamadı");
+              var cred = firebase.auth.GoogleAuthProvider.credential(idToken);
+              return auth.signInWithCredential(cred);
+            };
+            var _onOk = function () {
+              document.getElementById("modal-auth").classList.remove("on");
+              if (document.getElementById("scr-ob2").classList.contains("on")) {
+                setCount(0);
+              }
+            };
+            var _isCancel = function (m) {
+              return /cancel|12501|sign[_ ]?in[_ ]?cancel|canceled/i.test(m);
+            };
+            var _isNet = function (m) {
+              return (
+                navigator.onLine === false ||
+                /network|unavailable|timeout|host|connection|offline/i.test(m)
+              );
+            };
+            // Credential Manager cihazda Google hesabı bulamayınca (Honor/Huawei
+            // vb.) bu hata çıkar → legacy GMS hesap seçiciye düşeceğiz.
+            var _isCredMgrMiss = function (m) {
+              return /no credential|credential.*available|getcredential|nocredential|type_no_credential|^7:|^16:/i.test(
+                m,
+              );
+            };
+            var _alertNet = function () {
+              alert(
+                "İnternet bağlantısı yok ya da zayıf 📡\nBağlantını kontrol edip tekrar dene.",
+              );
+            };
+            var _alertNoAcct = function () {
+              alert(
+                "Google hesabı bulunamadı 📵\nTelefonunda Ayarlar → Hesaplar bölümünde ekli bir Google hesabı olmalı.\nHonor/Huawei cihazlarda Google Play Hizmetleri gerekir.",
+              );
+            };
+            // 1) Modern Credential Manager (one-tap). Hesap bulamazsa
+            // 2) OTOMATİK legacy GMS hesap seçici (useCredentialManager:false).
             FBAuth.signInWithGoogle()
-              .then(function (result) {
-                var idToken =
-                  result && result.credential && result.credential.idToken;
-                if (!idToken)
-                  throw new Error("Google kimlik bilgisi alınamadı");
-                var cred = firebase.auth.GoogleAuthProvider.credential(idToken);
-                return auth.signInWithCredential(cred);
-              })
-              .then(function () {
-                document.getElementById("modal-auth").classList.remove("on");
-                if (
-                  document.getElementById("scr-ob2").classList.contains("on")
-                ) {
-                  setCount(0);
-                }
-              })
+              .then(_afterCred)
+              .then(_onOk)
               .catch(function (err) {
-                // Kullanıcı iptal ettiyse sessiz geç
-                var m = (err && (err.message || err.code) + "") || "";
-                if (/cancel|12501|sign[_ ]?in[_ ]?cancel|canceled/i.test(m))
-                  return;
-                // GERÇEK ağ sorunu
-                if (
-                  navigator.onLine === false ||
-                  /network|unavailable|timeout|host|connection|offline/i.test(m)
-                ) {
-                  alert(
-                    "İnternet bağlantısı yok ya da zayıf 📡\nBağlantını kontrol edip tekrar dene.",
-                  );
+                var m =
+                  (err && ((err.message || "") + " " + (err.code || ""))) || "";
+                if (_isCancel(m)) return;
+                if (_isCredMgrMiss(m)) {
+                  FBAuth.signInWithGoogle({ useCredentialManager: false })
+                    .then(_afterCred)
+                    .then(_onOk)
+                    .catch(function (e2) {
+                      var m2 =
+                        (e2 &&
+                          ((e2.message || "") + " " + (e2.code || ""))) ||
+                        "";
+                      if (_isCancel(m2)) return;
+                      if (_isNet(m2)) {
+                        _alertNet();
+                        return;
+                      }
+                      _alertNoAcct();
+                    });
                   return;
                 }
-                // Credential Manager: cihazda Google hesabı yok / giriş açılamadı
-                // (özellikle Honor/Huawei gibi cihazlarda olur — ağ sorunu DEĞİL)
-                if (
-                  /no credential|credential.*available|getCredential|^7:|^16:|play services|google api/i.test(
-                    m,
-                  )
-                ) {
-                  alert(
-                    "Google hesabı bulunamadı 📵\nTelefonunda Ayarlar → Hesaplar bölümünde ekli bir Google hesabı olduğundan emin ol, sonra tekrar dene.\n(Bazı cihazlarda ilk denemede açılmaz — bir daha bas.)",
-                  );
+                if (_isNet(m)) {
+                  _alertNet();
                   return;
                 }
                 alert("Giriş yapılamadı: " + m);
@@ -8327,6 +8402,10 @@ function drawResultCard(opts) {
         function end() {
           // Kilidi kaldır + kullanıcıyı tur öncesi kaldığı yere döndür
           cleanup();
+          // Tur bitince ANA SAYFAYA (çark) dön — Merci sekmesinde kalmasın (Deploy #14)
+          try {
+            if (typeof _doSw === "function") _doSw("wheel");
+          } catch (e) {}
           document.documentElement.classList.remove("tour-lock");
           try {
             window.scrollTo(0, _tourScrollY);
@@ -8364,6 +8443,14 @@ function drawResultCard(opts) {
               ) || 0;
           } catch (e) {}
           var vh = window.innerHeight - adBottom; // efektif görünür alt sınır
+          // Balon dark mode uyumu (Deploy #14: koyu temada beyaz kalıyordu)
+          var _dark = document.documentElement.classList.contains("dark");
+          var _bubBg = _dark ? "#1c1630" : "#fff";
+          var _titleC = _dark ? "#f2eefc" : "var(--ac-d2)";
+          var _bodyC = _dark ? "#cbc3e0" : "#3b0764";
+          var _dotOff = _dark ? "#3a2f55" : "#ddd";
+          var _btnBg = _dark ? "#2a2140" : "#f0eaff";
+          var _btnC = _dark ? "var(--ac-ll)" : "var(--ac)";
           var target = s.sel ? document.querySelector(s.sel) : null;
           // Hedef efektif görünür alanın dışındaysa ortaya kaydır. tour-lock
           // (overflow:hidden) viewport scroller'da scrollIntoView'i engelliyor →
@@ -8409,16 +8496,16 @@ function drawResultCard(opts) {
           else posCss = "top:" + (r.bottom + 16) + "px;transform:translateX(-50%);";
           bub.style.cssText =
             "position:fixed;left:50%;" + posCss +
-            "width:88%;max-width:340px;background:#fff;border-radius:20px;padding:20px 18px;box-shadow:0 14px 50px rgba(124,58,237,.45);text-align:center";
+            "width:88%;max-width:340px;background:" + _bubBg + ";border-radius:20px;padding:20px 18px;box-shadow:0 14px 50px rgba(20,6,40,.5);text-align:center";
           var dots = '<div style="display:flex;gap:6px;justify-content:center;margin:14px 0">';
           steps.forEach(function (_u, k) {
-            dots += '<span style="width:8px;height:8px;border-radius:50%;display:inline-block;background:' + (k === i ? "var(--ac)" : "#ddd") + '"></span>';
+            dots += '<span style="width:8px;height:8px;border-radius:50%;display:inline-block;background:' + (k === i ? "var(--ac)" : _dotOff) + '"></span>';
           });
           dots += "</div>";
           bub.innerHTML =
             '<div style="margin-bottom:6px;display:flex;justify-content:center">' + poseSvg(s.pose, 66) + "</div>" +
-            '<div style="font-size:17px;font-weight:900;color:var(--ac-d2);margin-bottom:8px">' + s.title + "</div>" +
-            '<div style="font-size:13.5px;font-weight:700;color:#3b0764;line-height:1.6">' + s.body + "</div>" + dots;
+            '<div style="font-size:17px;font-weight:900;color:' + _titleC + ';margin-bottom:8px">' + s.title + "</div>" +
+            '<div style="font-size:13.5px;font-weight:700;color:' + _bodyC + ';line-height:1.6">' + s.body + "</div>" + dots;
           var btns = document.createElement("div");
           btns.style.cssText = "display:flex;gap:8px";
           // ← Geri: önceki (atlanmamış) adıma dön; ilk adımda gizli
@@ -8440,13 +8527,13 @@ function drawResultCard(opts) {
             var back = document.createElement("button");
             back.textContent = "←";
             back.setAttribute("aria-label", "Geri");
-            back.style.cssText = "flex:0 0 auto;background:#f0eaff;color:var(--ac);border:none;padding:11px 14px;border-radius:12px;font-weight:900;cursor:pointer";
+            back.style.cssText = "flex:0 0 auto;background:" + _btnBg + ";color:" + _btnC + ";border:none;padding:11px 14px;border-radius:12px;font-weight:900;cursor:pointer";
             back.onclick = goBack;
             btns.appendChild(back);
           }
           var skip = document.createElement("button");
           skip.textContent = "Atla";
-          skip.style.cssText = "flex:1;background:#f0eaff;color:var(--ac);border:none;padding:11px;border-radius:12px;font-weight:800;cursor:pointer";
+          skip.style.cssText = "flex:1;background:" + _btnBg + ";color:" + _btnC + ";border:none;padding:11px;border-radius:12px;font-weight:800;cursor:pointer";
           skip.onclick = end;
           var next = document.createElement("button");
           next.textContent = i === steps.length - 1 ? "Başla! 🎉" : "İleri →";
@@ -9471,10 +9558,12 @@ function drawResultCard(opts) {
               });
           }, 1600);
         }
+        // Kazanan spotlight'ı (~1.7sn) İZLENSİN, SONRA kazanan kartına in
+        // (Deploy #14: eskiden 120ms'de kaydırıp spotlight'ı ekrandan kaçırıyordu).
         setTimeout(() => {
           burstAt(card);
           card.scrollIntoView({ behavior: "smooth", block: "center" });
-        }, 120);
+        }, 1850);
       }
 
       // ═══════════════════ VOTE ═══════════════════
@@ -9587,9 +9676,35 @@ function drawResultCard(opts) {
           l.appendChild(d);
         });
         var sb = document.getElementById("cekilis-start");
-        if (sb) sb.style.opacity = S.cekilis.length >= 2 ? "1" : "0.5";
+        if (sb) {
+          sb.style.opacity = S.cekilis.length >= 2 ? "1" : "0.5";
+          // Liste değişince ana "Çekilişi Başlat" geri gelsin (çift düğme sıfırlama)
+          if (!cekilisSpinning) sb.style.display = "";
+        }
         var emp = document.getElementById("cekilis-empty");
         if (emp) emp.style.display = S.cekilis.length ? "none" : "";
+        var clr = document.getElementById("cekilis-clear");
+        if (clr) clr.style.display = S.cekilis.length ? "" : "none";
+        // Liste değişti → eski sonuç/makara kapansın (yeni çekilişe hazır)
+        if (!cekilisSpinning) {
+          var crEl = document.getElementById("cr");
+          if (crEl) crEl.style.display = "none";
+          var stgEl = document.getElementById("cekilis-stage");
+          if (stgEl) stgEl.style.display = "none";
+        }
+      }
+      function clearCekilis() {
+        if (cekilisSpinning) return;
+        if (!S.cekilis.length) return;
+        showConfirm(
+          "Tüm isimler silinsin mi?",
+          "Çekilişteki " + S.cekilis.length + " isim/seçeneğin hepsi silinecek.",
+          function () {
+            S.cekilis = [];
+            renderCekilis();
+            snd("click");
+          },
+        );
       }
       function startCekilis() {
         if (cekilisSpinning) return;
@@ -9599,6 +9714,9 @@ function drawResultCard(opts) {
         }
         cekilisSpinning = true;
         hImpact("MEDIUM", 40); // Çekilişi Başlat basışı
+        // Çift düğme önlemi: çekilirken/sonuçta ana "Çekilişi Başlat" gizli (Deploy #14)
+        var _startBtn = document.getElementById("cekilis-start");
+        if (_startBtn) _startBtn.style.display = "none";
         document.getElementById("cr").style.display = "none";
         var stage = document.getElementById("cekilis-stage");
         var disp = document.getElementById("cekilis-display");
@@ -9617,7 +9735,7 @@ function drawResultCard(opts) {
         var ITEM = 56,
           WIN = 168,
           center = (WIN - ITEM) / 2,
-          loops = 6;
+          loops = 8;
         // Uzun şerit: birkaç tur rastgele + sonda kazanan (ortada duracak).
         var strip = [];
         for (var L = 0; L < loops; L++)
@@ -9633,10 +9751,12 @@ function drawResultCard(opts) {
           reel.appendChild(it);
         });
         var finalY = -(winPos * ITEM - center);
+        var DUR = 4600; // Deploy #14: daha dramatik (~1.8x uzun)
         reel.style.transition = "none";
         reel.style.transform = "translateY(0px)";
         void reel.offsetWidth;
-        reel.style.transition = "transform 2.6s cubic-bezier(0.12,0.62,0.2,1)";
+        reel.style.transition =
+          "transform " + DUR / 1000 + "s cubic-bezier(0.10,0.58,0.18,1)";
         reel.style.transform = "translateY(" + finalY + "px)";
         var _done = false;
         var _finish = function () {
@@ -9645,8 +9765,18 @@ function drawResultCard(opts) {
           vib(12);
           finishCekilis(winner);
         };
+        // Yavaşlayan makara sesi (casino tık) — sese saygılı (soundEnabled kontrol edilir)
+        var _tk = 0,
+          _gap = 45;
+        (function _schedTick() {
+          if (_done || _tk >= DUR - 260) return;
+          casinoTickGain(0.5);
+          _tk += _gap;
+          _gap = 45 + (_tk / DUR) * 360; // giderek seyrekleşir
+          setTimeout(_schedTick, _gap);
+        })();
         reel.addEventListener("transitionend", _finish, { once: true });
-        setTimeout(_finish, 2750); // transitionend gelmezse güvence
+        setTimeout(_finish, DUR + 160); // transitionend gelmezse güvence
       }
       function finishCekilis(winner) {
         cekilisSpinning = false;
@@ -11001,7 +11131,7 @@ function drawResultCard(opts) {
         var cb = document.getElementById("time-custom-btn");
         if (cb) {
           cb.classList.add("on");
-          cb.textContent = "✏️ " + val + " dk";
+          cb.textContent = val + " dk";
         }
       }
       var masaPeopleConfirmed = false;
@@ -11443,6 +11573,12 @@ function drawResultCard(opts) {
         var cw = document.getElementById("cats-vote-wrap");
         if (cw) cw.style.display = "block";
         snd("ding");
+        // Oto-scroll: kullanıcı seçenek ekleme + "Odayı Oluştur" alanını görsün (Deploy #14)
+        setTimeout(function () {
+          var os = document.getElementById("online-setup");
+          if (os && os.scrollIntoView)
+            os.scrollIntoView({ behavior: "smooth", block: "start" });
+        }, 140);
       }
       function toggleMaxPCustom() {
         var w = document.getElementById("maxp-custom-wrap");
@@ -12038,6 +12174,14 @@ function drawResultCard(opts) {
             alert("Bu oylama kapanmış!");
             return;
           }
+          // SELF-JOIN GUARD: kendi odanın koduyla katılma → host oturumunu ezme
+          // (amHost=false + participants.<deviceId> ezilmesi host'u "misafir" yapıyordu).
+          if (doc.data().hostId === deviceId) {
+            alert(
+              "Bu odanın sahibi zaten sensin 🎉 Katılımcıların kodla katılsın.",
+            );
+            return;
+          }
           shareCode = code;
           amHost = false;
           tbAnimKey = "";
@@ -12255,13 +12399,14 @@ function drawResultCard(opts) {
           document.getElementById("room-title-display").textContent || ""
         ).replace(" — Oda açık", "");
         var msg =
-          "Karar Mercii'nde oylamamıza katıl!\nOda: " +
-          name +
-          "\nKod: " +
+          "🗳️ Karar Mercii'de " +
+          (name ? '"' + name + '" ' : "") +
+          "oylamasına davetlisin!\n\n" +
+          "🔑 Oda kodu: " +
           shareCode +
-          "\n" +
+          "\n\nBağlantıya dokun, hemen oy ver 👇\n" +
           link +
-          "\n\nUygulama 👉 https://play.google.com/store/apps/details?id=app.kararmercii.com";
+          "\n\n📲 Uygulamayı indir:\nhttps://play.google.com/store/apps/details?id=app.kararmercii.com";
         logEv("share_whatsapp");
         // vc32: native'de sistem paylaşım sayfası (guard'lı) — WebView'da navigator.share yok
         var _sh = _capPlug("Share");
@@ -12334,6 +12479,22 @@ function drawResultCard(opts) {
           }
           if (doc.data().status === "closed") {
             alert("Bu oylama kapanmış!");
+            return;
+          }
+          // SELF-JOIN GUARD: Bu cihaz odanın HOST'uysa (kendine WhatsApp linki atıp
+          // tıkladı) katılımcı akışına SOKMA. Eskiden amHost=false yapılıp
+          // participants.<deviceId> "Misafir" olarak EZİLİYORDU → host kendi odasını
+          // kaybediyor, oy verip bitiremiyordu. deviceId kalıcı (localStorage) →
+          // hostId===deviceId ile güvenilir yakalanır (aynı-cihaz çakışması da kapanır).
+          if (doc.data().hostId === deviceId) {
+            document.getElementById("room-overlay").style.display = "none";
+            document
+              .querySelectorAll(".tabs,.hdr")
+              .forEach((el) => (el.style.display = ""));
+            roCode = null;
+            alert(
+              "Bu odanın sahibi zaten sensin 🎉 Ana ekrandan odanı yönet; arkadaşların kodla katılsın.",
+            );
             return;
           }
           document.getElementById("ro-room-name").textContent =
@@ -15312,7 +15473,7 @@ function drawResultCard(opts) {
             id="time-custom-btn"
             onclick="toggleCustomTime()"
           >
-            ✏️ Özel
+            <svg viewBox="0 0 24 24" style="width:12px;height:12px;fill:none;stroke:currentColor;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round;vertical-align:-1px;margin-right:1px"><path d="M12 5v14M5 12h14"/></svg>Diğer
           </button>
         </div>
         <div id="custom-time-wrap" style="display: none; margin-bottom: 8px">
