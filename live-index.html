@@ -874,6 +874,34 @@
       .pro-perk:last-child {
         margin-bottom: 0;
       }
+      /* G2 — Ücretsiz/PRO karşılaştırma tablosu (Deploy #15) */
+      .pro-compare { padding: 0; }
+      .pcmp-head, .pcmp-row {
+        display: grid;
+        grid-template-columns: 1fr 60px 66px;
+        align-items: center;
+        gap: 4px;
+      }
+      .pcmp-head {
+        font-size: 10px; font-weight: 900; text-transform: uppercase;
+        letter-spacing: 0.3px; padding: 0 2px 6px;
+      }
+      .pcmp-head .pcmp-free { text-align: center; color: var(--ac-l2); }
+      .pcmp-head .pcmp-pro { text-align: center; color: #e8912a; }
+      .pcmp-row {
+        padding: 8px 2px; border-top: 1px solid var(--ac-bd);
+        font-size: 12px; font-weight: 800;
+        animation: proPerkIn 0.45s ease both;
+      }
+      html.dark .pcmp-row { border-top-color: #33285a; }
+      .pcmp-feat { color: var(--ac-dd); }
+      html.dark .pcmp-feat { color: #ece8f7; }
+      .pcmp-x { text-align: center; font-size: 11px; font-weight: 800; color: #9ca3af; }
+      .pcmp-c { text-align: center; font-size: 12px; font-weight: 900; color: #16a34a; }
+      html.dark .pcmp-c { color: #4ade80; }
+      .pro-modal.on .pcmp-row:nth-child(2) { animation-delay: 0.08s; }
+      .pro-modal.on .pcmp-row:nth-child(3) { animation-delay: 0.16s; }
+      .pro-modal.on .pcmp-row:nth-child(4) { animation-delay: 0.24s; }
       .pro-perk-icon {
         font-size: 16px;
         min-width: 20px;
@@ -1177,6 +1205,57 @@
         min-height: 100dvh;
         gap: 0;
       }
+      /* D1 — onboarding değer carousel (Deploy #15, CSS scroll-snap) */
+      .ob-carousel-wrap {
+        position: relative;
+        width: 100%;
+        max-width: 420px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+      }
+      .ob-skip {
+        position: absolute;
+        top: -8px;
+        right: 4px;
+        background: none;
+        border: none;
+        color: var(--ac-l2);
+        font-family: "Nunito", sans-serif;
+        font-weight: 800;
+        font-size: 13px;
+        cursor: pointer;
+        padding: 6px 8px;
+        z-index: 2;
+      }
+      .ob-carousel {
+        display: flex;
+        overflow-x: auto;
+        scroll-snap-type: x mandatory;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+        width: 100%;
+      }
+      .ob-carousel::-webkit-scrollbar { display: none; }
+      .ob-card {
+        flex: 0 0 100%;
+        scroll-snap-align: center;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+        padding: 8px 22px;
+      }
+      .ob-card-merci { margin-bottom: 10px; }
+      .ob-dots { display: flex; gap: 8px; margin: 16px 0 18px; }
+      .ob-dots i {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: var(--ac-ll);
+        transition: width 0.25s, background 0.25s, border-radius 0.25s;
+      }
+      .ob-dots i.on { width: 22px; border-radius: 5px; background: var(--ac); }
       .ob-auth-logo {
         margin-bottom: 16px;
         display: flex;
@@ -1487,6 +1566,35 @@
         font-weight: 800;
         color: var(--ac-d);
       }
+      /* E3 — header PRO rozeti (altın + shimmer) (Deploy #15) */
+      .hdr-pro {
+        background: linear-gradient(135deg, #f6b73c, #e8912a);
+        color: #fff;
+        border-radius: 20px;
+        padding: 5px 11px;
+        font-size: 11px;
+        font-weight: 900;
+        letter-spacing: 0.5px;
+        box-shadow: 0 3px 10px -2px rgba(232, 145, 42, 0.6);
+        position: relative;
+        overflow: hidden;
+        white-space: nowrap;
+      }
+      .hdr-pro::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(110deg, transparent 30%, rgba(255, 255, 255, 0.5) 50%, transparent 70%);
+        transform: translateX(-120%);
+        animation: hdrProShine 3.6s ease-in-out infinite;
+      }
+      @keyframes hdrProShine {
+        0%, 62%, 100% { transform: translateX(-120%); }
+        78% { transform: translateX(120%); }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .hdr-pro::after { animation: none; }
+      }
 
       /* ── INLINE SVG İKONLAR (emoji yerine; currentColor ile tema/tab uyumlu) ── */
       .ic {
@@ -1570,6 +1678,18 @@
       }
       .tab:active {
         transform: scale(0.94);
+      }
+      /* I3 — global basış geri bildirimi (Deploy #15): olmayan yerlere yay */
+      .pro-plan:active,
+      .menu-item:active,
+      .ai-quick-btn:active,
+      .share-copy:active,
+      .online-role-btn:active,
+      .vqs-merci-btn:active,
+      .code-btn:active,
+      .mode2:active,
+      .cat:active {
+        transform: scale(0.97);
       }
       /* Merci tab özel - parlak efekt */
       .tab-merci-glow {
@@ -2363,17 +2483,21 @@
         z-index: 2;
         letter-spacing: -0.3px;
       }
+      /* C2 — kazanan spring reveal: overshoot + blur-to-focus (Deploy #15) */
       @keyframes winpop {
         0% {
-          transform: scale(0.4);
+          transform: scale(0.8);
           opacity: 0;
+          filter: blur(6px);
         }
-        70% {
-          transform: scale(1.14);
+        60% {
+          transform: scale(1.06);
+          filter: blur(0);
         }
         100% {
           transform: scale(1);
           opacity: 1;
+          filter: blur(0);
         }
       }
       @keyframes shimmer {
@@ -2512,9 +2636,43 @@
       .m-idle .m-arm.r {
         animation: marm 4s ease-in-out infinite reverse;
       }
+      /* ── Poz-özel mikro hareketler (Deploy #15) ──
+         Hepsi SVG İÇİ eleman → container float/breath ile çakışmaz; GPU-dostu. */
+      @keyframes mwave {
+        0%, 100% { transform: rotate(-3deg); }
+        25% { transform: rotate(-17deg); }
+        60% { transform: rotate(9deg); }
+      }
+      .m-wave-arm {
+        transform-box: view-box;
+        transform-origin: 462px 250px;
+        animation: mwave 1.4s ease-in-out infinite;
+      }
+      @keyframes mzzz {
+        0% { transform: translateY(4px); opacity: 0; }
+        30% { opacity: 1; }
+        100% { transform: translateY(-10px); opacity: 0; }
+      }
+      .m-zzz {
+        transform-box: view-box;
+        transform-origin: 490px 120px;
+        animation: mzzz 2.4s ease-in-out infinite;
+      }
+      @keyframes mscan {
+        0%, 100% { transform: translate(0, 0); }
+        50% { transform: translate(-10px, 3px); }
+      }
+      .m-magnify {
+        transform-box: view-box;
+        transform-origin: 470px 150px;
+        animation: mscan 2.6s ease-in-out infinite;
+      }
       @media (prefers-reduced-motion: reduce) {
         .m-idle,
-        .m-idle * {
+        .m-idle *,
+        .m-wave-arm,
+        .m-zzz,
+        .m-magnify {
           animation: none !important;
         }
       }
@@ -2807,10 +2965,15 @@
         gap: 10px;
         scroll-behavior: smooth;
       }
+      /* F2 — mesaj balonu giriş cilası (Deploy #15): alttan yaylı kayma */
       @keyframes msgPop {
         0% {
           opacity: 0;
-          transform: translateY(8px) scale(0.97);
+          transform: translateY(12px) scale(0.94);
+        }
+        60% {
+          opacity: 1;
+          transform: translateY(-2px) scale(1.01);
         }
         100% {
           opacity: 1;
@@ -2819,10 +2982,55 @@
       }
       .msg-merci,
       .msg-user {
-        animation: msgPop 0.22s cubic-bezier(0.34, 1.4, 0.64, 1);
+        animation: msgPop 0.32s cubic-bezier(0.34, 1.5, 0.5, 1);
       }
       .chat-bubble {
         position: relative;
+      }
+      /* Merci balonuna küçük kuyruk (avatara doğru) */
+      .chat-bubble::before {
+        content: "";
+        position: absolute;
+        left: -6px;
+        top: 13px;
+        width: 0;
+        height: 0;
+        border: 6px solid transparent;
+        border-right-color: rgba(255, 255, 255, 0.9);
+        border-left: 0;
+      }
+      html.dark .chat-bubble::before {
+        border-right-color: #271d3f;
+      }
+      .msg-merci.grouped .chat-bubble::before {
+        display: none;
+      }
+      /* F3 — boş sohbet öneri çipleri (Deploy #15) */
+      .chat-starters {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        padding: 8px 12px 4px;
+      }
+      .chat-starter {
+        border: 1.5px solid var(--ac-bd);
+        background: var(--ac-bg2);
+        color: var(--ac-d);
+        border-radius: 999px;
+        padding: 7px 12px;
+        font-family: "Nunito", sans-serif;
+        font-weight: 800;
+        font-size: 11.5px;
+        cursor: pointer;
+        animation: msgPop 0.3s ease both;
+      }
+      html.dark .chat-starter {
+        background: #1a1430;
+        border-color: #33285a;
+        color: var(--ac-ll);
+      }
+      .chat-starter:active {
+        transform: scale(0.96);
       }
       .msg-user {
         align-self: flex-end;
@@ -3550,6 +3758,56 @@
         font-weight: 700;
         color: var(--ac-l2);
         white-space: nowrap;
+      }
+      /* H2 — geçmiş kartı slide-in + mod rozeti (Deploy #15) */
+      @keyframes histIn {
+        from { opacity: 0; transform: translateX(-10px); }
+        to { opacity: 1; transform: translateX(0); }
+      }
+      .hist-item { animation: histIn 0.35s ease both; }
+      .hist-badge {
+        flex-shrink: 0;
+        width: 30px;
+        height: 30px;
+        border-radius: 9px;
+        background: var(--ac-bg3);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 16px;
+      }
+      html.dark .hist-badge { background: #2a2140; }
+      /* H1 — geçmiş boş durum */
+      .hist-empty {
+        text-align: center;
+        padding: 20px 12px 6px;
+      }
+      .hist-empty-merci { display: flex; justify-content: center; margin-bottom: 6px; }
+      .hist-empty-txt {
+        font-size: 13px;
+        font-weight: 800;
+        color: var(--ac-l2);
+        line-height: 1.5;
+      }
+      /* I4 — skeleton yükleme (shimmer) (Deploy #15) */
+      @keyframes skelShine {
+        0% { background-position: -200% 0; }
+        100% { background-position: 200% 0; }
+      }
+      .skel {
+        background: linear-gradient(90deg, var(--ac-bg2) 25%, var(--ac-bg3) 37%, var(--ac-bg2) 63%);
+        background-size: 200% 100%;
+        animation: skelShine 1.4s ease-in-out infinite;
+        border-radius: 12px;
+      }
+      html.dark .skel {
+        background: linear-gradient(90deg, #1a1430 25%, #241b3a 37%, #1a1430 63%);
+        background-size: 200% 100%;
+      }
+      .chat-skel { align-self: flex-start; width: 92%; }
+      .skel-place { height: 62px; width: 100%; margin-bottom: 6px; }
+      @media (prefers-reduced-motion: reduce) {
+        .skel { animation: none; }
       }
 
       /* Confetti */
@@ -4370,13 +4628,26 @@
     <div class="app">
       <!-- ONBOARDING 1 -->
       <div class="screen on" id="scr-ob1">
-        <div class="ob">
-          <div id="ob1-merci" class="m-idle"></div>
-          <div class="ob-title">Merhaba, ben Merci!</div>
-          <div class="ob-sub">
-            Grubunuzun resmi karar ustasıyım.<br />Kararsız kaldığınızda bana
-            gelin!
+        <div class="ob ob-carousel-wrap">
+          <button class="ob-skip" id="ob-skip">Atla →</button>
+          <div class="ob-carousel" id="ob-carousel">
+            <div class="ob-card">
+              <div class="ob-card-merci m-idle" id="obc-1"></div>
+              <div class="ob-title">🎡 Çarkla anında seç</div>
+              <div class="ob-sub">Seçenekleri gir, çevir — kader karar versin!</div>
+            </div>
+            <div class="ob-card">
+              <div class="ob-card-merci m-idle" id="obc-2"></div>
+              <div class="ob-title">⭐ Grupça oyla</div>
+              <div class="ob-sub">Herkes yıldız versin, en çok oyu alan kazansın.</div>
+            </div>
+            <div class="ob-card">
+              <div class="ob-card-merci m-idle" id="obc-3"></div>
+              <div class="ob-title">🐙 Merci'ye danış</div>
+              <div class="ob-sub">Ne yesek, nereye gitsek? Merci öneri versin.</div>
+            </div>
           </div>
+          <div class="ob-dots" id="ob-dots"><i class="on"></i><i></i><i></i></div>
           <button class="ob-btn" id="go-ob2">Haydi başlayalım →</button>
         </div>
       </div>
@@ -4441,6 +4712,7 @@
             <div class="hdr-sub">Nasıl karar verelim?</div>
           </div>
           <div class="hdr-badge" id="hdr-badge" style="display: none"></div>
+          <div class="hdr-pro" id="hdr-pro" style="display: none">⭐ PRO</div>
           <button class="hdr-home" id="home-btn" aria-label="Ana ekran"><svg class="ic" viewBox="0 0 24 24"><use href="#i-home"/></svg></button>
           <button class="menu-btn" id="menu-btn" aria-label="Menü"><svg class="ic" viewBox="0 0 24 24"><use href="#i-menu"/></svg></button>
         </div>
@@ -5264,6 +5536,11 @@
                   </div>
                 </div>
               </div>
+              <div id="chat-starters" class="chat-starters">
+                <button class="chat-starter" onclick="startChat('Bu akşam ne yesem?')">🍔 Bu akşam ne yesem?</button>
+                <button class="chat-starter" onclick="startChat('Film mi dizi mi?')">🎬 Film mi dizi mi?</button>
+                <button class="chat-starter" onclick="startChat('Yakında kafe var mı?')">📍 Yakında kafe var mı?</button>
+              </div>
               <div class="thinking-inline" id="ath" style="display: none">
                 <div class="dot"></div>
                 <div class="dot"></div>
@@ -5347,21 +5624,28 @@
 
         <!-- GEÇMİŞ -->
         <div style="padding: 0 16px 24px; display: none" id="hist-section">
-          <div class="divhr"></div>
-          <p class="lbl">Merci'nin Notu</p>
-          <div class="hist-summary">
-            <div id="hist-merci" class="rmerci" style="margin: 0"></div>
-            <div class="htxt2" id="hist-summary-txt"></div>
+          <div id="hist-content">
+            <div class="divhr"></div>
+            <p class="lbl">Merci'nin Notu</p>
+            <div class="hist-summary">
+              <div id="hist-merci" class="rmerci" style="margin: 0"></div>
+              <div class="htxt2" id="hist-summary-txt"></div>
+            </div>
+            <div class="hist-chart-wrap" id="hist-chart-wrap">
+              <div class="hist-chart-title">📊 En Çok Kazananlar</div>
+              <canvas id="hist-chart" height="160"></canvas>
+            </div>
+            <div class="hist-actions">
+              <button class="hist-mini-btn" id="hist-toggle">Detayları gör</button
+              ><button class="hist-clear" id="hist-clear"><svg class="ic ic-t" viewBox="0 0 24 24" style="width:14px;height:14px;vertical-align:-2.5px"><use href="#i-trash"/></svg> Temizle</button>
+            </div>
+            <div id="hist-list" style="display: none"></div>
           </div>
-          <div class="hist-chart-wrap" id="hist-chart-wrap">
-            <div class="hist-chart-title">📊 En Çok Kazananlar</div>
-            <canvas id="hist-chart" height="160"></canvas>
+          <div id="hist-empty" class="hist-empty" style="display: none">
+            <div class="hist-empty-merci m-idle" id="hist-empty-merci"></div>
+            <div class="hist-empty-txt">Henüz karar yok — ilk çarkını çevir! 🎡</div>
+            <button class="btn" onclick="sw('wheel')" style="max-width: 220px; margin: 12px auto 0">🎡 Çark'a Git</button>
           </div>
-          <div class="hist-actions">
-            <button class="hist-mini-btn" id="hist-toggle">Detayları gör</button
-            ><button class="hist-clear" id="hist-clear"><svg class="ic ic-t" viewBox="0 0 24 24" style="width:14px;height:14px;vertical-align:-2.5px"><use href="#i-trash"/></svg> Temizle</button>
-          </div>
-          <div id="hist-list" style="display: none"></div>
         </div>
       </div>
     </div>
@@ -5799,6 +6083,11 @@
       });
 
       function updateAuthUI() {
+        // E3 — header PRO rozeti (isPremium'dan beslenir; kota resolve sonrası da çağrılır)
+        try {
+          var _hp = document.getElementById("hdr-pro");
+          if (_hp) _hp.style.display = isPremium ? "" : "none";
+        } catch (e) {}
         var profileWrap = document.getElementById("menu-profile-wrap");
         var signInItem = document.getElementById("mi-signin");
         var aiWall = document.getElementById("ai-login-wall");
@@ -7767,6 +8056,57 @@ function drawResultCard(opts) {
         );
       }
 
+      // ═══ YENİ POZLAR (Deploy #15: daha hareketli & çeşitli Merci) ═══
+      // Aynı ahtapot, farklı kol/göz/ağız — bağlama göre canlılık.
+
+      // 👋 El sallayan (hoşgeldin / onboarding / hero) — sağ (aşağı) kol havaya
+      //    kalkar ve .m-wave-arm ile sallanır (CSS). Büyük mutlu ağız.
+      function merciSVGWave(w) {
+        mc++;
+        var uid = "wv" + mc;
+        var body = _merciBody(uid).replace(
+          '<path class="m-arm r" d="M430 300Q490 270 515 215Q530 180 505 165Q480 175 475 205Q465 240 425 275Q408 290 412 305Z" fill="#7F77DD" stroke="#534AB7" stroke-width="1.5"/>\n  <circle cx="508" cy="172" r="26" fill="#AFA9EC" stroke="#534AB7" stroke-width="2"/>',
+          '<g class="m-wave-arm"><path d="M460 268Q515 218 532 163Q542 126 518 116Q498 128 502 160Q498 193 452 253Z" fill="#7F77DD" stroke="#534AB7" stroke-width="1.5"/><circle cx="528" cy="116" r="26" fill="#AFA9EC" stroke="#534AB7" stroke-width="2"/></g>',
+        );
+        return _makeSVG(
+          w,
+          uid,
+          body,
+          _eyesNormal(uid),
+          '<path d="M305 305Q340 336 375 305Q368 324 340 331Q312 324 305 305Z" fill="var(--ac)" stroke="#26215C" stroke-width="2"/>',
+          "",
+        );
+      }
+
+      // 😴 Uykulu / sıkılmış (boş durum — "hadi doldur") — kapalı gözler + zZz
+      function merciSVGSleepy(w) {
+        mc++;
+        var uid = "sl" + mc;
+        return _makeSVG(
+          w,
+          uid,
+          _merciBody(uid),
+          '<path d="M280 256Q302 269 324 256" fill="none" stroke="#26215C" stroke-width="7" stroke-linecap="round"/><path d="M356 256Q378 269 400 256" fill="none" stroke="#26215C" stroke-width="7" stroke-linecap="round"/>',
+          '<path d="M323 313Q340 320 357 313" fill="none" stroke="#26215C" stroke-width="4" stroke-linecap="round"/>',
+          '<g class="m-zzz"><text x="452" y="150" font-size="26" font-family="sans-serif" font-weight="700" fill="var(--ac-l2)">z</text><text x="484" y="120" font-size="34" font-family="sans-serif" font-weight="700" fill="var(--ac-l)">Z</text><text x="524" y="94" font-size="20" font-family="sans-serif" font-weight="700" fill="var(--ac-ll)">z</text></g>',
+        );
+      }
+
+      // 🔍 Meraklı-bakan (arama / mekan önerisi) — kalkık kaşlar + büyüteç
+      function merciSVGCurious(w) {
+        mc++;
+        var uid = "cu" + mc;
+        return _makeSVG(
+          w,
+          uid,
+          _merciBody(uid),
+          _eyesNormal(uid) +
+            '<path d="M282 224Q302 213 322 221" fill="none" stroke="#534AB7" stroke-width="4" stroke-linecap="round"/><path d="M358 221Q378 213 398 224" fill="none" stroke="#534AB7" stroke-width="4" stroke-linecap="round"/>',
+          '<ellipse cx="340" cy="316" rx="11" ry="13" fill="#26215C"/>',
+          '<g class="m-magnify"><circle cx="470" cy="150" r="24" fill="var(--ac-ll)" fill-opacity="0.35"/><circle cx="470" cy="150" r="30" fill="none" stroke="var(--ac-d)" stroke-width="7"/><line x1="491" y1="171" x2="516" y2="196" stroke="var(--ac-d)" stroke-width="9" stroke-linecap="round"/></g>',
+        );
+      }
+
       var bRAFs = {};
       var bTMOs = {};
       function gentleFloat(id) {
@@ -7796,6 +8136,12 @@ function drawResultCard(opts) {
           else if (pose === "think") svg = merciSVGThink(w);
           else if (pose === "celebrate") svg = merciSVGCelebrate(w);
           else if (pose === "scared") svg = merciSVGScared(w);
+          else if (pose === "wave" || pose === "happy") svg = merciSVGWave(w);
+          else if (pose === "sleepy") svg = merciSVGSleepy(w);
+          else if (pose === "curious") svg = merciSVGCurious(w);
+          else if (pose === "glasses") svg = merciSVGGlasses(w);
+          else if (pose === "love") svg = merciSVGLove(w);
+          else if (pose === "sad") svg = merciSVGSad(w);
           else svg = merciSVG(w);
           document.getElementById(id).innerHTML = svg;
         } catch (e) {}
@@ -8718,10 +9064,35 @@ function drawResultCard(opts) {
         var t = document.getElementById(id);
         if (t) t.classList.add("on");
         if (id === "scr-ob1") {
-          setM("ob1-merci", 140);
-          gentleFloat("ob1-merci");
+          renderOb1();
         }
         snd("click");
+      }
+      // D1 — onboarding carousel maskotları + kaydırma noktaları (Deploy #15)
+      function renderOb1() {
+        setM("obc-1", 116, "wave");
+        setM("obc-2", 116, "happy");
+        setM("obc-3", 116, "glasses");
+        gentleFloat("obc-1");
+        gentleFloat("obc-2");
+        gentleFloat("obc-3");
+        initObDots();
+      }
+      function initObDots() {
+        var car = document.getElementById("ob-carousel");
+        var dots = document.getElementById("ob-dots");
+        if (!car || !dots || car._obBound) return;
+        car._obBound = true;
+        car.addEventListener(
+          "scroll",
+          function () {
+            var idx = Math.round(car.scrollLeft / (car.clientWidth || 1));
+            var ds = dots.querySelectorAll("i");
+            for (var k = 0; k < ds.length; k++)
+              ds[k].classList.toggle("on", k === idx);
+          },
+          { passive: true },
+        );
       }
       function setCount(n) {
         S.count = n;
@@ -8734,8 +9105,8 @@ function drawResultCard(opts) {
         setM("hdr-merci", 46);
         setM("merci-wheel", 56);
         setM("ai-merci", 52);
-        setM("cekilis-empty-merci", 58, "think");
-        setM("ve-merci", 58, "think");
+        setM("cekilis-empty-merci", 58, "sleepy");
+        setM("ve-merci", 58, "curious");
         gentleFloat("hdr-merci");
         gentleFloat("merci-wheel");
         updW(); // Çarkı başta da çiz (boş bile olsa)
@@ -10769,6 +11140,7 @@ function drawResultCard(opts) {
           window._nearbyRadius = 2500;
         }
         appendMsg("merci", "📍 Konumuna bakıyorum...", false);
+        appendSkeleton(); // I4 — sonuçlar gelene kadar shimmer iskelet
         var pos = null,
           cachedPos = null;
         // Cache'li konum (kmUserGeo): TAZE ise (<6 saat) direkt kullan → anlık GPS
@@ -10789,6 +11161,7 @@ function drawResultCard(opts) {
             if (cachedPos) {
               pos = cachedPos; // taze GPS yok → bayat cache son çare
             } else {
+              removeSkeleton(); // I4 — konum yok yolunda iskelet takılı kalmasın
               appendMsg(
                 "merci",
                 "Konumuna ulaşamadım — konum iznini açman gerek 📍",
@@ -10819,6 +11192,7 @@ function drawResultCard(opts) {
             }),
           });
           var data = await r.json();
+          removeSkeleton(); // sonuç/hata geldi → iskeleti kaldır
           if (r.status === 401) {
             signInWithGoogle();
             return;
@@ -10845,11 +11219,38 @@ function drawResultCard(opts) {
           appendPlaceCards(data.places);
           hImpact("LIGHT", 30);
         } catch (e) {
+          removeSkeleton();
           appendMsg("merci", "Bağlantı sorunu, tekrar dene.", false);
         }
       }
+      // I4 — sohbette shimmer iskelet kartları (mekan yüklenirken)
+      function appendSkeleton() {
+        try {
+          var msgs = document.getElementById("chat-messages");
+          if (!msgs || document.getElementById("nearby-skel")) return;
+          var w = document.createElement("div");
+          w.className = "chat-skel";
+          w.id = "nearby-skel";
+          w.innerHTML =
+            '<div class="skel skel-place"></div><div class="skel skel-place"></div>';
+          msgs.appendChild(w);
+          msgs.scrollTop = msgs.scrollHeight;
+        } catch (e) {}
+      }
+      function removeSkeleton() {
+        var s = document.getElementById("nearby-skel");
+        if (s && s.parentNode) s.parentNode.removeChild(s);
+      }
       var lastMsgTime = 0; // son mesaj zamanı (30dk sessizlik takibi)
 
+      // F3 — boş sohbet öneri çipi: tık → gönder + çipleri gizle (Deploy #15)
+      window.startChat = function (t) {
+        var s = document.getElementById("chat-starters");
+        if (s) s.style.display = "none";
+        try {
+          sendAI(t);
+        } catch (e) {}
+      };
       function sendAI(text) {
         if (aiThinking || !text.trim()) return;
 
@@ -12622,7 +13023,7 @@ function drawResultCard(opts) {
         document.getElementById(id).classList.add("on");
         if (id === "modal-about") {
           var el = document.getElementById("about-merci-svg");
-          if (el && !el.innerHTML) setM("about-merci-svg", 72);
+          if (el && !el.innerHTML) setM("about-merci-svg", 72, "wave");
         }
       }
       // Online oylamadan ayrılırken TÜM state + UI'ı temizle (zombi oda kalmasın)
@@ -13055,7 +13456,7 @@ function drawResultCard(opts) {
         // Maskotu kart içine bas (bir kez)
         var m = document.getElementById("wheel-card-merci");
         if (m && !m.innerHTML && typeof merciSVG === "function")
-          m.innerHTML = merciSVG(60);
+          m.innerHTML = merciSVGCurious(60);
         // Tek raf "Hızlı Başlat" çipleri — ilk 2'si ⭐ öne çıkan (.hot)
         var idxs = dailySuggestionIndices(8);
         var html = "";
@@ -13462,21 +13863,33 @@ function drawResultCard(opts) {
       }
       function renderHist() {
         var sec = document.getElementById("hist-section");
+        var content = document.getElementById("hist-content");
+        var empty = document.getElementById("hist-empty");
         if (!S.history.length) {
-          sec.style.display = "none";
+          // H1 — boş durum: gizlemek yerine maskotlu davet (Deploy #15)
+          sec.style.display = "";
+          if (content) content.style.display = "none";
+          if (empty) {
+            empty.style.display = "";
+            var em = document.getElementById("hist-empty-merci");
+            if (em && !em.innerHTML) setM("hist-empty-merci", 62, "sleepy");
+          }
           return;
         }
+        if (content) content.style.display = "";
+        if (empty) empty.style.display = "none";
         sec.style.display = "";
         setM("hist-merci", 40);
         document.getElementById("hist-summary-txt").textContent = histSummary();
         renderChart();
         var list = document.getElementById("hist-list");
         list.innerHTML = "";
-        S.history.forEach((h) => {
+        S.history.forEach((h, _i) => {
           var d = document.createElement("div");
           d.className = "hist-item";
+          d.style.animationDelay = Math.min(_i, 8) * 40 + "ms"; // H2 kademeli slide-in
           d.innerHTML =
-            '<span style="font-size:18px">' +
+            '<span class="hist-badge">' +
             h.emoji +
             '</span><div class="hist-txt"><b>' +
             h.item +
@@ -13587,6 +14000,7 @@ function drawResultCard(opts) {
         if (el) el.addEventListener("click", fn);
       }
       bind("go-ob2", () => showScreen("scr-ob2"));
+      bind("ob-skip", () => showScreen("scr-ob2"));
       bind("guest-continue-btn", () => setCount(0));
       bind("home-btn", () => {
         var hasActiveOnline = !!(
@@ -13843,11 +14257,10 @@ function drawResultCard(opts) {
       // ═══════════════════ INIT ═══════════════════
       renderCats();
       renderAIChips();
-      setM("ob1-merci", 140);
-      gentleFloat("ob1-merci");
+      renderOb1();
       setM("ob2-merci", 120, "think");
       gentleFloat("ob2-merci");
-      setM("modal-auth-merci", 80);
+      setM("modal-auth-merci", 80, "wave");
       setM("chat-init-av", 28, "chat");
       // AI hero - setVoteMode'dan önce çalışır, tab geçişinde de set edilmeli
       window._aiHeroInited = false;
@@ -14217,7 +14630,7 @@ function drawResultCard(opts) {
           if (el) el.classList.add("on");
           if (id === "modal-about") {
             var av = document.getElementById("about-merci-svg");
-            if (av && !av.innerHTML) setM("about-merci-svg", 72);
+            if (av && !av.innerHTML) setM("about-merci-svg", 72, "wave");
           }
           if (id === "modal-bize-ulasin") {
             var fv = document.getElementById("feedback-merci-svg");
@@ -15295,18 +15708,11 @@ function drawResultCard(opts) {
           </div>
         </div>
         <div class="pro-hero-body">
-        <div class="pro-perks">
-          <div class="pro-perk">
-            <span class="pro-perk-icon">🐙</span> Merci'ye Danış — sınırsız
-            sohbet
-          </div>
-          <div class="pro-perk">
-            <span class="pro-perk-icon">🚫</span> Tamamen reklamsız deneyim
-          </div>
-          <div class="pro-perk">
-            <span class="pro-perk-icon">📊</span>
-            <span>Sınırsız karar geçmişi &amp; istatistik<span class="pro-perk-sub">Ücretsizde: son 5 karar</span></span>
-          </div>
+        <div class="pro-perks pro-compare">
+          <div class="pcmp-head"><span></span><span class="pcmp-free">Ücretsiz</span><span class="pcmp-pro">⭐ PRO</span></div>
+          <div class="pcmp-row"><span class="pcmp-feat">🐙 Merci mesajı</span><span class="pcmp-x">6/gün</span><span class="pcmp-c">Sınırsız</span></div>
+          <div class="pcmp-row"><span class="pcmp-feat">🚫 Reklamsız</span><span class="pcmp-x">✕</span><span class="pcmp-c">✓</span></div>
+          <div class="pcmp-row"><span class="pcmp-feat">📊 Karar geçmişi</span><span class="pcmp-x">Son 5</span><span class="pcmp-c">Sınırsız</span></div>
         </div>
         <div class="pro-plans">
           <div class="pro-plan" id="plan-yearly" onclick="selectPlan('yearly')">
