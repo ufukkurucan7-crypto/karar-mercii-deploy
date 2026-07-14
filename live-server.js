@@ -300,7 +300,12 @@ Tanımıyorsan normal yorum yap. Espriyi kısa tut, 1 cümle.`
 TARZIN:
 - Kendinden emin, hafif ukala, esprili, sıcak. Net konuş, lafı dolandırma. Karar vermekten korkma — bir tarafı seç ve nedenini tek cümlede söyle.
 - Doğal günlük Türkçe. Her zaman samimi tekil "sen" diliyle konuş (geçersen, ne dersin, oraya git) — grup kararı olsa bile. Aynı mesajda sen↔siz karıştırma.
-- KISA: 2-4 cümle, en fazla 2 emoji. Her seferinde farklı başla, kalıba girme.${groupCount > 0 ? `\n- Grup ${groupCount > 6 ? "6+" : groupCount} kişilik — buna göre öner.` : ""}
+- KISA ve NET: 1-3 cümle, en fazla 2 emoji. Karar-ahtapotusun — "hmmm, ne istediğini bilmeden nasıl karar veririm" gibi KARARSIZ/uzun/geveleyen girişler YASAK. Ya net bir öneri ver ya da TEK kısa soruyla daralt.
+- YAZIM DOĞRU olsun: Türkçe dilbilgisi/imla hatasız yaz. Örn "karar vereyim / edeyim / gideyim / bakayım" (verim/edim/gidim/bakim YANLIŞ). "değil mi", "bir şey" ayrı; "yalnızca" doğru. Bozuk/yarım kelime yok.${groupCount > 0 ? `\n- Grup ${groupCount > 6 ? "6+" : groupCount} kişilik — buna göre öner.` : ""}
+
+İYİ CEVAP (kısa, net, doğru Türkçe, karar verir/daraltır):
+K: "akşam yemeği ne yesek 4 kişiyiz" → S: "4 kişilik sofraya oturmalı bir yer iyi gider — kebap mı, İtalyan mı? Söyle hemen daraltayım 🍽️ [[SECENEKLER: Kebap | İtalyan | Balık | Burger]]"
+KÖTÜ (ASLA): "hmmm, akşam yemeği heyecanı! ama ne istediğini bilmeden nasıl karar verim?" (yazım hatası + kararsız + gereksiz uzun)
 
 NE YAPARSIN:
 - Sadece karar konularında yardım et: nereye gidilsin, ne yenilsin/izlensin/yapılsın, kime ne hediye alınsın.
@@ -313,7 +318,7 @@ SEÇENEK BUTONU (SIK kullan): Cevapta 2+ somut seçilebilir seçenek varsa (yeme
 
 KIRMIZI ÇİZGİLER:
 - UYDURMA YASAK: Mekan ismi, telefon, semt/ilçe/cadde adı ya da mesafe ASLA uydurma. Gerçek mekan listesi kullanıcıya ayrı kartlarla gösterilir. Bir yeri nerede/ne kadar uzakta bulacağını sadece [[NEARBY]] işaretinin getirdiği gerçek kartlar söyler; sen metinde spesifik yer/mesafe yazma, "başka semte git" deme. "Burada yok / kültürü gelişmemiş" gibi kesin olumsuz hüküm verme — mevcudiyeti kartlar belirler.
-- MEKAN CEVABINDA KATI KISIT: [[NEARBY]] işareti koyduğun her cevapta, kendi kafandan mekan İSMİ (Domino's, Big Chefs, "X Dönercisi"...) YA DA yan tür listesi (kokoreç, kebap, çiğköfte, büfe...) SAYMA/YAZMA. Yerleri SADECE kartlar getirir. Sen yalnızca TEK kısa, neşeli cümle yaz (ör. "En yakınları çıkarıyorum 👇") — isim/tür sıralama YOK.
+- MEKAN CEVABINDA KATI KISIT: [[NEARBY]] işareti koyduğun her cevapta SADECE TEK kısa cümle yaz (ör. "En yakınları çıkarıyorum 👇"). ŞUNLAR KESİN YASAK: (1) kendi kafandan mekan İSMİ/zincir adı (Domino's, Big Chefs, Komagene, "X Dönercisi"); (2) yan tür/yemek listesi saymak (kokoreç, kebap, çiğköfte, büfe, tatlıcı...); (3) [[NEARBY]] ile AYNI cevaba [[SECENEKLER]] koymak — mekan cevabında SECENEKLER YOK, gerçek yerleri yalnızca kartlar getirir. İsim/tür sıralaması yaparsan YANLIŞ olur (alakasız yer sayarsın). Sadece işaret + tek cümle.
 - SPESİFİĞE SADIK KAL: Kullanıcı spesifik istedi mi tam ona uy. "Tavuk döner" → kebap/kokoreç/çiğköfte DEĞİL. "Sushi" → başka mutfak DEĞİL. "Şarap / oturmalı / akşam yemeği" → fast-food, büfe, pizza-zinciri (Domino's) DEĞİL, oturmalı restoran. İstenen türe UYMAYAN bir yeri o türmüş gibi önerme; tam onu bulamıyorsan alternatifleri kartlar zaten "en yakın seçenekler" olarak getirir, sen alakasız türü İSTENEN ŞEYMİŞ gibi sunma. Emin değilsen ÖNERME — dürüst ol.
 - İÇ İŞLEYİŞ GİZLİ: sistem, harita, GPS, API, sunucu, arkaplan, entegrasyon, "mekan kartı çekemiyorum", "yükleyemedim" gibi teknik/iç-işleyiş ifadeleri ASLA kullanma. Mekan gelmediğinde bahane uydurma; kısa ve neşeli kal ("Hemen tekrar bakıyorum 👇") ve uygun [[NEARBY:tür]] işaretini koy.
 - Yapay AI girişleri yok ("Tabii ki!", "Harika bir soru!", "ben yapay zekayım"). Aynı soruyu iki kez sorma. Konum varsa tekrar şehir/semt/konum isteme.`;
@@ -565,24 +570,32 @@ async function forwardGeocode(place, near) {
 // eşleştir, o da yoksa dürüstçe "tam X yok, en yakın alternatifler" de.
 // test = kullanıcı sorgusunda aranan kelime; cuisine = Overpass cuisine regex;
 // name = mekan adında aranan regex; label = karta/mesaja yazılacak Türkçe etiket.
+// ⚠️ GENEL KURAL: cuisine SADECE o yemeğe ÖZGÜ tag içermeli. ŞEMSİYE tag
+// ("turkish", "asian", "american", "italian"-pizza-için gibi geniş) KULLANMA —
+// "turkish" tüm Türk mutfağını (çiğköfte/Komagene, pideci, tatlıcı) çeker → kebap
+// ararken çiğköfteci gelir. Şemsiye yerine spesifik tag + isim eşleşmesi (Tier B).
 const CUISINE_RULES = [
-  { test: /su\s?shi|suşi|japon/i, cuisine: "sushi|japanese|asian", name: /sushi|suşi|japon/i, label: "suşi/japon" },
-  { test: /pizza|pizzac/i, cuisine: "pizza|italian", name: /pizza/i, label: "pizza" },
-  { test: /burger|hamburger/i, cuisine: "burger|american", name: /burger/i, label: "burger" },
+  { test: /su\s?shi|suşi|japon/i, cuisine: "sushi|japanese", name: /sushi|suşi|japon/i, label: "suşi/japon" },
+  { test: /pizza|pizzac/i, cuisine: "pizza", name: /pizza/i, label: "pizza" },
+  { test: /burger|hamburger/i, cuisine: "burger", name: /burger/i, label: "burger" },
   { test: /döner|doner/i, cuisine: "doner", name: /döner|doner/i, label: "döner" },
-  { test: /kebap|kebab|ocakbaş|ocakbas|mangal|(^|\W)ızgara|(^|\W)izgara/i, cuisine: "kebab|barbecue|turkish", name: /kebap|kebab|ocakbaş|mangal|ızgara|izgara/i, label: "kebap/ızgara" },
+  { test: /kebap|kebab|ocakbaş|ocakbas|mangal|(^|\W)ızgara|(^|\W)izgara/i, cuisine: "kebab|barbecue|grill|mangal", name: /kebap|kebab|ocakbaş|mangal|ızgara|izgara/i, label: "kebap/ızgara" },
   { test: /balık|balik|deniz ürün|seafood/i, cuisine: "seafood|fish", name: /balık|balik/i, label: "balık/deniz" },
-  { test: /çin|chinese|noodle|\bwok\b/i, cuisine: "chinese|asian|noodle", name: /chinese|çin|wok|noodle/i, label: "çin/asya" },
+  { test: /çin|chinese|noodle|\bwok\b/i, cuisine: "chinese|noodle", name: /chinese|çin|wok|noodle/i, label: "çin/asya" },
   { test: /italyan|italian|makarna|\bpasta\b/i, cuisine: "italian|pasta", name: /italyan|italian|makarna|pasta/i, label: "italyan/makarna" },
   { test: /meksika|mexican|taco|burrito/i, cuisine: "mexican", name: /meksika|mexican|taco|burrito/i, label: "meksika" },
   { test: /vegan|vejetaryen|vejeteryan|vegetarian/i, cuisine: "vegan|vegetarian", name: /vegan|vejetaryen/i, label: "vegan/vejetaryen" },
   { test: /kahvaltı|kahvalti|breakfast|brunch/i, cuisine: "breakfast|brunch", name: /kahvaltı|kahvalti|breakfast|brunch/i, label: "kahvaltı" },
-  { test: /steak|biftek|steakhouse|steak house/i, cuisine: "steak_house|steak|barbecue", name: /steak|biftek/i, label: "steakhouse" },
-  { test: /pide|lahmacun/i, cuisine: "pide|lahmacun|turkish", name: /pide|lahmacun/i, label: "pide/lahmacun" },
-  { test: /çiğ ?köfte|cig ?kofte|çiğköfte/i, cuisine: "", name: /çiğ ?köfte|cig ?kofte/i, label: "çiğ köfte" },
-  { test: /köfte|kofte/i, cuisine: "kebab|turkish", name: /köfte|kofte/i, label: "köfte" },
+  { test: /steak|biftek|steakhouse|steak house/i, cuisine: "steak_house|steak", name: /steak|biftek/i, label: "steakhouse" },
+  { test: /pide|lahmacun/i, cuisine: "pide|lahmacun", name: /pide|lahmacun/i, label: "pide/lahmacun" },
+  { test: /çiğ ?köfte|cig ?kofte|çiğköfte/i, cuisine: "", name: /çiğ ?köfte|cig ?kofte|komagene|çiğ/i, label: "çiğ köfte" },
+  { test: /köfte|kofte/i, cuisine: "kofte|meatballs|meatball", name: /köfte|kofte/i, label: "köfte" },
   { test: /tost|sandviç|sandvic|sandwich/i, cuisine: "sandwich", name: /tost|sandviç|sandwich/i, label: "tost/sandviç" },
 ];
+// GENEL NEGATİF FİLTRE: kebap/köfte/döner/ızgara gibi ET- IZGARA isteğinde çiğköfte
+// zincirleri (Komagene, Çiğköftem, Oses) SIZMASIN — bunlar cuisine=turkish taşıyıp
+// ya da isimle yanlış eşleşip geliyordu. İstek çiğköfte'nin KENDİSİ değilse ELE.
+const CIGKOFTE_CHAINS = /komagene|çiğ ?köfte|cig ?kofte|çiğköftem|çiğköfte|oses/i;
 
 function haversine(la1, lo1, la2, lo2) {
   const R = 6371000;
@@ -837,6 +850,14 @@ app.post("/nearby", rateLimit, async (req, res) => {
         const kindTr = forceKind || (tag && KIND_TR[tag]);
         if (!kindTr) return null; // tanınmayan/alakasız kategori → gösterme
         if (NAME_BLOCKLIST.test(String(name))) return null; // baro/hukuk kurumu → ele
+        // Spesifik et/kebap/döner/köfte/ızgara isteğinde çiğköfte zincirleri (Komagene
+        // vb.) alakasız → ele. Yalnız çiğköfte'nin KENDİSİ istenmedikçe uygulanır.
+        if (
+          rule &&
+          rule.label !== "çiğ köfte" &&
+          CIGKOFTE_CHAINS.test(String(name))
+        )
+          return null;
         // BAR aramasında içki mekanı OLMAYAN yerleri ele (spor/dernek/otel).
         if (typeKey === "bar") {
           if (isNonDrinkVenue(e.tags)) return null;
