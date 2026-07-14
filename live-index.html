@@ -5445,6 +5445,27 @@
         } catch (e) {}
         return null;
       }
+      // Play Store'a yönlendir (puanla akışı). Native'de Play uygulamasını market://
+      // ile DOĞRUDAN açar (yorum bölümüne düşer); olmazsa/web'de https Play linki.
+      // Eski "g.page/r/" linki Google Arama'ya düşüyordu — düzeltildi.
+      function openPlayStore() {
+        var pkg = "app.kararmercii.com";
+        var web = "https://play.google.com/store/apps/details?id=" + pkg;
+        try {
+          if (_capNative()) {
+            window.open("market://details?id=" + pkg, "_system");
+          } else {
+            window.open(web, "_blank");
+          }
+        } catch (e) {
+          try {
+            window.open(web, "_system");
+          } catch (e2) {
+            window.location.href = web;
+          }
+        }
+      }
+      window.openPlayStore = openPlayStore;
 
       // Durum + navigasyon çubuğunu temaya senkronla (vc32 StatusBar + NavBar mini-plugin).
       function kmSyncSystemBars() {
@@ -6949,8 +6970,27 @@ function drawResultCard(opts) {
           }
         },
         _kbOpen: false, // klavye açık mı (açıkken banner gizli kalsın, observer geri açmasın)
+        // Aktif eleman gerçekten bir metin alanı mı? (klavye açık mı doğrulaması)
+        _isTextFocused: function () {
+          var ae = document.activeElement;
+          if (!ae) return false;
+          var t = (ae.tagName || "").toUpperCase();
+          if (t === "TEXTAREA") return true;
+          if (t === "INPUT")
+            return /^(text|search|email|url|tel|number|password|)$/.test(
+              (ae.type || "text").toLowerCase(),
+            );
+          return ae.isContentEditable === true;
+        },
         refreshBanner: function () {
           if (!this.inApp() || !this.bannerCreated || isPremium) return;
+          // SELF-HEAL: Odaklı input display:none ile gizlenince (online oda kurulum
+          // popup'ı, kişi-sayısı özel giriş, mod/tur geçişleri) Android WebView
+          // focusout'u ATLAYABİLİYOR → _kbOpen takılı true kalıp banner'ı kalıcı
+          // gizli tutuyordu (resize:'none' olduğu için visualViewport fallback de yok).
+          // Observer her DOM mutasyonunda (≤250ms) buraya geldiğinden, gerçekte metin
+          // alanı odaklı DEĞİLSE bayrağı burada temizle → banner geri gelir.
+          if (this._kbOpen && !this._isTextFocused()) this._kbOpen = false;
           this.setBannerVisible(!this.anyModalOpen() && !this._kbOpen);
         },
         watchModals: function () {
@@ -13536,7 +13576,10 @@ function drawResultCard(opts) {
             setTimeout(function () {
               var rfw = document.getElementById("rate-feedback-wrap");
               var rsw = document.getElementById("rate-store-wrap");
-              if (chosenStar >= 4) {
+              // 3-4-5 yıldız → Play Store'a yönlendir (memnun kullanıcı mağazaya).
+              // 1-2 yıldız → in-app feedback formu (kötü yorum İÇERİDE toplanır,
+              // Play'e düşmez — ASO koruması; metin feedback koleksiyonuna yazılır).
+              if (chosenStar >= 3) {
                 if (rsw) rsw.style.display = "block";
                 if (rfw) rfw.style.display = "none";
               } else {
@@ -13972,7 +14015,7 @@ function drawResultCard(opts) {
         </div>
         <div id="rate-feedback-wrap" style="display: none">
           <div class="rate-feedback">
-            <p>Ne geliştirebiliriz? (isteğe bağlı)</p>
+            <p>Seni daha mutlu etmek için ne yapabiliriz? 🐙 (isteğe bağlı)</p>
             <textarea
               id="rate-feedback-txt"
               placeholder="Görüşlerinizi yazın..."
@@ -13985,8 +14028,9 @@ function drawResultCard(opts) {
             Harika! Uygulamamızı mağazada da puanlarsanız çok mutlu oluruz 🐙
           </div>
           <a
-            href="https://g.page/r/"
+            href="https://play.google.com/store/apps/details?id=app.kararmercii.com"
             target="_blank"
+            onclick="openPlayStore();return false;"
             style="
               display: block;
               margin-top: 8px;
