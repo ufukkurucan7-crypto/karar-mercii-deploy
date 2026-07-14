@@ -23,8 +23,10 @@
       content="Grubunuzun karar ustası — çark çevirin, oylayın, Merci'ye danışın!"
     />
     <meta property="og:type" content="website" />
-    <meta property="og:image" content="/icon.svg" />
-    <meta name="twitter:card" content="summary" />
+    <meta property="og:image" content="https://kararmercii.com/og-image.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="Karar Mercii" />
     <meta
       name="twitter:description"
@@ -59,6 +61,7 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-analytics-compat.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
     <style>
       * {
@@ -1833,8 +1836,10 @@
         padding: 11px;
         border-radius: 14px;
         cursor: pointer;
-        font-family: "Fredoka", "Nunito", sans-serif;
-        font-weight: 700;
+        /* Nunito: "🐙 Merci düşünüyor…" durumundaki ş/ü glyph'leri tutarlı olsun
+           (Fredoka'nın ş cedilla'sı farklı kesimden görünüyordu — .v1-title fix'iyle aynı) */
+        font-family: "Nunito", sans-serif;
+        font-weight: 800;
         font-size: 13.5px;
         color: var(--ac-d);
         background: rgba(255, 255, 255, .7);
@@ -5203,10 +5208,116 @@
         storageBucket: "karar-mercii.firebasestorage.app",
         messagingSenderId: "624143864166",
         appId: "1:624143864166:web:4953d60b840734153938a7",
+        measurementId: "G-1S2QET7EH2",
       });
       const db = firebase.firestore();
       const auth = firebase.auth();
       const googleProvider = new firebase.auth.GoogleAuthProvider();
+
+      // ── ANALYTICS (vc32) ── engellenirse/başlamazsa app aynen çalışır.
+      var analytics = null;
+      try {
+        if (firebase.analytics) analytics = firebase.analytics();
+      } catch (e) {}
+      function logEv(name, params) {
+        try {
+          if (analytics) analytics.logEvent(name, params || {});
+        } catch (e) {}
+      }
+
+      // ── vc32 NATIVE KÖPRÜLERİ (hepsi guard'lı — vc31/web'de sessizce yok sayılır) ──
+      function _capNative() {
+        try {
+          return !!(
+            window.Capacitor &&
+            window.Capacitor.isNativePlatform &&
+            window.Capacitor.isNativePlatform()
+          );
+        } catch (e) {
+          return false;
+        }
+      }
+      function _capPlug(name) {
+        try {
+          if (
+            _capNative() &&
+            window.Capacitor.isPluginAvailable &&
+            window.Capacitor.isPluginAvailable(name) &&
+            window.Capacitor.Plugins
+          )
+            return window.Capacitor.Plugins[name] || null;
+        } catch (e) {}
+        return null;
+      }
+
+      // Durum + navigasyon çubuğunu temaya senkronla (vc32 StatusBar + NavBar mini-plugin).
+      function kmSyncSystemBars() {
+        try {
+          if (!_capNative()) return;
+          var dark = document.documentElement.classList.contains("dark");
+          var color, lightIcons;
+          if (dark) {
+            color = "#100c1c";
+            lightIcons = true;
+          } else {
+            var ac = getComputedStyle(document.documentElement)
+              .getPropertyValue("--ac")
+              .trim();
+            color = /^#[0-9a-fA-F]{6}$/.test(ac) ? ac : "#7c3aed";
+            lightIcons = true; // accent koyu mor ton → açık ikon
+          }
+          var SB = _capPlug("StatusBar");
+          if (SB) {
+            if (SB.setBackgroundColor)
+              SB.setBackgroundColor({ color: color }).catch(function () {});
+            if (SB.setStyle)
+              SB.setStyle({ style: lightIcons ? "DARK" : "LIGHT" }).catch(
+                function () {}
+              );
+          }
+          var NB = _capPlug("NavBar");
+          if (NB && NB.setColor)
+            NB.setColor({ color: color, lightIcons: lightIcons }).catch(
+              function () {}
+            );
+        } catch (e) {}
+      }
+
+      // In-app review: 3. tamamlanan karardan sonra, en erken 1 dk kullanımda,
+      // 30 günde bir kez iste. Google diyaloğu her zaman göstermez — hata değil.
+      var _kmAppStart = Date.now();
+      function kmDecisionDone() {
+        try {
+          var n =
+            (parseInt(localStorage.getItem("km_decisions_done") || "0", 10) ||
+              0) + 1;
+          localStorage.setItem("km_decisions_done", String(n));
+          if (n < 3) return;
+          if (Date.now() - _kmAppStart < 60 * 1000) return;
+          var last =
+            parseInt(localStorage.getItem("km_review_asked_ts") || "0", 10) ||
+            0;
+          if (Date.now() - last < 30 * 24 * 60 * 60 * 1000) return;
+          var IR = _capPlug("InAppReview");
+          if (!IR || !IR.requestReview) return;
+          localStorage.setItem("km_review_asked_ts", String(Date.now()));
+          setTimeout(function () {
+            try {
+              // Geçiş reklamı çakışması: finishW her 2. çark sonucunda 1.6sn'de
+              // interstitial gösteriyor (_adPending, kmDecisionDone'dan hemen sonra
+              // senkron set edilir). Review diyaloğu reklamın altında kalırsa Google
+              // 30 gün boyunca bir daha göstermez → hak boşa yanar. Reklam
+              // beklemedeyse bu turu PAS geç ve ts'i geri al → hak bir sonraki
+              // karara kalır (30 günlük throttle mantığı bozulmaz).
+              if (window._adPending) {
+                localStorage.setItem("km_review_asked_ts", String(last));
+                return;
+              }
+              IR.requestReview().catch(function () {});
+            } catch (e) {}
+          }, 1500); // sonuç ekranı otursun
+        } catch (e) {}
+      }
 
       // ── AUTH STATE ──
       var currentUser = null;
@@ -5839,6 +5950,7 @@ function drawResultCard(opts) {
       // drawResultCard ile PNG üretip navigator.share({files}) ile paylaşır.
       // Desteklenmiyorsa/hata olursa mevcut metin paylaşımına düşer (fallback).
       function _shareResultCard(type, win, say, scores, peopleCount, text) {
+        logEv("share_card", { type: type });
         function doText() {
           if (navigator.share) {
             navigator.share({ title: "Karar Mercii — " + win, text: text }).catch(function () {});
@@ -5847,6 +5959,37 @@ function drawResultCard(opts) {
               alert("Sonuç panoya kopyalandı! 📋");
             }).catch(function () { prompt("Kopyalayın:", text); });
           } else { prompt("Kopyalayın:", text); }
+        }
+        // ── vc32 NATIVE YOL: Capacitor'da WebView'da navigator.share YOK →
+        // kartı Cache'e yazıp native Share sheet ile paylaş (WhatsApp'a görsel gider).
+        // Herhangi bir hata → mevcut web/metin fallback'ine düş.
+        var _sh = _capPlug("Share");
+        var _fsP = _capPlug("Filesystem");
+        if (_sh && _fsP && typeof drawResultCard === "function") {
+          try {
+            drawResultCard({ type: type, win: win, say: say, scores: scores, peopleCount: peopleCount })
+              .then(function (blob) {
+                if (!blob) { doText(); return; }
+                var rd = new FileReader();
+                rd.onload = function () {
+                  var b64 = String(rd.result).split(",")[1];
+                  if (!b64) { doText(); return; }
+                  _fsP.writeFile({ path: "karar-sonuc.png", data: b64, directory: "CACHE" })
+                    .then(function () {
+                      return _fsP.getUri({ path: "karar-sonuc.png", directory: "CACHE" });
+                    })
+                    .then(function (res) {
+                      // Paylaşım iptali (kullanıcı vazgeçti) fallback DEĞİL → sessiz geç.
+                      return _sh.share({ title: "Karar Mercii — " + win, files: [res.uri], text: text }).catch(function () {});
+                    })
+                    .catch(function () { doText(); });
+                };
+                rd.onerror = function () { doText(); };
+                rd.readAsDataURL(blob);
+              })
+              .catch(function () { doText(); });
+          } catch (e) { doText(); }
+          return;
         }
         var supportsFiles = false;
         try {
@@ -5999,8 +6142,9 @@ function drawResultCard(opts) {
       window.openAuthModal = function () {
         document.getElementById("modal-auth").classList.add("on");
       };
-      window.openProModal = function () {
+      window.openProModal = function (src) {
         // Zaten PRO ise → satın alma yerine "zaten üyesin" ekranı (gözlüklü Merci)
+        logEv("paywall_view", { source: src || "menu" });
         if (isPremium) {
           var m = document.getElementById("pro-active-merci");
           if (m && typeof merciSVGGlasses === "function")
@@ -6199,6 +6343,7 @@ function drawResultCard(opts) {
           self._doPurchase(pkg);
         },
         _doPurchase: function (pkg) {
+          logEv("pro_purchase_start", { plan: selectedPlan });
           var P = this.plugin();
           var self = this;
           var btn = document.getElementById("pro-buy-btn");
@@ -6388,9 +6533,10 @@ function drawResultCard(opts) {
       }
 
       // ── PAYWALL GÖSTER ──
-      function showPaywall() {
+      function showPaywall(source) {
         var existing = document.getElementById("paywall-wrap");
         if (existing) return;
+        logEv("paywall_view", { source: source || "quota" });
         var wrap = document.createElement("div");
         wrap.id = "paywall-wrap";
         wrap.className = "paywall-box";
@@ -6398,7 +6544,7 @@ function drawResultCard(opts) {
           '<div class="paywall-emoji">🐙</div>' +
           '<div class="paywall-title">Bugünkü ücretsiz mesajların bitti!</div>' +
           "<div class=\"paywall-sub\">Reklam izle, +6 mesaj kazan — ya da PRO ile sınırsız ve reklamsız konuş.</div>" +
-          '<button class="paywall-btn-primary" onclick="openProModal()">⭐ Pro\'ya Geç — Sınırsız Kullan</button>' +
+          '<button class="paywall-btn-primary" onclick="openProModal(\'quota\')">⭐ Pro\'ya Geç — Sınırsız Kullan</button>' +
           '<button class="paywall-btn-ad" onclick="watchAdForTopic()">📺 Reklam İzle (+6 mesaj)</button>' +
           '<div class="paywall-counter">Yarın 6 yeni mesaj hakkın yenilenir 🌙</div>';
         var chatWrap = document.querySelector(".chat-wrap");
@@ -6694,6 +6840,7 @@ function drawResultCard(opts) {
       window.watchAdForTopic = function () {
         var btn = document.querySelector(".paywall-btn-ad");
         function grant() {
+          logEv("rewarded_complete");
           var usage = getTopicUsage();
           usage.extraFromAd = (usage.extraFromAd || 0) + AD_MSG_BONUS;
           saveTopicUsage(usage);
@@ -8473,6 +8620,14 @@ function drawResultCard(opts) {
         winSound();
         hSuccess();
         confetti();
+        logEv("spin_result", { option_count: S.wheel.length });
+        try {
+          if (!localStorage.getItem("km_first_spin")) {
+            localStorage.setItem("km_first_spin", "1");
+            logEv("first_spin");
+          }
+        } catch (e) {}
+        kmDecisionDone();
         // Her 2. çark sonucunda non-PRO'ya geçiş reklamı.
         // _adPending: reklam gösterilene kadar yeni spin engellenir (reklam dönen
         // çarkın üstüne binmesin diye). Sonuç ekranı görünsün diye 1.6sn bekle.
@@ -8660,6 +8815,8 @@ function drawResultCard(opts) {
       }
       function finishCekilis(winner) {
         cekilisSpinning = false;
+        logEv("cekilis_complete", { count: S.cekilis.length });
+        kmDecisionDone();
         // Duplike "🎉 talihli" alanını gizle — talihli sadece alttaki kartta çıksın
         var stg = document.getElementById("cekilis-stage");
         if (stg) stg.style.display = "none";
@@ -8741,6 +8898,11 @@ function drawResultCard(opts) {
         });
         _lastVoteScores = allScores;
         _lastVotePeopleCount = masaOn ? masaPeopleCount : 0;
+        logEv("vote_complete", {
+          option_count: Object.keys(allScores).length,
+          people: _lastVotePeopleCount,
+        });
+        kmDecisionDone();
         var scoresEl = document.getElementById("v-scores");
         var keys = Object.keys(allScores);
         var hasAnyScore = keys.some(function (k) {
@@ -9716,6 +9878,7 @@ function drawResultCard(opts) {
 
         aiMessages.push({ role: "user", content: text });
         appendMsg("user", text, false);
+        logEv("ai_message", { new_topic: isNewTopic ? 1 : 0 });
         updateChipsVisibility();
         document.getElementById("ai-ctx").value = "";
         aiThinking = true;
@@ -9765,17 +9928,34 @@ function drawResultCard(opts) {
             // İşaretler: [[NEED_LOCATION:type]] (konum YOK → onay butonu) +
             // [[NEARBY:type]] (konum VAR → direkt gerçek mekan listesi) +
             // [[SECENEKLER: a | b | c]] (çark/oylama köprüsü)
-            var locMatch = reply.match(/\[\[\s*NEED_LOCATION\s*:\s*([a-z]+)\s*\]\]/i);
-            var nearbyMatch = reply.match(/\[\[\s*NEARBY\s*:\s*([a-z]+)\s*\]\]/i);
-            var optMatch = reply.match(/\[\[SECENEKLER:([^\]]+)\]\]/i);
-            // Güvenlik ağı: tip eksik/bozuk (alt çizgi, boşluk, tipsiz) olsa bile ham işaret sızmasın
+            // Model formatı bozabiliyor (canlı bug: "[[NEED_LOCATION:TUR:bar]]") →
+            // [[İŞARET...]] her varyantını ]]'ye kadar yakala; tür = içindeki SON
+            // geçerli değer (food|cafe|dessert|bar|activity), bulunamazsa "food".
+            var LOC_TYPES = ["food", "cafe", "dessert", "bar", "activity"];
+            var _locMarkerType = function (tag) {
+              var m = reply.match(
+                new RegExp("\\[\\[\\s*" + tag + "\\b([^\\]]*)\\]\\]", "i"),
+              );
+              if (!m) return null;
+              var toks = (m[1] || "").toLowerCase().match(/[a-z]+/g) || [];
+              var found = "food";
+              toks.forEach(function (t) {
+                if (LOC_TYPES.indexOf(t) >= 0) found = t;
+              });
+              return found;
+            };
+            var locType = _locMarkerType("NEED_LOCATION");
+            var nearbyType = _locMarkerType("NEARBY");
+            var optMatch = reply.match(/\[\[\s*SECENEKLER\s*:\s*([^\]]+)\]\]/i);
+            // Güvenlik ağı: işaret HER varyantıyla metinden temizlenir — tip bozuk,
+            // fazladan iki nokta, boşluk, tipsiz... ne olursa olsun ham SIZMASIN.
             var cleanReply = reply
-              .replace(/\[\[\s*NEED_LOCATION\s*:?\s*[a-z_]*\s*\]\]/gi, "")
-              .replace(/\[\[\s*NEARBY\s*:?\s*[a-z_]*\s*\]\]/gi, "")
-              .replace(/\[\[SECENEKLER:[^\]]*\]\]/gi, "")
+              .replace(/\[\[\s*NEED_LOCATION\b[^\]]*\]\]/gi, "")
+              .replace(/\[\[\s*NEARBY\b[^\]]*\]\]/gi, "")
+              .replace(/\[\[\s*SECENEKLER\s*:[^\]]*\]\]/gi, "")
               .trim();
             if (!cleanReply) {
-              cleanReply = nearbyMatch
+              cleanReply = nearbyType
                 ? "Civarındaki gerçek mekanlara bakıyorum 🐙"
                 : "Civarındaki gerçek mekanları telefonlarıyla önerebilirim — konumunu açar mısın? 🐙";
             }
@@ -9783,8 +9963,8 @@ function drawResultCard(opts) {
             aiMessages.push({ role: "assistant", content: cleanReply });
             appendMsg("merci", cleanReply, true);
             saveCurrentChat(); // her cevaptan sonra sohbeti kaydet (kaybolmasın)
-            if (locMatch) {
-              var _lt = locMatch[1].toLowerCase();
+            if (locType) {
+              var _lt = locType;
               // PROAKTİF KONUM: kullanıcı "konum aç" yazmak ya da şehir söylemek ZORUNDA
               // değil. Konum zaten varsa direkt getir; yoksa native izni OTOMATİK iste,
               // izin verilince mekanları getir; reddedilirse TEK seferlik buton göster
@@ -9809,8 +9989,8 @@ function drawResultCard(opts) {
               }
             }
             // Konum zaten cache'li → onay butonu GÖSTERME, direkt gerçek mekanları getir
-            if (nearbyMatch) {
-              merciNearby(nearbyMatch[1].toLowerCase());
+            if (nearbyType) {
+              merciNearby(nearbyType);
             }
             if (optMatch) {
               var opts = optMatch[1]
@@ -10269,6 +10449,7 @@ function drawResultCard(opts) {
           renderHostVoteList();
           listenRoomAsHost(code);
           snd("ding");
+          logEv("room_create", { option_count: onlineOpts.length });
           if (roomTimeLimit > 0)
             startTimer(roomTimeLimit * 60, "host-timer", () => closeVoting());
         } catch (e) {
@@ -10728,6 +10909,7 @@ function drawResultCard(opts) {
           document.getElementById("participant-room-name").textContent =
             doc.data().name || "Oylama";
           snd("ding");
+          logEv("room_join");
         } catch (e) {
           alert("Bağlantı hatası!");
         }
@@ -10926,6 +11108,13 @@ function drawResultCard(opts) {
           "\n" +
           link +
           "\n\nUygulama 👉 https://play.google.com/store/apps/details?id=app.kararmercii.com";
+        logEv("share_whatsapp");
+        // vc32: native'de sistem paylaşım sayfası (guard'lı) — WebView'da navigator.share yok
+        var _sh = _capPlug("Share");
+        if (_sh) {
+          _sh.share({ title: "Karar Mercii", text: msg }).catch(function () {});
+          return;
+        }
         if (navigator.share) {
           navigator
             .share({ title: "Karar Mercii", text: msg })
@@ -11337,6 +11526,15 @@ function drawResultCard(opts) {
               status === 429
                 ? "Günlük Merci hakkın doldu! 🐙"
                 : data.error || data.text || "Bir hata oluştu!";
+            // Oda sohbetinde konum/çark işaret akışı YOK → model işaret koyduysa
+            // ([[NEED_LOCATION:...]] / [[NEARBY:...]] / [[SECENEKLER:...]]) ham
+            // sızmasın diye her varyantı temizle.
+            reply =
+              reply
+                .replace(/\[\[\s*NEED_LOCATION\b[^\]]*\]\]/gi, "")
+                .replace(/\[\[\s*NEARBY\b[^\]]*\]\]/gi, "")
+                .replace(/\[\[\s*SECENEKLER\s*:[^\]]*\]\]/gi, "")
+                .trim() || "Bir ikilemin varsa anlat, çözelim 🐙";
             roAiMessages.push({ role: "assistant", content: reply });
             var d2 = document.createElement("div");
             d2.className = "msg-merci";
@@ -12541,6 +12739,7 @@ function drawResultCard(opts) {
             var on = document.documentElement.classList.toggle("dark");
             localStorage.setItem("kmTheme", on ? "dark" : "light");
             _syncDark();
+            if (typeof kmSyncSystemBars === "function") kmSyncSystemBars();
             hImpact("LIGHT", 20);
           });
         }
@@ -12563,6 +12762,7 @@ function drawResultCard(opts) {
             var _mc = document.querySelector('meta[name="theme-color"]');
             if (_mc && _acHex) _mc.setAttribute("content", _acHex);
           } catch (e) {}
+          if (typeof kmSyncSystemBars === "function") kmSyncSystemBars();
           localStorage.setItem("kmAccent", a);
           var ts = document.getElementById("theme-state");
           if (ts) ts.textContent = THEME_NAMES[a];
@@ -12577,6 +12777,8 @@ function drawResultCard(opts) {
         (function () {
           var ts = document.getElementById("theme-state");
           if (ts) ts.textContent = THEME_NAMES[currentAccent()];
+          // vc32: app açılışında sistem çubuklarını mevcut temaya senkronla (guard'lı)
+          if (typeof kmSyncSystemBars === "function") kmSyncSystemBars();
         })();
         var themeBtn = document.getElementById("theme-btn");
         if (themeBtn)
