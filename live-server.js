@@ -1,5 +1,6 @@
 const express = require("express");
 const path = require("path");
+const fs = require("fs"); // yalnız index.html okumak için (OG meta enjeksiyonu)
 const Anthropic = require("@anthropic-ai/sdk");
 
 const app = express();
@@ -24,6 +25,41 @@ app.get("/.well-known/assetlinks.json", (req, res) => {
       },
     },
   ]);
+});
+
+// Oda davet linki (?room=KOD) OG önizlemesi. WhatsApp/Telegram crawler'ı
+// query'li URL'yi fetch eder ama JS ÇALIŞTIRMAZ → davete özel başlık/açıklama
+// sunucudan basılmak zorunda. express.static'ten ÖNCE olmalı ("/" isteğini
+// static'in index.html kısayolu yutmasın).
+let _idxCache = null;
+function readIndex() {
+  if (_idxCache === null) {
+    _idxCache = fs.readFileSync(
+      path.join(__dirname, "public", "index.html"),
+      "utf8",
+    );
+  }
+  return _idxCache;
+}
+app.get("/", (req, res, next) => {
+  try {
+    let html = readIndex();
+    const room = String(req.query.room || "");
+    if (room && /^[A-Za-z0-9-]{3,12}$/.test(room)) {
+      html = html
+        .replace(
+          /(<meta property="og:title" content=")[^"]*(")/,
+          "$1Seni bir karar odasına çağırıyorlar! 🎡$2",
+        )
+        .replace(
+          /(<meta property="og:description" content=")[^"]*(")/,
+          "$1Karar Mercii'nde oylama var — dokun, oyunu ver, kararı birlikte verin.$2",
+        );
+    }
+    res.type("html").send(html);
+  } catch (e) {
+    next(); // index okunamazsa static devralsın
+  }
 });
 
 // app-ads.txt - AdMob/Google Play uygulama doğrulaması (IAB Tech Lab spec).
@@ -207,9 +243,12 @@ app.post("/merci", rateLimit, authAndQuota, async (req, res) => {
     }
 
     // ── KONUM ── (konum artık sohbette ONAY ile alınır; işaret koyup butonla iste)
+    // İŞARET FORMATI: eski anlatımdaki "TUR" yer tutucusunu model LİTERAL sanıp
+    // "[[NEED_LOCATION:TUR:bar]]" gibi bozuk işaret üretti (canlı bug, 13 Tem) →
+    // artık birebir örnekle anlatılıyor; "TUR" kelimesi prompt'ta GEÇMİYOR.
     const locationContext = location
-      ? `\nKONUM VAR: Kullanıcı ${location} içinde; konum hazır, tekrar konum/şehir/semt İSTEME. Kullanıcı yakında yer sorarsa ("nereye gidelim / dışarı çıkalım / yiyelim / içelim / bar / kahve / tatlı" vb.) YA DA mekan gelmedi diye takılırsa ("hani / nerede / ee?"), cevabının EN BAŞINA [[NEARBY:TUR]] koy (TUR: food, cafe, dessert, bar, activity; emin değilsen activity) + TEK kısa olumlu cümle (örn. "En yakınları çıkarıyorum 👇"). Bu işaret gerçek mekanları (isim, mesafe) otomatik getirir; komşu semtten gelebilir, sorun değil. Sadece sohbet/yorumsa işaret KOYMA.`
-      : `\nKONUM YOK: Uygulama konumu otomatik alabiliyor; kullanıcının "konumu açtım" demesine gerek yok. Kullanıcı yakında yer sorarsa cevabının EN BAŞINA [[NEED_LOCATION:TUR]] koy (TUR: food, cafe, dessert, bar, activity) + TEK kısa olumlu cümle (örn. "Yakınındakilere bakıyorum 👇"). Kullanıcı zaten şehir/semt yazdıysa işaret KOYMA, o bölgeye göre öner.`;
+      ? `\nKONUM VAR: Kullanıcı ${location} içinde; konum hazır, tekrar konum/şehir/semt İSTEME. Kullanıcı yakında yer sorarsa ("nereye gidelim / dışarı çıkalım / yiyelim / içelim / bar / kahve / tatlı" vb.) YA DA mekan gelmedi diye takılırsa ("hani / nerede / ee?"), cevabının EN BAŞINA şu biçimde bir işaret koy: [[NEARBY:bar]] — iki nokta sonrasına SADECE şu kelimelerden BİRİNİ yaz: food, cafe, dessert, bar, activity (emin değilsen activity; başka kelime ya da ikinci iki nokta YOK). Örnek cevap: "[[NEARBY:bar]] En yakınları çıkarıyorum 👇". İşaretten sonra TEK kısa olumlu cümle yaz. Bu işaret gerçek mekanları (isim, mesafe) otomatik getirir; komşu semtten gelebilir, sorun değil. Sadece sohbet/yorumsa işaret KOYMA.`
+      : `\nKONUM YOK: Uygulama konumu otomatik alabiliyor — kullanıcıya ŞEHİR/SEMT/KONUM SORMA. Kullanıcı yakında yer sorarsa YA DA bir yere gitmek istediğini söylerse ("rakıya gidiyoruz", "kahve içelim" gibi), soru sormadan cevabının EN BAŞINA şu biçimde bir işaret koy: [[NEED_LOCATION:bar]] — iki nokta sonrasına SADECE şu kelimelerden BİRİNİ yaz: food, cafe, dessert, bar, activity (başka kelime ya da ikinci iki nokta YOK). Örnek cevap: "[[NEED_LOCATION:bar]] Yakınındakilere bakıyorum 👇". Tek istisna: kullanıcı zaten şehir/semt yazdıysa işaret KOYMA, o bölgeye göre öner.`;
 
     // ── SONUÇ BAĞLAMI (Merci'ye Sor'dan geliyorsa) ──
     let resultPrompt = "";
@@ -296,6 +335,23 @@ KIRMIZI ÇİZGİLER:
       // Son tam cümleye kadar kırp; hiç cümle sonu yoksa kibar devam ibaresi ekle.
       text = lastStop > 20 ? trimmed.slice(0, lastStop + 1) : trimmed + " …";
     }
+
+    // ── İŞARET NORMALİZASYONU (savunma hattı) ──
+    // Model işaret biçimini yine de bozabilir (canlıda görüldü:
+    // "[[NEED_LOCATION:TUR:bar]]"). Client regex'i tanıyamayınca işaret ekrana
+    // HAM sızıyor ve mekan akışı hiç tetiklenmiyordu. Her varyantı yakala:
+    // parantez içindeki SON geçerli türü çek, kanonik "[[NEED_LOCATION:bar]]"
+    // biçimine indir; geçerli tür yoksa "food" varsay.
+    const LOC_TYPES = ["food", "cafe", "dessert", "bar", "activity"];
+    text = text.replace(
+      /\[\[\s*(NEED_LOCATION|NEARBY)\b([^\]]*)\]\]/gi,
+      (m, tag, rest) => {
+        const toks = String(rest).toLowerCase().match(/[a-z]+/g) || [];
+        let found = "food";
+        for (const t of toks) if (LOC_TYPES.includes(t)) found = t;
+        return `[[${tag.toUpperCase()}:${found}]]`;
+      },
+    );
 
     res.json({ text: text || "Bir şeyler ters gitti, tekrar dene!" });
   } catch (error) {
