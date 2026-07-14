@@ -694,6 +694,21 @@
         gap: 6px;
         margin-top: 6px;
         margin-left: 36px;
+        max-height: 40px;
+        overflow: hidden;
+        transition:
+          opacity 0.2s ease,
+          transform 0.2s ease,
+          max-height 0.28s ease,
+          margin-top 0.28s ease;
+      }
+      /* Oy verilince butonları yumuşakça daralt/soldur → sonra DOM'dan kaldır */
+      .msg-feedback.fb-collapsing {
+        opacity: 0;
+        max-height: 0;
+        margin-top: 0;
+        transform: translateY(-3px);
+        pointer-events: none;
       }
       .fb-btn {
         background: none;
@@ -3292,6 +3307,15 @@
         height: 200px !important;
         display: block;
       }
+      /* Beraberlik mini çarkı (200px) + sonuç kartı toplamı kısa ekranda (banner +
+         edge-to-edge → azalan yükseklik) taşabiliyordu; .mbox'ta scroll olmadığı için
+         "Harika!" butonu + kazanan yazısı ekran ALTINDA kalıp erişilemiyordu (küre
+         kazananı canvas İÇİNE yazdığından bu sorundan etkilenmiyordu). Yalnız tie
+         modalını kaydırılabilir yap → sonuç her zaman ekrana gelir. */
+      #tb-modal .mbox {
+        max-height: 92vh;
+        overflow-y: auto;
+      }
       .mwptr {
         position: absolute;
         top: -3px;
@@ -3803,6 +3827,18 @@
         color: #ece8f7;
         border-color: #3a2f55;
       }
+      /* html.dark .fb-btn (özgüllük 0,2,1) liked/disliked'i (0,2,0) eziyordu →
+         seçili durum dark'ta görünmüyordu. Daha özgül kurallarla geri getir. */
+      html.dark .fb-btn.liked {
+        background: #0f3d2e;
+        border-color: #34d399;
+        color: #6ee7b7;
+      }
+      html.dark .fb-btn.disliked {
+        background: #4a1518;
+        border-color: #f87171;
+        color: #fca5a5;
+      }
       /* Sonuç espri kutusu (beyaz #fff idi) ve oylama kartları (.oitem) */
       html.dark .rsay {
         background: #241a33 !important;
@@ -3909,7 +3945,7 @@
       }
     </style>
     <!-- FAVICON: gerçek Merci maskotu (baş+gözler kadrajı, orijinal path'ler) — mor zemin -->
-    <link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2032%2032'%3E%3Cdefs%3E%3CradialGradient%20id='fhd'%20cx='42%25'%20cy='32%25'%20r='62%25'%3E%3Cstop%20offset='0%25'%20stop-color='%23AFA9EC'/%3E%3Cstop%20offset='60%25'%20stop-color='%237F77DD'/%3E%3Cstop%20offset='100%25'%20stop-color='%23534AB7'/%3E%3C/radialGradient%3E%3CradialGradient%20id='fbl'%20cx='50%25'%20cy='35%25'%20r='60%25'%3E%3Cstop%20offset='0%25'%20stop-color='%23EEEDFE'/%3E%3Cstop%20offset='100%25'%20stop-color='%23CECBF6'/%3E%3C/radialGradient%3E%3CradialGradient%20id='fey'%20cx='38%25'%20cy='35%25'%20r='55%25'%3E%3Cstop%20offset='0%25'%20stop-color='%233C3489'/%3E%3Cstop%20offset='100%25'%20stop-color='%2326215C'/%3E%3C/radialGradient%3E%3C/defs%3E%3Crect%20width='32'%20height='32'%20rx='7'%20fill='%234c1d95'/%3E%3Csvg%20x='1.5'%20y='1.5'%20width='29'%20height='29'%20viewBox='200%20120%20280%20280'%3E%3Cellipse%20cx='340'%20cy='265'%20rx='130'%20ry='135'%20fill='url(%23fhd)'/%3E%3Cellipse%20cx='340'%20cy='300'%20rx='78'%20ry='80'%20fill='url(%23fbl)'%20fill-opacity='.6'/%3E%3Cellipse%20cx='295'%20cy='200'%20rx='32'%20ry='22'%20fill='%23EEEDFE'%20fill-opacity='.3'/%3E%3Cellipse%20cx='302'%20cy='255'%20rx='34'%20ry='38'%20fill='%23fff'/%3E%3Cellipse%20cx='378'%20cy='255'%20rx='34'%20ry='38'%20fill='%23fff'/%3E%3Ccircle%20cx='308'%20cy='262'%20r='20'%20fill='url(%23fey)'/%3E%3Ccircle%20cx='372'%20cy='262'%20r='20'%20fill='url(%23fey)'/%3E%3Ccircle%20cx='301'%20cy='253'%20r='7'%20fill='%23fff'/%3E%3Ccircle%20cx='365'%20cy='253'%20r='7'%20fill='%23fff'/%3E%3Cpath%20d='M318%20310Q340%20330%20362%20310'%20fill='none'%20stroke='%2326215C'%20stroke-width='6'%20stroke-linecap='round'/%3E%3Cellipse%20cx='278'%20cy='292'%20rx='16'%20ry='9'%20fill='%23D4537E'%20fill-opacity='.22'/%3E%3Cellipse%20cx='402'%20cy='292'%20rx='16'%20ry='9'%20fill='%23D4537E'%20fill-opacity='.22'/%3E%3C/svg%3E%3C/svg%3E" />
+    <link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns=%27http://www.w3.org/2000/svg%27%20viewBox=%270%200%2032%2032%27%3E%3Cdefs%3E%3CradialGradient%20id=%27fhd%27%20cx=%2742%25%27%20cy=%2732%25%27%20r=%2762%25%27%3E%3Cstop%20offset=%270%25%27%20stop-color=%27%23AFA9EC%27/%3E%3Cstop%20offset=%2760%25%27%20stop-color=%27%237F77DD%27/%3E%3Cstop%20offset=%27100%25%27%20stop-color=%27%23534AB7%27/%3E%3C/radialGradient%3E%3CradialGradient%20id=%27fbl%27%20cx=%2750%25%27%20cy=%2735%25%27%20r=%2760%25%27%3E%3Cstop%20offset=%270%25%27%20stop-color=%27%23EEEDFE%27/%3E%3Cstop%20offset=%27100%25%27%20stop-color=%27%23CECBF6%27/%3E%3C/radialGradient%3E%3CradialGradient%20id=%27fey%27%20cx=%2738%25%27%20cy=%2735%25%27%20r=%2755%25%27%3E%3Cstop%20offset=%270%25%27%20stop-color=%27%233C3489%27/%3E%3Cstop%20offset=%27100%25%27%20stop-color=%27%2326215C%27/%3E%3C/radialGradient%3E%3C/defs%3E%3Crect%20width=%2732%27%20height=%2732%27%20rx=%277%27%20fill=%27%234c1d95%27/%3E%3Csvg%20x=%271%27%20y=%271%27%20width=%2730%27%20height=%2730%27%20viewBox=%27124%20124%20432%20432%27%3E%3Cellipse%20cx=%27340%27%20cy=%27530%27%20rx=%27135%27%20ry=%2720%27%20fill=%27%2326215C%27%20fill-opacity=%27.12%27/%3E%3Cpath%20d=%27M255%20360Q205%20380%20185%20425Q170%20460%20188%20495Q198%20512%20215%20505Q222%20488%20210%20468Q205%20440%20225%20415Q245%20392%20262%20378Z%27%20fill=%27%237F77DD%27/%3E%3Cpath%20d=%27M295%20375Q270%20410%20262%20450Q256%20485%20272%20512Q284%20527%20298%20516Q294%20496%20290%20472Q292%20442%20305%20410Q314%20388%20318%20378Z%27%20fill=%27%237F77DD%27/%3E%3Cpath%20d=%27M385%20375Q410%20410%20418%20450Q424%20485%20408%20512Q396%20527%20382%20516Q386%20496%20390%20472Q388%20442%20375%20410Q366%20388%20362%20378Z%27%20fill=%27%237F77DD%27/%3E%3Cpath%20d=%27M425%20360Q475%20380%20495%20425Q510%20460%20492%20495Q482%20512%20465%20505Q458%20488%20470%20468Q475%20440%20455%20415Q435%20392%20418%20378Z%27%20fill=%27%237F77DD%27/%3E%3Cpath%20d=%27M250%20300Q190%20270%20165%20215Q150%20180%20175%20165Q200%20175%20205%20205Q215%20240%20255%20275Q272%20290%20268%20305Z%27%20fill=%27%237F77DD%27%20stroke=%27%23534AB7%27%20stroke-width=%271.5%27/%3E%3Ccircle%20cx=%27172%27%20cy=%27172%27%20r=%2726%27%20fill=%27%23AFA9EC%27%20stroke=%27%23534AB7%27%20stroke-width=%272%27/%3E%3Cpath%20d=%27M430%20300Q490%20270%20515%20215Q530%20180%20505%20165Q480%20175%20475%20205Q465%20240%20425%20275Q408%20290%20412%20305Z%27%20fill=%27%237F77DD%27%20stroke=%27%23534AB7%27%20stroke-width=%271.5%27/%3E%3Ccircle%20cx=%27508%27%20cy=%27172%27%20r=%2726%27%20fill=%27%23AFA9EC%27%20stroke=%27%23534AB7%27%20stroke-width=%272%27/%3E%3Cellipse%20cx=%27340%27%20cy=%27265%27%20rx=%27130%27%20ry=%27135%27%20fill=%27url(%23fhd)%27/%3E%3Cellipse%20cx=%27340%27%20cy=%27300%27%20rx=%2778%27%20ry=%2780%27%20fill=%27url(%23fbl)%27%20fill-opacity=%27.6%27/%3E%3Cellipse%20cx=%27295%27%20cy=%27200%27%20rx=%2732%27%20ry=%2722%27%20fill=%27%23EEEDFE%27%20fill-opacity=%27.3%27/%3E%3Cpath%20d=%27M278%20380Q260%20420%20255%20460Q252%20495%20268%20518Q280%20532%20292%20521Q288%20500%20286%20478Q292%20448%20304%20415Q312%20392%20305%20380Z%27%20fill=%27%23534AB7%27/%3E%3Cpath%20d=%27M340%20392Q332%20432%20332%20470Q332%20505%20348%20525Q360%20537%20370%20525Q364%20503%20360%20480Q360%20448%20360%20415Q360%20392%20350%20382Z%27%20fill=%27%23534AB7%27/%3E%3Cpath%20d=%27M402%20380Q420%20420%20425%20460Q428%20495%20412%20518Q400%20532%20388%20521Q392%20500%20394%20478Q388%20448%20376%20415Q368%20392%20375%20380Z%27%20fill=%27%23534AB7%27/%3E%3Cellipse%20cx=%27302%27%20cy=%27255%27%20rx=%2734%27%20ry=%2738%27%20fill=%27%23fff%27/%3E%3Cellipse%20cx=%27378%27%20cy=%27255%27%20rx=%2734%27%20ry=%2738%27%20fill=%27%23fff%27/%3E%3Ccircle%20cx=%27308%27%20cy=%27262%27%20r=%2720%27%20fill=%27url(%23fey)%27/%3E%3Ccircle%20cx=%27372%27%20cy=%27262%27%20r=%2720%27%20fill=%27url(%23fey)%27/%3E%3Ccircle%20cx=%27301%27%20cy=%27253%27%20r=%277%27%20fill=%27%23fff%27/%3E%3Ccircle%20cx=%27365%27%20cy=%27253%27%20r=%277%27%20fill=%27%23fff%27/%3E%3Cpath%20d=%27M318%20310Q340%20330%20362%20310%27%20fill=%27none%27%20stroke=%27%2326215C%27%20stroke-width=%2710%27%20stroke-linecap=%27round%27/%3E%3Cellipse%20cx=%27278%27%20cy=%27292%27%20rx=%2716%27%20ry=%279%27%20fill=%27%23D4537E%27%20fill-opacity=%27.22%27/%3E%3Cellipse%20cx=%27402%27%20cy=%27292%27%20rx=%2716%27%20ry=%279%27%20fill=%27%23D4537E%27%20fill-opacity=%27.22%27/%3E%3C/svg%3E%3C/svg%3E" />
     <script>
       // Dark mode'u boya ÖNCESİ uygula (açılışta beyaz flash olmasın)
       try {
@@ -6918,6 +6954,14 @@ function drawResultCard(opts) {
               deviceId: deviceId,
             });
           }
+          // Oy alındıktan kısa süre sonra buton satırını yumuşakça kapat: önce
+          // seçili durum görünsün (~550ms), sonra collapse anim (~320ms), sonra kaldır.
+          setTimeout(function () {
+            fbRow.classList.add("fb-collapsing");
+            setTimeout(function () {
+              if (fbRow.parentNode) fbRow.parentNode.removeChild(fbRow);
+            }, 320);
+          }, 550);
         }
         likeBtn.onclick = function () {
           vote("like");
@@ -7758,7 +7802,21 @@ function drawResultCard(opts) {
       }
       function showTutorialIfNeeded() {
         if (localStorage.getItem("kmTutDone")) return;
-        startInteractiveTour();
+        // İLK AÇILIŞ TETİK: Auto çağrı, ana ekran (sekmeler) hazır değilken
+        // startInteractiveTour'un guard'ına takılıp SESSİZCE dönüyor ve bir daha
+        // denemiyordu (12853 → 2sn'de fire, kullanıcı hâlâ onboarding'de → tur asla
+        // açılmıyordu). Ana ekran görünür olana kadar bekle, hazır olunca başlat.
+        var _tries = 0;
+        (function _waitMain() {
+          if (localStorage.getItem("kmTutDone")) return; // başka tetik başlattı → dur
+          if (document.getElementById("km-tour")) return; // tur zaten açık
+          var ft = document.querySelector('.tab[data-tab="wheel"]');
+          if (ft && ft.offsetParent) {
+            startInteractiveTour();
+            return;
+          }
+          if (_tries++ < 120) setTimeout(_waitMain, 500); // ~60sn ana ekranı bekle
+        })();
       }
       function _deadOldTutorial() {
         var overlay = document.createElement("div");
@@ -7989,11 +8047,10 @@ function drawResultCard(opts) {
       // seçicili emojiyi —❤️ 🏖️ 🏞️ gibi— çizemeyip yazının tamamını siler) +
       // kod-noktasına göre güvenli kısalt (surrogate ortadan bölmeyi önler).
       function wheelLabel(t, max) {
+        // Kullanıcı kararı: emoji KORUNSUN (eskiden Extended_Pictographic regex ile
+        // strip ediliyordu → çarkta emoji kayboluyordu). Sadece boşluk sadeleştir +
+        // kırp. Truncation Array.from ile code-point bazlı (emoji ortadan bölünmez).
         var s = String(t == null ? "" : t)
-          .replace(
-            /[\p{Extended_Pictographic}\u{FE00}-\u{FE0F}\u{200D}\u{20E3}\u{1F1E6}-\u{1F1FF}]/gu,
-            "",
-          )
           .replace(/\s+/g, " ")
           .trim();
         var arr = Array.from(s);
@@ -8133,7 +8190,10 @@ function drawResultCard(opts) {
           ctx.globalAlpha = hi >= 0 && j !== hi ? 0.38 : 1;
           ctx.fillStyle = _textOn(COLS[j % COLS.length]);
           var fs = Math.max(10, Math.round(r * (n > 8 ? 0.085 : 0.105)));
-          ctx.font = "700 " + fs + "px Nunito,sans-serif";
+          // Emoji fallback: seçenekte emoji varsa canvas'ta tofu/boşluk yerine
+          // sistem emoji fontuyla çizilsin (Android WebView + Windows).
+          ctx.font =
+            "700 " + fs + "px Nunito,'Segoe UI Emoji','Noto Color Emoji',sans-serif";
           ctx.textBaseline = "middle";
           ctx.textAlign = "right";
           ctx.fillText(_wlbl(items[j]), r - 12, 0);
@@ -9165,7 +9225,8 @@ function drawResultCard(opts) {
             requestAnimationFrame(draw);
           } else {
             ctx.fillStyle = "#fff";
-            ctx.font = "bold 13px Nunito,sans-serif";
+            ctx.font =
+              "bold 13px Nunito,'Segoe UI Emoji','Noto Color Emoji',sans-serif";
             ctx.textAlign = "center";
             ctx.textBaseline = "middle";
             ctx.fillText(wheelLabel(winner, 14), 90, 90);
@@ -9177,7 +9238,15 @@ function drawResultCard(opts) {
         var say = getSaying(w);
         document.getElementById("tb-win").textContent = w;
         document.getElementById("tb-say").textContent = say;
-        document.getElementById("tb-result").style.display = "";
+        var _tbr = document.getElementById("tb-result");
+        _tbr.style.display = "";
+        // Mini çark (200px) uzun olduğundan sonuç kartı ekran altında kalabilir;
+        // kaydırılabilir modalda kazananı + "Harika!" butonunu görünür alana getir.
+        try {
+          requestAnimationFrame(function () {
+            _tbr.scrollIntoView({ block: "center" });
+          });
+        } catch (e) {}
         celebM("tb-merci", 80);
         winSound();
         hSuccess();
@@ -9521,9 +9590,11 @@ function drawResultCard(opts) {
           "color:#fff;border:none;padding:12px 18px;border-radius:14px;font-size:15px;font-weight:700;" +
           "cursor:pointer;box-shadow:0 4px 14px rgba(var(--ac-shadow),.35)";
         btn.innerHTML = "📍 Konumu aç, " + lbl + " öner";
+        // Buton oluşturulduğu andaki sorguyu yakala → tıklayınca doğru niyeti taşı.
+        var _consentQ = window._lastNearbyQuery || "";
         btn.onclick = function () {
           wrap.remove();
-          merciNearby(type);
+          merciNearby(type, _consentQ);
         };
         wrap.appendChild(btn);
         msgs.appendChild(wrap);
@@ -9757,7 +9828,7 @@ function drawResultCard(opts) {
           wrap.scrollIntoView({ behavior: "smooth", block: "start" });
         }, 50);
       }
-      async function merciNearby(type) {
+      async function merciNearby(type, query) {
         if (!currentUser) {
           signInWithGoogle();
           return;
@@ -9804,6 +9875,9 @@ function drawResultCard(opts) {
               lat: pos.lat,
               lng: pos.lng,
               type: type,
+              // Ham kullanıcı sorgusu: server /nearby'da niyeti (ör. "kokoreç yiyelim")
+              // gerçek mekan filtrelemesine katsın. Açık query yoksa son AI sorusuna düş.
+              query: query || window._lastNearbyQuery || "",
               locName: localStorage.getItem("kmUserLocation") || "",
             }),
           });
@@ -9855,6 +9929,9 @@ function drawResultCard(opts) {
           currentTopicId = null;
         }
         lastMsgTime = now;
+        // Konum hattı: bu ham sorgu, NEARBY/NEED_LOCATION tetiklenince /nearby'a
+        // taşınsın (merciNearby query fallback'i bunu okur). Marker işlenmeden set.
+        window._lastNearbyQuery = text;
 
         // İlk mesajsa → yeni konu başlıyor, limit kontrolü yap
         var isNewTopic = aiMessages.length === 0;
@@ -9923,6 +10000,26 @@ function drawResultCard(opts) {
               window._pendingQ = text;
               showPaywall();
               return;
+            }
+            // /merci düzeltilmiş koordinat döndürdüyse (kullanıcı şehir/semt yazdı →
+            // server geocode etti) cache'i güncelle. merciNearby'den ÖNCE olmalı ki
+            // yakındaki mekanlar DOĞRU konumla aransın.
+            if (
+              data.setLocation &&
+              isFinite(data.setLocation.lat) &&
+              isFinite(data.setLocation.lng)
+            ) {
+              localStorage.setItem(
+                "kmUserGeo",
+                JSON.stringify({
+                  lat: data.setLocation.lat,
+                  lng: data.setLocation.lng,
+                  t: Date.now(),
+                }),
+              );
+              if (data.setLocation.name)
+                localStorage.setItem("kmUserLocation", data.setLocation.name);
+              localStorage.removeItem("kmLocDenied");
             }
             var reply = data.error || data.text || "Bir hata oluştu!";
             // İşaretler: [[NEED_LOCATION:type]] (konum YOK → onay butonu) +
