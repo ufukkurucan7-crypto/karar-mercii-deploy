@@ -7942,11 +7942,11 @@ function drawResultCard(opts) {
           },
           {
             tab: "vote",
-            sel: "#vote-local .irow",
-            settle: 260,
+            sel: "#tour-demo-vote",
+            settle: 320,
             pose: "default",
             title: "⭐ Seçenek + yıldız",
-            body: "Seçenekleri buradan ekle. Herkes her seçeneğe <b>1–5 yıldız</b> verir; en çok yıldızı toplayan kazanır 🏆",
+            body: "Örnek: her seçeneğe <b>dokunarak 1–5 yıldız</b> ver. En çok yıldızı toplayan kazanır 🏆 (Gerçekte seçenekleri yukarıdan sen eklersin.)",
             skipIf: function () {
               return tourVoteBusy();
             },
@@ -7954,6 +7954,31 @@ function drawResultCard(opts) {
               try {
                 setVoteMode("masa");
               } catch (e) {}
+              if (!document.getElementById("tour-demo-vote")) {
+                var host =
+                  document.getElementById("vote-local") || document.body;
+                var d = document.createElement("div");
+                d.id = "tour-demo-vote";
+                d.className = "olist";
+                d.style.cssText = "margin-top:10px";
+                var _row = function (name, filled) {
+                  var st = "";
+                  for (var k = 1; k <= 5; k++)
+                    st +=
+                      '<span class="star' +
+                      (k <= filled ? " on" : "") +
+                      '">★</span>';
+                  return (
+                    '<div class="oitem"><div class="oitop"><span class="oname">' +
+                    name +
+                    '</span></div><div class="stars">' +
+                    st +
+                    "</div></div>"
+                  );
+                };
+                d.innerHTML = _row("🍕 Pizza", 4) + _row("🍔 Burger", 2);
+                host.appendChild(d);
+              }
             },
           },
           {
@@ -7962,13 +7987,37 @@ function drawResultCard(opts) {
             settle: 360,
             pose: "default",
             title: "🌐 Online oda",
-            body: "Online'da iki seçenek: <b>📡 Oda Oluştur</b> (ad, oda adı, kişi ve süre gir → 4 haneli kod al, paylaş) ya da <b>🔑 Odaya Katıl</b>.",
+            body: "Online'da iki seçenek: <b>📡 Oda Oluştur</b> ya da <b>🔑 Odaya Katıl</b>. Önce oda kurmayı gösterelim 👇",
+            skipIf: function () {
+              return tourVoteBusy();
+            },
+            open: function () {
+              try {
+                if (typeof closeOnlineSetupPopup === "function")
+                  closeOnlineSetupPopup();
+              } catch (e) {}
+              try {
+                setVoteMode("online");
+              } catch (e) {}
+            },
+          },
+          {
+            tab: "vote",
+            sel: "#online-setup-popup .online-popup-box",
+            settle: 380,
+            pose: "default",
+            title: "📡 Oda Oluştur",
+            body: "Oda kurarken adını, oda adını, <b>kaç kişi</b> olacağını ve <b>süreyi</b> seçersin. Onaylayınca <b>4 haneli kodu</b> paylaş — arkadaşların katılsın!",
             skipIf: function () {
               return tourVoteBusy();
             },
             open: function () {
               try {
                 setVoteMode("online");
+              } catch (e) {}
+              try {
+                if (typeof openOnlineSetupPopup === "function")
+                  openOnlineSetupPopup();
               } catch (e) {}
             },
           },
@@ -7983,6 +8032,10 @@ function drawResultCard(opts) {
               return tourVoteBusy();
             },
             open: function () {
+              try {
+                if (typeof closeOnlineSetupPopup === "function")
+                  closeOnlineSetupPopup();
+              } catch (e) {}
               try {
                 setVoteMode("online");
               } catch (e) {}
@@ -8009,11 +8062,11 @@ function drawResultCard(opts) {
               if (!currentUser) {
                 this.sel = "#ai-login-wall";
                 this.body =
-                  "Merci'ye danışmak için <b>Google ile giriş</b> yeterli (ücretsiz). Girince 'ne yesem, nereye gitsem' diye sorabilir, yakındaki mekan önerisi alabilirsin.";
+                  "Merci'ye danışmak için <b>Google ile giriş</b> yeterli — her gün <b>6 ücretsiz mesaj</b> senin! (PRO'da sınırsız.) Girince 'ne yesem, nereye gitsem' diye sorabilir, yakındaki mekan önerisi alabilirsin.";
               } else {
                 this.sel = ".merci-ai-hero";
                 this.body =
-                  "Ne yesek, nereye gitsek, ne izlesek… durumunu anlat, sana en iyi seçenekleri öneririm. Kararsız kalırsan senin için seçerim 🐙";
+                  "Ne yesek, nereye gitsek, ne izlesek… durumunu anlat, sana en iyi seçenekleri öneririm. Her gün <b>6 ücretsiz mesaj</b> (PRO'da sınırsız). Kararsız kalırsan senin için seçerim 🐙";
               }
             },
           },
@@ -8114,6 +8167,8 @@ function drawResultCard(opts) {
           try {
             var demo = document.getElementById("tour-demo-hist");
             if (demo && demo.parentNode) demo.parentNode.removeChild(demo);
+            var dvote = document.getElementById("tour-demo-vote");
+            if (dvote && dvote.parentNode) dvote.parentNode.removeChild(dvote);
           } catch (e) {}
           try {
             var mo = document.getElementById("menu-overlay");
@@ -8131,21 +8186,57 @@ function drawResultCard(opts) {
           } catch (e) {}
           if (root.parentNode) root.parentNode.removeChild(root);
         }
+        // ← Geri: bir önceki ATLANMAMIŞ adıma dön (open/settle tekrar çalışır)
+        function goBack() {
+          var j = i - 1;
+          while (j >= 0) {
+            var st = steps[j],
+              sk = false;
+            if (st.skipIf) {
+              try {
+                sk = st.skipIf();
+              } catch (e) {}
+            }
+            if (!sk) break;
+            j--;
+          }
+          if (j < 0) return;
+          i = j;
+          render();
+        }
         function draw(s) {
           root.innerHTML = "";
+          // Banner yüksekliği (--ad-bottom): balon + spotlight bunun ÜSTÜNDE kalmalı.
+          var adBottom = 0;
+          try {
+            adBottom =
+              parseFloat(
+                getComputedStyle(document.documentElement).getPropertyValue(
+                  "--ad-bottom",
+                ),
+              ) || 0;
+          } catch (e) {}
+          var vh = window.innerHeight - adBottom; // efektif görünür alt sınır
           var target = s.sel ? document.querySelector(s.sel) : null;
-          // Hedef ekran DIŞINDAYSA ortaya getir; zaten görünüyorsa (örn. alt tab
-          // butonları) scrollIntoView yapma — yoksa sayfa boşuna aşağı zıplıyordu.
+          // Hedef efektif görünür alanın dışındaysa ortaya kaydır. tour-lock
+          // (overflow:hidden) viewport scroller'da scrollIntoView'i engelliyor →
+          // kilidi ANLIK aç, kaydır, geri kilitle (kullanıcı araya giremez).
           if (target && target.scrollIntoView) {
             var pr = target.getBoundingClientRect();
-            // Uzun hedef (ör. "Hızlı Başlat" kartı) ekrandan taşarsa üstten
-            // hizala ki başlığı görünsün; kısa hedefi ortala.
-            var tall = pr.height > window.innerHeight * 0.7;
-            var offscreen = pr.bottom < 0 || pr.top > window.innerHeight;
-            if (offscreen || tall) {
+            var tall = pr.height > vh * 0.72;
+            var needScroll = pr.top < 4 || pr.bottom > vh - 4 || tall;
+            if (needScroll) {
+              var hadLock =
+                document.documentElement.classList.contains("tour-lock");
+              if (hadLock)
+                document.documentElement.classList.remove("tour-lock");
               try {
-                target.scrollIntoView({ block: tall ? "start" : "center" });
+                target.scrollIntoView({
+                  block: tall ? "start" : "center",
+                  inline: "nearest",
+                });
               } catch (e) {}
+              if (hadLock) document.documentElement.classList.add("tour-lock");
             }
           }
           var r = target ? target.getBoundingClientRect() : null;
@@ -8166,7 +8257,7 @@ function drawResultCard(opts) {
           var bub = document.createElement("div");
           var posCss;
           if (!r) posCss = "top:50%;transform:translate(-50%,-50%);";
-          else if (r.top > window.innerHeight / 2)
+          else if (r.top > vh / 2)
             posCss = "bottom:" + (window.innerHeight - r.top + 16) + "px;transform:translateX(-50%);";
           else posCss = "top:" + (r.bottom + 16) + "px;transform:translateX(-50%);";
           bub.style.cssText =
@@ -8183,6 +8274,29 @@ function drawResultCard(opts) {
             '<div style="font-size:13.5px;font-weight:700;color:#3b0764;line-height:1.6">' + s.body + "</div>" + dots;
           var btns = document.createElement("div");
           btns.style.cssText = "display:flex;gap:8px";
+          // ← Geri: önceki (atlanmamış) adıma dön; ilk adımda gizli
+          var hasPrev = false;
+          for (var _p = i - 1; _p >= 0; _p--) {
+            var _sp = steps[_p],
+              _skp = false;
+            if (_sp.skipIf) {
+              try {
+                _skp = _sp.skipIf();
+              } catch (e) {}
+            }
+            if (!_skp) {
+              hasPrev = true;
+              break;
+            }
+          }
+          if (hasPrev) {
+            var back = document.createElement("button");
+            back.textContent = "←";
+            back.setAttribute("aria-label", "Geri");
+            back.style.cssText = "flex:0 0 auto;background:#f0eaff;color:var(--ac);border:none;padding:11px 14px;border-radius:12px;font-weight:900;cursor:pointer";
+            back.onclick = goBack;
+            btns.appendChild(back);
+          }
           var skip = document.createElement("button");
           skip.textContent = "Atla";
           skip.style.cssText = "flex:1;background:#f0eaff;color:var(--ac);border:none;padding:11px;border-radius:12px;font-weight:800;cursor:pointer";
@@ -8202,16 +8316,15 @@ function drawResultCard(opts) {
           btns.appendChild(next);
           bub.appendChild(btns);
           root.appendChild(bub);
-          // Balon her zaman ekran içinde kalsın: uzun spotlight hedeflerinde
-          // (r.bottom+16 taşınca) alta/üste sığmayınca sabit konuma clamp'le.
+          // Balon her zaman görünür alanda kalsın: banner (vh) + üst kenar dikkate
+          // alınır → "Atla/İleri" butonları banner'ın ARKASINA düşmez.
           requestAnimationFrame(function () {
             var bb = bub.getBoundingClientRect();
             var m = 12;
-            if (bb.top < m || bb.bottom > window.innerHeight - m) {
+            if (bb.top < m || bb.bottom > vh - m) {
               var newTop;
-              if (bb.height >= window.innerHeight - m * 2) newTop = m;
-              else if (bb.bottom > window.innerHeight - m)
-                newTop = window.innerHeight - m - bb.height;
+              if (bb.height >= vh - m * 2) newTop = m;
+              else if (bb.bottom > vh - m) newTop = vh - m - bb.height;
               else newTop = m;
               bub.style.top = Math.max(m, newTop) + "px";
               bub.style.bottom = "auto";
@@ -13570,7 +13683,8 @@ function drawResultCard(opts) {
             vibEnabled = !vibEnabled;
             localStorage.setItem("kmVib", vibEnabled ? "true" : "false");
             _syncVib();
-            if (vibEnabled) vib(40); // açınca kısa geri bildirim
+            // Açık'a geçince cihaza HEMEN net bir titreşim → kullanıcı hissetsin
+            if (vibEnabled) hImpact("MEDIUM", 45);
           });
         }
         var darkBtn = document.getElementById("dark-btn");
