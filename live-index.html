@@ -7833,81 +7833,214 @@ function drawResultCard(opts) {
           {
             pose: "chat",
             title: "Selam, ben Merci! 🐙",
-            body: "15 saniyede uygulamayı gezdireyim, hadi 👇",
+            body: "30 saniyede tüm uygulamayı gezdireyim — hadi 👇",
           },
           {
             tab: "wheel",
             sel: '.tab[data-tab="wheel"]',
             pose: "celebrate",
             title: "🎡 Çark",
-            body: "Karar veremeyince çarkı çevir — kader seçsin! İşte ana karar aracın.",
+            body: "Kararsız kaldığında en hızlı yol. Seçenekleri gir, çevir, kader seçsin!",
           },
           {
             tab: "wheel",
             sel: "#wheel-empty-card",
             pose: "default",
             title: "⚡ Hızlı Başlat",
-            body: "Buradan hazır konulardan (yemek, film, aktivite...) tek dokunuşla çarkı doldurabilirsin.",
+            body: "Hazır konulardan (yemek, film, mekan…) tek dokunuşla çarkı doldur. Ya da <b>✨ Merci doldursun</b> de — seçenekleri ben üreteyim!",
           },
           {
             tab: "wheel",
             sel: "#s-wheel .irow",
             pose: "default",
             title: "➕ Kendi seçeneğini ekle",
-            body: "Ya da buraya kendin yazıp + ile ekle. '✨ Merci doldursun' dersen seçenekleri ben üretirim!",
+            body: "Aklındaki seçeneği buraya yaz, <b>+</b> ile ekle. İstediğin kadar seçenek girebilirsin.",
+          },
+          {
+            tab: "wheel",
+            sel: "#wspin-btn",
+            pose: "celebrate",
+            title: "🎯 Çarkı döndür",
+            body: "Seçenekler dolunca çarkı <b>parmağınla</b> çevir ya da ortadaki <b>↻</b> tuşuna bas — Merci kazananı coşkuyla açıklasın! 🎉",
+          },
+          {
+            tab: "wheel",
+            settle: 260,
+            pose: "glasses",
+            title: "🕘 Karar Geçmişi",
+            body: "Verdiğin her karar burada birikir; grafikle <b>en çok neyi seçtiğini</b> görürsün. Bunun için <b>Google ile giriş</b> yeterli (ücretsiz), PRO'da geçmişin çok daha uzun tutulur. İşte örnek 👇",
+            open: function () {
+              var hs = document.getElementById("hist-section");
+              if (hs && hs.style.display !== "none" && hs.offsetParent) {
+                this.sel = "#hist-section";
+                return;
+              }
+              if (!document.getElementById("tour-demo-hist")) {
+                var host = document.getElementById("s-wheel") || document.body;
+                var demo = document.createElement("div");
+                demo.id = "tour-demo-hist";
+                demo.style.cssText =
+                  "margin:14px 0 4px;padding:14px;border-radius:16px;background:var(--ac-bg2);border:1.5px solid var(--ac-bd)";
+                demo.innerHTML =
+                  '<div style="font-size:12px;font-weight:900;color:var(--ac);margin-bottom:8px">🕘 Karar Geçmişi (örnek)</div>' +
+                  '<div style="display:flex;align-items:center;gap:9px;padding:7px 0;border-bottom:1px solid var(--ac-bd)"><span style="font-size:18px">🍕</span><div style="flex:1;font-size:13px;font-weight:800;color:var(--ac-dd)">Pizza<div style="font-size:10px;font-weight:700;color:var(--ac-l2)">Çark · bugün</div></div><span style="font-size:12px">🏆</span></div>' +
+                  '<div style="display:flex;align-items:center;gap:9px;padding:7px 0"><span style="font-size:18px">🎬</span><div style="flex:1;font-size:13px;font-weight:800;color:var(--ac-dd)">Komedi filmi<div style="font-size:10px;font-weight:700;color:var(--ac-l2)">Oylama · dün</div></div><span style="font-size:12px">🏆</span></div>' +
+                  '<div style="margin-top:8px;font-size:10.5px;font-weight:700;color:var(--ac-l2);text-align:center">📊 Giriş yapınca kendi kararların ve grafiğin burada birikir</div>';
+                host.appendChild(demo);
+              }
+              this.sel = "#tour-demo-hist";
+            },
           },
           {
             tab: "vote",
             sel: '.tab[data-tab="vote"]',
             pose: "default",
             title: "⭐ Oylama",
-            body: "Kalabalıksanız birlikte karar verin! 3 adımlı rehber sizi yönlendirir: önce mod, sonra kimler, sonra oylama 👇",
+            body: "Kalabalıkken birlikte karar verin! Üstteki <b>3 adımlı rehber</b> (Mod → Kimler → Oyla) sizi elinizden tutar.",
           },
           {
             tab: "vote",
             sel: "#vote-mode-select",
             pose: "default",
             title: "1️⃣ Nasıl oylayalım?",
-            body: "İki yol var: <b>Bu Cihazda</b> tek telefonu elden ele dolaştırın; <b>Online</b>'da herkes kendi telefonundan bağlanır (oda kur ya da kodla katıl).",
+            body: "İki yol var: <b>Bu Cihazda</b> tek telefonu elden ele; <b>Online</b> herkes kendi telefonundan. Hadi 'Bu Cihazda'yı açıp gösterelim 👇",
           },
           {
             tab: "vote",
-            sel: "#vote-mode-select",
+            sel: "#masa-people-wrap",
+            settle: 360,
             pose: "default",
             title: "2️⃣ Kaç kişi?",
-            body: '"Bu Cihazda"yı seçince <b>−/+</b> ile kişi sayısını ayarla. 2+ kişi = sıra sırayla herkese geçer (masa modu).',
+            body: "İşte <b>−/+</b> ile kişi sayısını ayarladığın yer. 2+ kişi seçince telefon sırayla herkese geçer, her biri yıldız verir.",
+            skipIf: function () {
+              return tourVoteBusy();
+            },
+            open: function () {
+              try {
+                setVoteMode("masa");
+              } catch (e) {}
+            },
           },
           {
             tab: "vote",
-            sel: "#vote-mode-select",
+            sel: "#cats-vote-wrap",
+            settle: 260,
             pose: "default",
             title: "⚡ Hızlı Başlat",
-            body: "Tıpkı çarktaki gibi: hazır konu seç (Ne yesek, nereye gidelim...) ya da <b>✨ Merci doldursun</b> de — seçenekleri ben üreteyim!",
+            body: "Tıpkı çarktaki gibi: hazır konu seç ya da <b>✨ Merci doldursun</b> de. Seçenekleri anında üretirim!",
+            skipIf: function () {
+              return tourVoteBusy();
+            },
+            open: function () {
+              try {
+                setVoteMode("masa");
+              } catch (e) {}
+            },
+          },
+          {
+            tab: "vote",
+            sel: "#vote-local .irow",
+            settle: 260,
+            pose: "default",
+            title: "⭐ Seçenek + yıldız",
+            body: "Seçenekleri buradan ekle. Herkes her seçeneğe <b>1–5 yıldız</b> verir; en çok yıldızı toplayan kazanır 🏆",
+            skipIf: function () {
+              return tourVoteBusy();
+            },
+            open: function () {
+              try {
+                setVoteMode("masa");
+              } catch (e) {}
+            },
+          },
+          {
+            tab: "vote",
+            sel: "#online-role-row",
+            settle: 360,
+            pose: "default",
+            title: "🌐 Online oda",
+            body: "Online'da iki seçenek: <b>📡 Oda Oluştur</b> (ad, oda adı, kişi ve süre gir → 4 haneli kod al, paylaş) ya da <b>🔑 Odaya Katıl</b>.",
+            skipIf: function () {
+              return tourVoteBusy();
+            },
+            open: function () {
+              try {
+                setVoteMode("online");
+              } catch (e) {}
+            },
+          },
+          {
+            tab: "vote",
+            sel: "#online-join",
+            settle: 320,
+            pose: "default",
+            title: "🔑 Kodla katıl",
+            body: "Arkadaşının verdiği <b>4 haneli oda kodunu</b> buraya gir, adını yaz ve oylamaya anında katıl — herkes kendi telefonundan oy verir.",
+            skipIf: function () {
+              return tourVoteBusy();
+            },
+            open: function () {
+              try {
+                setVoteMode("online");
+              } catch (e) {}
+              try {
+                setOnlineRole("join");
+              } catch (e) {}
+            },
           },
           {
             tab: "cekilis",
             sel: '.tab[data-tab="cekilis"]',
             pose: "celebrate",
             title: "🎉 Çekiliş / Kura",
-            body: "İsimleri ekle, 'Çekilişi Başlat'a bas — Merci animasyonla talihliyi çeksin!",
+            body: "İsimleri ekle, <b>Çekilişi Başlat</b>'a bas; Merci isimleri karıştırıp talihliyi canlı animasyonla çeksin!",
           },
           {
             tab: "ai",
-            sel: '.tab[data-tab="ai"]',
+            sel: ".merci-ai-hero",
+            settle: 240,
             pose: "glasses",
             title: "🧠 Merci'ye Danış",
-            body: "Ne yesek, nereye gidelim, ne izlesek diye sor — durumunu anlat, sana en iyi seçenekleri öneririm. Kararsız kalırsan senin için seçerim 🐙",
+            body: "Ne yesek, nereye gitsek, ne izlesek… durumunu anlat, sana en iyi seçenekleri öneririm. Kararsız kalırsan senin için seçerim 🐙",
+            open: function () {
+              if (!currentUser) {
+                this.sel = "#ai-login-wall";
+                this.body =
+                  "Merci'ye danışmak için <b>Google ile giriş</b> yeterli (ücretsiz). Girince 'ne yesem, nereye gitsem' diye sorabilir, yakındaki mekan önerisi alabilirsin.";
+              } else {
+                this.sel = ".merci-ai-hero";
+                this.body =
+                  "Ne yesek, nereye gitsek, ne izlesek… durumunu anlat, sana en iyi seçenekleri öneririm. Kararsız kalırsan senin için seçerim 🐙";
+              }
+            },
+          },
+          {
+            tab: "ai",
+            sel: "#ai-chips",
+            settle: 240,
+            pose: "chat",
+            title: "⚡ Hızlı Başla",
+            body: "Hazır sorularla tek dokunuşta başla: 'Ne yesem?', 'Yakında kafe var mı?', 'Ne izlesem?'…",
+            skipIf: function () {
+              return !currentUser;
+            },
+          },
+          {
+            tab: "ai",
+            sel: "#ai-ctx",
+            settle: 240,
+            pose: "think",
+            title: "✍️ Durumunu yaz",
+            body: "Ya da durumunu kendi cümlelerinle yaz. <b>Konum izni</b> verirsen yakındaki mekânları getiririm; kararsız kalırsan senin için seçerim 🐙",
+            skipIf: function () {
+              return !currentUser;
+            },
           },
           {
             sel: "#menu-btn",
-            pose: "default",
-            title: "☰ Menü",
-            body: "Buradan Pro üyelik, karar geçmişin, ayarlar ve daha fazlasına ulaşırsın.",
-          },
-          {
             pose: "glasses",
-            title: "⚙️ Ayarlar",
-            body: "Menü → Ayarlar'dan karanlık modu, ses ve titreşimi aç/kapat; PRO ile renk temasını değiştir. Hazırsan başlayalım! 🎉",
+            title: "☰ Menü & Ayarlar",
+            body: "Menüden <b>PRO üyelik</b>, karar geçmişin ve ayarlar (karanlık mod, ses, titreşim, PRO'da renk teması). Hazırsan başlayalım! 🎉",
           },
         ];
         var i = 0;
@@ -7927,8 +8060,68 @@ function drawResultCard(opts) {
           },
           { passive: false },
         );
+        // Aktif oy oturumu (online oda / masa turu) var mı? Varsa tur, oy UI'ına
+        // dokunmamalı — yoksa menüden açılan tur canlı odayı kapatır (QA 🟡#1).
+        function tourVoteBusy() {
+          try {
+            var onlineHost = document.getElementById("online-host");
+            var activeOnline = !!(
+              (typeof shareCode !== "undefined" &&
+                shareCode &&
+                shareCode.length > 0) ||
+              (typeof amHost !== "undefined" &&
+                amHost &&
+                onlineHost &&
+                onlineHost.style.display !== "none")
+            );
+            var activeMasa = !!(
+              typeof masaPeopleConfirmed !== "undefined" &&
+              masaPeopleConfirmed &&
+              typeof voteTurn !== "undefined" &&
+              voteTurn > 1
+            );
+            return activeOnline || activeMasa;
+          } catch (e) {
+            return false;
+          }
+        }
+        // Turun açtığı panel/demo düğümlerini geri al (end + "Atla" çağırır)
+        function cleanup() {
+          try {
+            // Aktif canlı oturum varsa oy UI'ına DOKUNMA (odayı bozma).
+            if (!tourVoteBusy()) {
+              var vl = document.getElementById("vote-local");
+              if (vl) vl.style.display = "none";
+              var vo = document.getElementById("vote-online");
+              if (vo) vo.style.display = "none";
+              var oj = document.getElementById("online-join");
+              if (oj) oj.style.display = "none";
+              var vms = document.getElementById("vote-mode-select");
+              if (vms) vms.style.display = "";
+              var cvw = document.getElementById("cats-vote-wrap");
+              if (cvw) cvw.style.display = "none";
+              document
+                .querySelectorAll(".vote-mode-btn")
+                .forEach(function (b) {
+                  b.classList.remove("on");
+                });
+              if (typeof setVoteStep === "function") setVoteStep(1);
+            }
+          } catch (e) {}
+          try {
+            var demo = document.getElementById("tour-demo-hist");
+            if (demo && demo.parentNode) demo.parentNode.removeChild(demo);
+          } catch (e) {}
+          try {
+            var mo = document.getElementById("menu-overlay");
+            if (mo) mo.classList.remove("on");
+            var sp = document.getElementById("online-setup-popup");
+            if (sp) sp.classList.remove("on");
+          } catch (e) {}
+        }
         function end() {
           // Kilidi kaldır + kullanıcıyı tur öncesi kaldığı yere döndür
+          cleanup();
           document.documentElement.classList.remove("tour-lock");
           try {
             window.scrollTo(0, _tourScrollY);
@@ -8025,13 +8218,39 @@ function drawResultCard(opts) {
         }
         function render() {
           var s = steps[i];
+          // Giriş durumuna göre atlanacak adım (ör. misafirde Merci çip/input)
+          if (s.skipIf) {
+            var sk = false;
+            try {
+              sk = s.skipIf();
+            } catch (e) {}
+            if (sk) {
+              if (i >= steps.length - 1) {
+                end();
+                return;
+              }
+              i++;
+              render();
+              return;
+            }
+          }
           if (s.tab) {
             try {
               _doSw(s.tab);
             } catch (e) {}
+          }
+          // Adımın bahsettiği panel/modu ekranda AÇ (try/catch — mantığa dokunmaz)
+          if (s.open) {
+            try {
+              s.open();
+            } catch (e) {}
+          }
+          var delay =
+            s.settle != null ? s.settle : s.tab || s.open ? 220 : 0;
+          if (delay) {
             setTimeout(function () {
               draw(s);
-            }, 220);
+            }, delay);
           } else {
             draw(s);
           }
@@ -13480,6 +13699,10 @@ function drawResultCard(opts) {
             var av = document.getElementById("about-merci-svg");
             if (av && !av.innerHTML) setM("about-merci-svg", 72);
           }
+          if (id === "modal-bize-ulasin") {
+            var fv = document.getElementById("feedback-merci-svg");
+            if (fv && !fv.innerHTML) setM("feedback-merci-svg", 40, "chat");
+          }
         }
         document.querySelectorAll(".info-modal").forEach(function (el) {
           el.addEventListener("click", function (e) {
@@ -14071,11 +14294,19 @@ function drawResultCard(opts) {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            margin-bottom: 16px;
+            margin-bottom: 12px;
           "
         >
-          <div style="font-size: 17px; font-weight: 900; color: var(--ac-dd)">
-            Bize Ulaşın
+          <div style="display: flex; align-items: center; gap: 9px">
+            <div
+              id="feedback-merci-svg"
+              style="display: flex; flex-shrink: 0"
+            ></div>
+            <div
+              style="font-size: 17px; font-weight: 900; color: var(--ac-dd)"
+            >
+              Bize Ulaşın
+            </div>
           </div>
           <button
             onclick="document.getElementById('modal-bize-ulasin').classList.remove('on')"
@@ -14101,39 +14332,39 @@ function drawResultCard(opts) {
             margin-bottom: 14px;
           "
         >
-          Görüşleriniz bizim için değerli!
+          Her mesajını Merci okur — çekinme, yaz! 🐙
         </div>
         <select
           id="feedback-konu"
           style="
             width: 100%;
-            padding: 10px;
+            padding: 11px 10px;
             font-family: &quot;Nunito&quot;, sans-serif;
             font-weight: 700;
-            border: 2px solid var(--ac-ll);
-            border-radius: 10px;
+            border: 1.5px solid var(--ac-bd);
+            border-radius: 12px;
             margin-bottom: 8px;
             color: var(--ac-dd);
             outline: none;
             background: #fff;
           "
         >
-          <option value="">Konu seçin</option>
-          <option value="hata">Hata Bildirimi</option>
-          <option value="oneri">Öneri</option>
-          <option value="sikayet">Şikayet</option>
-          <option value="diger">Diğer</option>
+          <option value="">Konu seçin…</option>
+          <option value="hata">🐛 Hata Bildirimi</option>
+          <option value="oneri">💡 Öneri</option>
+          <option value="sikayet">😕 Şikayet</option>
+          <option value="diger">💬 Diğer</option>
         </select>
         <textarea
           id="feedback-mesaj"
-          placeholder="Mesajınız..."
+          placeholder="Mesajını yaz…"
           style="
             width: 100%;
-            padding: 10px;
+            padding: 11px 10px;
             font-family: &quot;Nunito&quot;, sans-serif;
             font-weight: 700;
-            border: 2px solid var(--ac-ll);
-            border-radius: 10px;
+            border: 1.5px solid var(--ac-bd);
+            border-radius: 12px;
             margin-bottom: 8px;
             min-height: 100px;
             resize: none;
@@ -14147,11 +14378,11 @@ function drawResultCard(opts) {
           placeholder="E-posta (opsiyonel, yanıt için)"
           style="
             width: 100%;
-            padding: 10px;
+            padding: 11px 10px;
             font-family: &quot;Nunito&quot;, sans-serif;
             font-weight: 700;
-            border: 2px solid var(--ac-ll);
-            border-radius: 10px;
+            border: 1.5px solid var(--ac-bd);
+            border-radius: 12px;
             margin-bottom: 12px;
             outline: none;
             color: #1a1a2e;
@@ -14162,17 +14393,18 @@ function drawResultCard(opts) {
           style="
             width: 100%;
             padding: 12px;
-            background: var(--ac);
+            background: linear-gradient(145deg, var(--ac-l), var(--ac));
             color: #fff;
             border: none;
-            border-radius: 10px;
+            border-radius: 12px;
             font-family: &quot;Nunito&quot;, sans-serif;
             font-weight: 900;
             font-size: 14px;
             cursor: pointer;
+            box-shadow: 0 6px 16px -6px rgba(var(--ac-shadow), 0.6);
           "
         >
-          Gönder
+          Gönder 🐙
         </button>
         <div
           id="feedback-success"
@@ -14195,7 +14427,7 @@ function drawResultCard(opts) {
             text-align: center;
           "
         >
-          Ya da mail atın:
+          Dilersen doğrudan da yazabilirsin 🐙<br />
           <a href="mailto:asytechstudio@gmail.com" style="color: var(--ac)"
             >asytechstudio@gmail.com</a
           >
