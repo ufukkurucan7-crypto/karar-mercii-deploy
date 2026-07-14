@@ -15,12 +15,12 @@
     <title>Karar Mercii</title>
     <meta
       name="description"
-      content="Grubunuzun karar ustası — çark çevirin, oylayın, Merci'ye danışın!"
+      content="Grubunuzun resmi karar hakemi — çark çevirin, oylayın, Merci'ye danışın!"
     />
     <meta property="og:title" content="Karar Mercii" />
     <meta
       property="og:description"
-      content="Grubunuzun karar ustası — çark çevirin, oylayın, Merci'ye danışın!"
+      content="Grubunuzun resmi karar hakemi — çark çevirin, oylayın, Merci'ye danışın!"
     />
     <meta property="og:type" content="website" />
     <meta property="og:image" content="https://kararmercii.com/og-image.png" />
@@ -30,7 +30,7 @@
     <meta name="twitter:title" content="Karar Mercii" />
     <meta
       name="twitter:description"
-      content="Grubunuzun karar ustası — çark çevirin, oylayın, Merci'ye danışın!"
+      content="Grubunuzun resmi karar hakemi — çark çevirin, oylayın, Merci'ye danışın!"
     />
     <link rel="manifest" href="/manifest.json" />
     <script>
@@ -2473,9 +2473,11 @@
         box-shadow: 0 2px 6px rgba(212, 145, 10, 0.22);
       }
       .rwin {
-        font-family: "Fredoka", sans-serif;
+        /* DARK-PAK #16 madde2: Fredoka'nın ş cedilla'sı bozuk + fazla kalın →
+           Nunito 800 (v1-title fix'iyle aynı çözüm) */
+        font-family: "Nunito", sans-serif;
         font-size: 30px;
-        font-weight: 700;
+        font-weight: 800;
         line-height: 1.1;
         color: var(--ac-dd);
         margin: 2px 0 4px;
@@ -3071,11 +3073,12 @@
         border: none;
         border-left: 3px solid var(--ac);
         border-radius: 6px 16px 16px 16px;
-        padding: 12px 15px;
-        font-size: 14.5px;
+        /* DARK-PAK #16 madde4: Merci balonu daha kompakt + okunur (14.5→13px) */
+        padding: 10px 13px;
+        font-size: 13px;
         font-weight: 500;
         color: #1a1a2e;
-        line-height: 1.55;
+        line-height: 1.5;
         word-break: break-word;
         backdrop-filter: blur(5px);
         -webkit-backdrop-filter: blur(5px);
@@ -3091,8 +3094,8 @@
         color: #fff;
         border: none;
         border-radius: 16px 16px 4px 16px;
-        padding: 12px 15px;
-        font-size: 14.5px;
+        padding: 10px 13px;
+        font-size: 13px;
         font-weight: 500;
         line-height: 1.5;
         word-break: break-word;
@@ -3243,13 +3246,14 @@
       .wspot-mask, .wspot-vig, .wspot-ring { position: absolute; opacity: 0; transition: opacity 0.4s ease; will-change: opacity; }
       .wspot-mask { inset: 0; border-radius: 50%; }
       .wspot-vig { inset: -3%; border-radius: 50%; background: radial-gradient(circle at 50% 50%, transparent 46%, rgba(15,5,35,0.32) 88%); }
-      .wspot-ring { top: 3%; left: 50%; width: 30%; height: 30%; transform: translateX(-50%); border-radius: 50%; border: 3px solid #ffd76a; box-shadow: 0 0 18px 4px rgba(255,215,106,0.75); }
+      /* DARK-PAK #16 madde3: ring merkezden --wr kadar döner (kazanan dilime kilitli) */
+      .wspot-ring { top: 50%; left: 50%; width: 30%; height: 30%; transform: translate(-50%,-50%) rotate(var(--wr,0deg)) translateY(-106.7%); border-radius: 50%; border: 3px solid #ffd76a; box-shadow: 0 0 18px 4px rgba(255,215,106,0.75); }
       .wspot.on .wspot-mask, .wspot.on .wspot-vig { opacity: 1; }
       .wspot.on .wspot-ring { animation: wspotRing 1.6s ease-out; }
       @keyframes wspotRing {
-        0% { opacity: 0; transform: translateX(-50%) scale(0.7); }
+        0% { opacity: 0; transform: translate(-50%,-50%) rotate(var(--wr,0deg)) translateY(-106.7%) scale(0.7); }
         20% { opacity: 1; }
-        100% { opacity: 0; transform: translateX(-50%) scale(1.4); }
+        100% { opacity: 0; transform: translate(-50%,-50%) rotate(var(--wr,0deg)) translateY(-106.7%) scale(1.4); }
       }
       /* ═══ ÇEKİLİŞ SLOT MAKİNESİ (Deploy #13 — GPU translateY) ═══ */
       .cekilis-slot {
@@ -4395,6 +4399,80 @@
       html.dark .oname {
         color: #f2eefc;
       }
+      /* ═══ DARK-PAK #16: modal başlıkları + form alanları + sil/temizle + login duvarı ═══ */
+      /* Modal başlık/gövde metinleri (inline var(--ac-dd)/#1a1a2e dark'ta okunmuyordu) */
+      html.dark .info-modal-title,
+      html.dark .info-modal-body,
+      html.dark .mbox [style*="var(--ac-dd)"],
+      html.dark .info-modal-box [style*="var(--ac-dd)"],
+      html.dark .mbox [style*="#1a1a2e"],
+      html.dark .info-modal-box [style*="#1a1a2e"] {
+        color: #f2eefc !important;
+      }
+      html.dark .info-modal-body h3 { color: var(--ac-l2) !important; }
+      /* Gizlilik modalı sticky başlık şeridi (inline background:#fff) */
+      html.dark #modal-kvkk [style*="background: #fff"] {
+        background: #1e1733 !important;
+      }
+      /* Modal kapatma (×) butonları (inline var(--ac-bg) zemin) */
+      html.dark .mbox button[style*="var(--ac-bg)"],
+      html.dark .info-modal-box button[style*="var(--ac-bg)"] {
+        background: #271d3f !important;
+        color: #d8cef5 !important;
+      }
+      /* Bize-ulaşın form alanları (konu/mesaj/e-posta — inline #fff / #1a1a2e) */
+      html.dark #feedback-konu,
+      html.dark #feedback-mesaj,
+      html.dark #feedback-email {
+        background: #14101f !important;
+        border-color: #3a2f55 !important;
+        color: #f2eefc !important;
+      }
+      html.dark #feedback-konu option { background: #1e1733; color: #f2eefc; }
+      html.dark #feedback-mesaj::placeholder,
+      html.dark #feedback-email::placeholder { color: #8b82a6; }
+      /* Çark / çekiliş / geçmiş "temizle-sil" butonları (inline beyaz-kırmızı) */
+      html.dark #wheel-clear,
+      html.dark #cekilis-clear,
+      html.dark .hist-clear,
+      html.dark #chat-hist-clear {
+        background: #2a1417 !important;
+        border-color: #5a2b2b !important;
+        color: #ff9b9b !important;
+      }
+      /* "Detayları gör" / mini geçmiş butonları (inline açık-mor idi) */
+      html.dark .hist-mini-btn {
+        background: #1e1733;
+        border-color: #3a2f55;
+        color: var(--ac-ll);
+      }
+      html.dark .hist-mini-btn:hover {
+        background: var(--ac);
+        color: #fff;
+        border-color: var(--ac);
+      }
+      /* Merci'ye Danış giriş duvarı (login wall) */
+      html.dark .ai-wall-bubble {
+        background: #1e1733;
+        border-color: #3a2f55;
+        color: #f2eefc;
+      }
+      html.dark .ai-wall-perks {
+        background: #14101f;
+        border-color: #2d2347;
+      }
+      html.dark .ai-wall-perk { color: #ece8f7; }
+      /* Bizi Puanla modalı geri bildirim kutusu (beyaz textarea) */
+      html.dark .rate-feedback {
+        background: #14101f;
+        border: 1px solid #2d2347;
+      }
+      html.dark .rate-feedback p { color: #f2eefc; }
+      html.dark .rate-feedback textarea {
+        background: #0f0b1a;
+        border-color: #3a2f55;
+        color: #f2eefc;
+      }
       html.dark .hdr-home {
         background: #271d3f;
         color: #d8cef5;
@@ -4485,6 +4563,23 @@
         --ac-bg: #fdf2f8;
         --ac-bd: #f9c6e0;
         --ac-shadow: 219, 39, 119;
+      }
+      /* SİYAH-BEYAZ / MONOKROM (nötr gri accent) — DARK-PAK #16 madde7 */
+      html[data-theme="mono"] {
+        --ac: #374151;
+        --ac-d: #1f2937;
+        --ac-d2: #111827;
+        --ac-dd: #0b1220;
+        --ac-l: #6b7280;
+        --ac-l2: #9ca3af;
+        --ac-m: #6b7280;
+        --ac-ll: #cbd0d8;
+        --ac-lll: #e5e7eb;
+        --ac-bg3: #e5e7eb;
+        --ac-bg2: #f6f7f9;
+        --ac-bg: #f2f3f5;
+        --ac-bd: #dfe2e7;
+        --ac-shadow: 55, 65, 81;
       }
     </style>
     <!-- FAVICON: gerçek Merci maskotu (baş+gözler kadrajı, orijinal path'ler) — mor zemin -->
@@ -4658,7 +4753,7 @@
           <div class="ob-auth-logo" id="ob2-merci"></div>
           <div class="ob-auth-title">Karar Mercii'ye Hoş Geldin!</div>
           <div class="ob-auth-sub">
-            Arkadaş ortamlarının yeni hakemi. İster tek tek, ister hep beraber;
+            Grubunuzun resmi karar hakemi. İster tek tek, ister hep beraber;
             kararsızlıkları eğlenceye dönüştürün!
           </div>
           <button
@@ -9813,7 +9908,7 @@ function drawResultCard(opts) {
       }
       // Kazanan dilim spotlight'ı — .wstage üstüne DOM overlay (canvas'a dokunmaz).
       // Kazanan dilim pointer altında (üstte) durduğu için delik hep tepede.
-      function wheelSpotlight(n) {
+      function wheelSpotlight(n, wi, ang) {
         try {
           var st = document.querySelector("#s-wheel .wstage");
           if (!st || !n || n < 2) return;
@@ -9821,16 +9916,28 @@ function drawResultCard(opts) {
           if (old) old.remove();
           var seg = 360 / n,
             half = seg / 2;
+          // DARK-PAK #16 madde3: wedge'i KAZANAN dilim merkezine kilitle (canvas'a dokunmaz).
+          // Kazanan dilim merkezinin canvas açısı = ang + wi*sl + sl/2; conic (ekran)
+          // açısına çevir: conic = deg(canvas) + 90 (0°=tepe/ibre, saat yönü +).
+          var center = 0;
+          if (typeof wi === "number" && wi >= 0 && typeof ang === "number") {
+            var sl = (Math.PI * 2) / n;
+            var canvasDeg = ((ang + wi * sl + sl / 2) * 180) / Math.PI + 90;
+            center = ((canvasDeg % 360) + 360) % 360;
+          }
+          var from = center - half; // aydınlık wedge tam kazananın üstünde
           var ov = document.createElement("div");
           ov.className = "wspot";
           ov.innerHTML =
             '<div class="wspot-mask" style="background:conic-gradient(from ' +
-            -half +
+            from +
             "deg, transparent 0deg " +
             seg +
             "deg, rgba(15,5,35,0.62) " +
             seg +
-            'deg 360deg)"></div><div class="wspot-vig"></div><div class="wspot-ring"></div>';
+            'deg 360deg)"></div><div class="wspot-vig"></div><div class="wspot-ring" style="--wr:' +
+            center +
+            'deg"></div>';
           st.appendChild(ov);
           requestAnimationFrame(function () {
             ov.classList.add("on");
@@ -9846,7 +9953,7 @@ function drawResultCard(opts) {
       function finishW(wi) {
         wheelHi = wi;
         drawW("wcanvas", S.wheel, wAngle, wi);
-        wheelSpotlight(S.wheel.length);
+        wheelSpotlight(S.wheel.length, wi, wAngle);
         // Kazanan belli olunca döndür butonunu geri getir (önceden DEĞİL)
         var _sb = document.getElementById("wspin-btn");
         if (_sb) {
@@ -10112,6 +10219,18 @@ function drawResultCard(opts) {
         for (var L = 0; L < loops; L++)
           for (var q = 0; q < n; q++) strip.push(names[q]);
         var winPos = strip.length; // kazananın şeritteki indeksi
+        // LANDING DEDUPE (Deploy #16): kazananın hemen ÜSTÜNDEKİ isim (strip[winPos-1]
+        // = son turun son ismi = names[n-1]) kazananla (winnerIdx===n-1) ya da hemen
+        // ALTINDAKİ isimle (winnerIdx===n-2) AYNI çıkabiliyordu → "üstte/altta aynı
+        // isim" görsel duplicate. n>2'de üst komşuyu kazanandan VE alt komşudan farklı
+        // bir isme sabitle. Kazanan + landing pozisyonu (winPos) DEĞİŞMEZ.
+        if (n > 2 && winPos > 0) {
+          var _below = names[(winnerIdx + 1) % n];
+          var _aboveIdx = (winnerIdx - 1 + n) % n;
+          if (names[_aboveIdx] === _below || names[_aboveIdx] === winner)
+            _aboveIdx = (winnerIdx - 2 + n) % n;
+          strip[winPos - 1] = names[_aboveIdx];
+        }
         strip.push(winner);
         for (var e = 1; e <= 3; e++) strip.push(names[(winnerIdx + e) % n]);
         reel.innerHTML = "";
@@ -10136,15 +10255,28 @@ function drawResultCard(opts) {
           vib(12);
           finishCekilis(winner);
         };
-        // Yavaşlayan makara sesi (casino tık) — sese saygılı (soundEnabled kontrol edilir)
-        var _tk = 0,
-          _gap = 45;
-        (function _schedTick() {
-          if (_done || _tk >= DUR - 260) return;
-          casinoTickGain(0.5);
-          _tk += _gap;
-          _gap = 45 + (_tk / DUR) * 360; // giderek seyrekleşir
-          setTimeout(_schedTick, _gap);
+        // DARK-PAK #16 madde5: makara sesi reel'in GERÇEK hızına senkron.
+        // Her item merkezden geçtikçe tık; casinoTick'in 55ms iç limiti hızlıda
+        // boğulmayı önler, yavaşta doğal seyrekleşir → yavaşlama ile senkron.
+        // Kazananda net fanfar finishCekilis'te (winSound + hSuccess).
+        // soundEnabled kontrolü casinoTick içinde (kapalıysa hiç çalmaz).
+        var _lastItem = -1;
+        (function _reelTick() {
+          if (_done) return;
+          var y = 0;
+          try {
+            var tr = getComputedStyle(reel).transform;
+            if (tr && tr.indexOf("matrix") === 0) {
+              var v = tr.slice(tr.indexOf("(") + 1, -1).split(",");
+              y = parseFloat(v.length >= 16 ? v[13] : v[5]) || 0;
+            }
+          } catch (e) {}
+          var item = Math.round(Math.abs(y) / ITEM);
+          if (item !== _lastItem) {
+            _lastItem = item;
+            casinoTick();
+          }
+          requestAnimationFrame(_reelTick);
         })();
         reel.addEventListener("transitionend", _finish, { once: true });
         setTimeout(_finish, DUR + 160); // transitionend gelmezse güvence
@@ -12241,18 +12373,42 @@ function drawResultCard(opts) {
             (p) => p.submitted === true,
           ).length;
           var totalCount = Object.keys(parts).length;
-          // Herkes oy vermediyse: ham confirm yerine STİLİZE onay + bekleyen isimleri
-          if (voterCount < totalCount) {
+          var maxP = data.maxParticipants || totalCount;
+          // UYARI KOŞULU (Deploy #16 — genişletildi): host oylamayı erken bitiriyorsa
+          // iki durumda da uyar → (a) ODA DOLMADI (katılan < oda kapasitesi: "2/4
+          // kişi katıldı") VEYA (b) katılan biri henüz OY VERMEDİ. Eskiden yalnız (b)
+          // kontrol ediliyordu → 4 kişilik oda 2 kişiyle bitince uyarısız kapanıyordu.
+          if (voterCount < totalCount || totalCount < maxP) {
             var _waiting = Object.keys(parts)
               .filter((k) => parts[k].submitted !== true)
               .map((k) => (parts[k] && parts[k].name) || "?");
-            showConfirm(
-              totalCount - voterCount + " kişi henüz oy vermedi",
-              (_waiting.length ? _waiting.join(", ") + " bekleniyor. " : "") +
+            var _title, _sub;
+            if (totalCount < maxP) {
+              // Oda dolmadı (belki oy vermeyen de var)
+              _title = totalCount + "/" + maxP + " kişi katıldı";
+              _sub =
+                "Oda " +
+                maxP +
+                " kişilik ama " +
+                totalCount +
+                " kişi katıldı" +
+                (voterCount < totalCount
+                  ? " ve " + (totalCount - voterCount) + " kişi oy vermedi"
+                  : "") +
+                ". Şimdi bitirirsen katılmayan/oy vermeyenlerin oyu sayılmaz.";
+            } else {
+              // Oda dolu ama katılan biri oy vermedi
+              _title = totalCount - voterCount + " kişi henüz oy vermedi";
+              _sub =
+                (_waiting.length ? _waiting.join(", ") + " bekleniyor. " : "") +
                 voterCount +
                 "/" +
                 totalCount +
-                " oy hazır. Şimdi bitirirsen bekleyenlerin oyu sayılmaz.",
+                " oy hazır. Şimdi bitirirsen bekleyenlerin oyu sayılmaz.";
+            }
+            showConfirm(
+              _title,
+              _sub,
               function () {
                 _finalizeClose(shareCode, data);
               },
@@ -12261,7 +12417,7 @@ function drawResultCard(opts) {
             );
             return;
           }
-          // Herkes oy verdi → doğrudan sonuçlandır
+          // Oda dolu + herkes oy verdi → doğrudan sonuçlandır
           _finalizeClose(shareCode, data);
         } catch (e) {
           alert("Hata: " + e.message);
@@ -12807,7 +12963,7 @@ function drawResultCard(opts) {
           shareCode +
           "\n\nBağlantıya dokun, hemen oy ver 👇\n" +
           link +
-          "\n\n📲 Uygulamayı indir:\nhttps://play.google.com/store/apps/details?id=app.kararmercii.com";
+          "\n\n🐙 Grubunuzun resmi karar hakemi\n📲 Uygulamayı indir:\nhttps://play.google.com/store/apps/details?id=app.kararmercii.com";
         logEv("share_whatsapp");
         // vc32: native'de sistem paylaşım sayfası (guard'lı) — WebView'da navigator.share yok
         var _sh = _capPlug("Share");
@@ -12900,26 +13056,22 @@ function drawResultCard(opts) {
           }
           document.getElementById("ro-room-name").textContent =
             doc.data().name || "Oylama";
-          // Konuk — isim sorulmadan direkt oylama adımına geç
-          // Cihaz ID'sini katılımcı adı olarak kullan (kısa ve anonim)
-          var guestName = "Misafir-" + deviceId.slice(-4).toUpperCase();
-          var data = doc.data();
-          data.options.forEach((o) => (roVotes[o] = 0));
-          roCurrentRound = data.roundNumber || 1;
+          // İSİM SOR (Deploy #16): eskiden misafire "Misafir-XXXX" otomatik atanıp
+          // isim sorulmadan DİREKT oylamaya alınıyordu. Artık isim adımı gösterilir;
+          // kullanıcı adını girip "Oylamaya Katıl"a basınca roConfirmName gerçek
+          // katılımı (participants yazımı) + oylama adımını yapar.
           amHost = false;
-          tbAnimKey = "";
-          await db
-            .collection("rooms")
-            .doc(roCode)
-            .update({
-              ["participants." + deviceId]: { name: guestName, votes: {} },
-            });
-          document.getElementById("ro-name-step").style.display = "none";
-          document.getElementById("ro-vote-step").style.display = "";
-          renderRoVoteList(data.options);
-          listenRoomOverlay(roCode);
-          if (data.timeLimit > 0)
-            startTimer(data.timeLimit * 60, "ro-timer", () => roSubmitVote());
+          document.getElementById("ro-name-step").style.display = "";
+          document.getElementById("ro-vote-step").style.display = "none";
+          var _rni = document.getElementById("ro-name-inp");
+          if (_rni) {
+            _rni.value = "";
+            setTimeout(function () {
+              try {
+                _rni.focus();
+              } catch (e) {}
+            }, 120);
+          }
           snd("ding");
         } catch (e) {
           alert("Bağlantı hatası!");
@@ -14473,7 +14625,7 @@ function drawResultCard(opts) {
           });
         }
         // ── TEMA SEÇİMİ (PRO) ──
-        var THEME_NAMES = { mor: "Mor", mavi: "Mavi", yesil: "Yeşil", pembe: "Pembe" };
+        var THEME_NAMES = { mor: "Mor", mavi: "Mavi", yesil: "Yeşil", pembe: "Pembe", mono: "Siyah-Beyaz" };
         function currentAccent() {
           var a = localStorage.getItem("kmAccent") || "mor";
           return THEME_NAMES[a] ? a : "mor";
@@ -14974,6 +15126,10 @@ function drawResultCard(opts) {
             <span class="theme-dot" style="background: linear-gradient(135deg, #db2777, #f472b6)"></span>
             Pembe
           </button>
+          <button class="theme-sw" data-theme-val="mono">
+            <span class="theme-dot" style="background: linear-gradient(135deg, #1f2937, #9ca3af)"></span>
+            Siyah-Beyaz
+          </button>
         </div>
       </div>
     </div>
@@ -15012,7 +15168,7 @@ function drawResultCard(opts) {
                 margin-top: 2px;
               "
             >
-              Grubunuzun karar ustası 🐙
+              Grubunuzun resmi karar hakemi 🐙
             </div>
           </div>
           <button
