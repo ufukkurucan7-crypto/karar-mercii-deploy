@@ -321,8 +321,19 @@
         gap: 10px;
         position: sticky;
         top: 0;
+        /* Çok hafif yüzey gradienti (premium cila) — ilk satır eski tarayıcı fallback */
         background: #fff;
+        background: linear-gradient(180deg, #ffffff 30%, var(--ac-bg2) 170%);
         z-index: 10;
+        /* Scroll gölgesi yumuşakça girip çıksın (GPU-dostu: blur yok, yalnız box-shadow) */
+        transition: box-shadow 0.25s ease, border-color 0.25s ease;
+      }
+      /* Scroll'da beliren yumuşak gölge — JS pasif scroll listener .scrolled basar */
+      .hdr.scrolled {
+        border-bottom-color: transparent;
+        box-shadow:
+          0 6px 16px -6px rgba(var(--ac-shadow), 0.18),
+          0 1px 0 rgba(var(--ac-shadow), 0.06);
       }
       .hdr-title {
         font-size: 20px;
@@ -919,6 +930,177 @@
         color: var(--ac-l2);
         margin-top: 3px;
       }
+      /* ═══ PRO MODAL — "Gece Moru Hero" redesign (FİNAL) ═══ */
+      .pro-box.pro-hero-box {
+        padding: 0;
+        /* overflow-y auto: kısa ekranda satın alma butonu kaydırılarak erişilebilir
+           kalmalı; hidden yalnız yatay (köşe yuvarlatma kırpması için yeterli) */
+        overflow-x: hidden;
+        overflow-y: auto;
+      }
+      .pro-hero {
+        position: relative;
+        text-align: center;
+        padding: 30px 22px 50px;
+        background: linear-gradient(155deg, var(--ac-dd) 0%, var(--ac-d2) 55%, var(--ac) 100%);
+        overflow: hidden;
+      }
+      .pro-hero::before {
+        content: "";
+        position: absolute;
+        top: -46px;
+        left: -36px;
+        width: 170px;
+        height: 170px;
+        border-radius: 50%;
+        background: radial-gradient(circle, rgba(255, 255, 255, 0.16), transparent 68%);
+      }
+      .pro-hero::after {
+        content: "";
+        position: absolute;
+        bottom: -30px;
+        right: -26px;
+        width: 140px;
+        height: 140px;
+        border-radius: 50%;
+        background: radial-gradient(circle, rgba(255, 255, 255, 0.1), transparent 68%);
+      }
+      .pro-hero .pro-badge {
+        position: relative;
+        z-index: 1;
+        background: rgba(255, 255, 255, 0.16);
+        border: 1px solid rgba(255, 255, 255, 0.34);
+      }
+      .pro-hero-merci {
+        position: relative;
+        z-index: 1;
+        display: flex;
+        justify-content: center;
+        margin-bottom: 2px;
+        animation: mfloat 3.6s ease-in-out infinite;
+      }
+      .pro-hero .pro-title {
+        color: #fff;
+        position: relative;
+        z-index: 1;
+        margin-bottom: 0;
+        text-shadow: 0 2px 12px rgba(15, 5, 40, 0.3);
+      }
+      .pro-hero .pro-sub {
+        color: var(--ac-ll);
+        position: relative;
+        z-index: 1;
+        margin: 6px auto 0;
+        max-width: 290px;
+      }
+      .pro-hero-body {
+        position: relative;
+        z-index: 2;
+        background: #fff;
+        border-radius: 24px 24px 0 0;
+        margin-top: -26px;
+        padding: 22px 20px 26px;
+      }
+      .pro-hero-body .pro-perks {
+        background: none;
+        padding: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        margin-bottom: 18px;
+      }
+      .pro-hero-body .pro-perk {
+        background: var(--ac-bg2);
+        border: 1px solid var(--ac-bd);
+        border-radius: 14px;
+        padding: 10px 12px;
+        margin: 0;
+      }
+      .pro-hero-body .pro-perk-icon {
+        width: 30px;
+        height: 30px;
+        min-width: 30px;
+        border-radius: 10px;
+        background: #fff;
+        border: 1px solid var(--ac-bd);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 15px;
+      }
+      .pro-perk-sub {
+        display: block;
+        font-size: 10px;
+        font-weight: 700;
+        color: #9a90b8;
+        margin-top: 2px;
+      }
+      /* Dark: koyu yüzey + V2'nin altın dokunuşları (rozet/CTA/ribbon/seçim) */
+      .pro-goldline {
+        display: none;
+      }
+      html.dark .pro-hero-box .pro-goldline {
+        display: block;
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 4px;
+        z-index: 6;
+        background: linear-gradient(90deg, #f5a623, #ffe9ad, #f5a623);
+        background-size: 200% 100%;
+        animation: goldslide 3s linear infinite;
+      }
+      html.dark .pro-box.pro-hero-box,
+      html.dark .pro-hero-body {
+        background: #1a1428;
+      }
+      html.dark .pro-hero-body .pro-perk {
+        background: #241b3a;
+        border-color: #352a52;
+        color: #e4ddf6;
+      }
+      html.dark .pro-hero-body .pro-perk-icon {
+        background: #1a1428;
+        border-color: #3a2f58;
+      }
+      html.dark .pro-hero .pro-badge {
+        background: linear-gradient(180deg, #ffe9ad, #f5c04a);
+        border-color: rgba(255, 233, 173, 0.6);
+        color: #4d3305;
+        box-shadow: 0 3px 12px rgba(245, 166, 35, 0.35);
+      }
+      html.dark .pro-hero-box .pro-btn {
+        background: linear-gradient(180deg, #ffdf8f, #f5a623);
+        color: #3d2a00;
+        box-shadow:
+          0 8px 26px rgba(245, 166, 35, 0.4),
+          inset 0 1px 0 rgba(255, 255, 255, 0.55);
+      }
+      html.dark .pro-hero-box .pro-plan {
+        background: #221a36;
+        border-color: #3a2f58;
+      }
+      html.dark .pro-hero-box .pro-plan-name {
+        color: #e4ddf6;
+      }
+      html.dark .pro-hero-box .pro-plan.selected {
+        border-color: #f5c04a;
+        background: #2b2148;
+        box-shadow: 0 10px 24px -8px rgba(245, 166, 35, 0.35);
+      }
+      html.dark .pro-hero-box .pro-plan.selected::after {
+        background: #f5c04a;
+        color: #4d3305;
+      }
+      html.dark .pro-hero-box .pro-plan-badge {
+        background: linear-gradient(180deg, #ffe9ad, #f5c04a);
+        color: #4d3305;
+        box-shadow: 0 3px 10px rgba(245, 166, 35, 0.4);
+      }
+      html.dark .pro-hero-box .pro-plan-price {
+        color: #ffd76a;
+      }
       .pro-btn {
         width: 100%;
         padding: 15px;
@@ -1261,6 +1443,31 @@
         font-size: 11px;
         font-weight: 800;
         color: var(--ac-d);
+      }
+
+      /* ── INLINE SVG İKONLAR (emoji yerine; currentColor ile tema/tab uyumlu) ── */
+      .ic {
+        width: 20px;
+        height: 20px;
+        flex-shrink: 0;
+        stroke: currentColor;
+        fill: none;
+        stroke-width: 2;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+        display: block;
+      }
+      /* Metinli butonların içinde satır içi hizalama (class="ic ic-t") */
+      .ic-t {
+        display: inline-block;
+        vertical-align: -3.5px;
+        width: 17px;
+        height: 17px;
+        margin-right: 3px;
+      }
+      .tab-icon .ic {
+        width: 21px;
+        height: 21px;
       }
 
       /* Tabs */
@@ -2844,17 +3051,18 @@
       body.wheel-spinning #s-wheel .ogrid,
       body.wheel-spinning #s-wheel .wcap {
         opacity: 0.16;
-        filter: blur(1.5px);
         pointer-events: none;
-        transition:
-          opacity 0.35s,
-          filter 0.35s;
+        transition: opacity 0.35s;
       }
       body.wheel-spinning #s-wheel .wstage {
         animation: none;
         transform: scale(1.05);
         transition: transform 0.4s;
         z-index: 5;
+      }
+      /* Drag sırasında da idle salınımı (wIdle) dursun — merkez sabit kalsın */
+      body.wheel-dragging #s-wheel .wstage {
+        animation: none;
       }
       .wptr {
         position: absolute;
@@ -2939,7 +3147,9 @@
         background: var(--ac-l2);
         cursor: default;
         pointer-events: none;
-        animation: spinArrow 0.6s linear infinite;
+        /* Buton spin boyunca zaten opacity:0 (launch) — görünmez öğede
+           sonsuz spinArrow animasyonu çalıştırma, tamamen gizle. */
+        visibility: hidden;
       }
       @keyframes spinArrow {
         from {
@@ -2959,6 +3169,10 @@
         position: absolute;
         top: 0;
         left: 0;
+        /* Çark gölgesi artık canvas İÇİNDE değil burada (dönerken repaint yok).
+           Nötr koyu-mor ton: açık, dark ve PRO temalarda makul durur. */
+        box-shadow: 0 8px 22px rgba(40, 18, 80, 0.32);
+        will-change: transform;
       }
       #wcanvas:active {
         cursor: grabbing;
@@ -3223,6 +3437,13 @@
           opacity: 0;
         }
       }
+      /* Tanıtım turu açıkken kullanıcı scroll'u kilitli. overflow:hidden
+         root scroller'ı KULLANICI için kilitler ama script scrollIntoView
+         çalışmaya devam eder (adım odaklama bozulmaz). */
+      html.tour-lock,
+      html.tour-lock body {
+        overflow: hidden !important;
+      }
       .vote-mode-btn {
         padding: 22px 10px;
         background: var(--ac-bg);
@@ -3422,8 +3643,14 @@
         color: #ece8f7;
       }
       html.dark .hdr {
+        /* Yüzey kademesi: üst kenar bir tık açık ton (elevation hissi) */
         background: #1a1330;
+        background: linear-gradient(180deg, #221a3c 0%, #1a1330 100%);
         border-bottom-color: #2a2140;
+      }
+      html.dark .hdr.scrolled {
+        border-bottom-color: transparent;
+        box-shadow: 0 8px 18px -6px rgba(0, 0, 0, 0.55);
       }
       html.dark .hdr-title {
         color: #f2eefc;
@@ -3676,6 +3903,8 @@
         --ac-shadow: 219, 39, 119;
       }
     </style>
+    <!-- FAVICON: gerçek Merci maskotu (baş+gözler kadrajı, orijinal path'ler) — mor zemin -->
+    <link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2032%2032'%3E%3Cdefs%3E%3CradialGradient%20id='fhd'%20cx='42%25'%20cy='32%25'%20r='62%25'%3E%3Cstop%20offset='0%25'%20stop-color='%23AFA9EC'/%3E%3Cstop%20offset='60%25'%20stop-color='%237F77DD'/%3E%3Cstop%20offset='100%25'%20stop-color='%23534AB7'/%3E%3C/radialGradient%3E%3CradialGradient%20id='fbl'%20cx='50%25'%20cy='35%25'%20r='60%25'%3E%3Cstop%20offset='0%25'%20stop-color='%23EEEDFE'/%3E%3Cstop%20offset='100%25'%20stop-color='%23CECBF6'/%3E%3C/radialGradient%3E%3CradialGradient%20id='fey'%20cx='38%25'%20cy='35%25'%20r='55%25'%3E%3Cstop%20offset='0%25'%20stop-color='%233C3489'/%3E%3Cstop%20offset='100%25'%20stop-color='%2326215C'/%3E%3C/radialGradient%3E%3C/defs%3E%3Crect%20width='32'%20height='32'%20rx='7'%20fill='%234c1d95'/%3E%3Csvg%20x='1.5'%20y='1.5'%20width='29'%20height='29'%20viewBox='200%20120%20280%20280'%3E%3Cellipse%20cx='340'%20cy='265'%20rx='130'%20ry='135'%20fill='url(%23fhd)'/%3E%3Cellipse%20cx='340'%20cy='300'%20rx='78'%20ry='80'%20fill='url(%23fbl)'%20fill-opacity='.6'/%3E%3Cellipse%20cx='295'%20cy='200'%20rx='32'%20ry='22'%20fill='%23EEEDFE'%20fill-opacity='.3'/%3E%3Cellipse%20cx='302'%20cy='255'%20rx='34'%20ry='38'%20fill='%23fff'/%3E%3Cellipse%20cx='378'%20cy='255'%20rx='34'%20ry='38'%20fill='%23fff'/%3E%3Ccircle%20cx='308'%20cy='262'%20r='20'%20fill='url(%23fey)'/%3E%3Ccircle%20cx='372'%20cy='262'%20r='20'%20fill='url(%23fey)'/%3E%3Ccircle%20cx='301'%20cy='253'%20r='7'%20fill='%23fff'/%3E%3Ccircle%20cx='365'%20cy='253'%20r='7'%20fill='%23fff'/%3E%3Cpath%20d='M318%20310Q340%20330%20362%20310'%20fill='none'%20stroke='%2326215C'%20stroke-width='6'%20stroke-linecap='round'/%3E%3Cellipse%20cx='278'%20cy='292'%20rx='16'%20ry='9'%20fill='%23D4537E'%20fill-opacity='.22'/%3E%3Cellipse%20cx='402'%20cy='292'%20rx='16'%20ry='9'%20fill='%23D4537E'%20fill-opacity='.22'/%3E%3C/svg%3E%3C/svg%3E" />
     <script>
       // Dark mode'u boya ÖNCESİ uygula (açılışta beyaz flash olmasın)
       try {
@@ -3689,6 +3918,55 @@
     </script>
   </head>
   <body>
+    <!-- ═══ İKON TANIMLARI: tek çizgi dili, 24 viewBox, currentColor ═══ -->
+    <svg width="0" height="0" style="position: absolute" aria-hidden="true">
+      <defs>
+        <g id="i-home">
+          <path d="M4 11 12 4.4 20 11" />
+          <path d="M6.2 9.8V18.6A1.4 1.4 0 0 0 7.6 20h8.8a1.4 1.4 0 0 0 1.4-1.4V9.8" />
+          <path d="M10 20v-5.2h4V20" />
+        </g>
+        <g id="i-menu">
+          <path d="M4 7h16M4 12h16M4 17h10" />
+        </g>
+        <!-- Çark (revize A): dolu ibre janta biner + jant içi dilim çentikleri + dolu göbek -->
+        <g id="i-wheel">
+          <path d="M9.4 2.4h5.2L12 7.9z" fill="currentColor" stroke="none" />
+          <circle cx="12" cy="14" r="7.4" />
+          <path d="M15.7 7.6 14.3 10M19.4 14h-2.8M15.7 20.4 14.3 18M8.3 20.4 9.7 18M4.6 14h2.8M8.3 7.6 9.7 10" />
+          <circle cx="12" cy="14" r="2.2" fill="currentColor" stroke="none" />
+        </g>
+        <g id="i-star">
+          <path d="m12 3.7 2.5 5.1 5.6.8-4 4 .9 5.6-5-2.7-5 2.7.9-5.6-4-4 5.6-.8z" />
+        </g>
+        <g id="i-party">
+          <path d="M8.4 11 3.6 20.4l9.4-4.7z" />
+          <path d="m6.6 14.5 3 3" />
+          <path d="M12.8 8.6 14 5.2M15.8 11.4l3.3-1.8M16.6 14.8l3.2.4" />
+          <circle cx="11.4" cy="5" r="1" fill="currentColor" stroke="none" />
+          <circle cx="19.4" cy="6.2" r="1" fill="currentColor" stroke="none" />
+          <circle cx="14.8" cy="13" r="1" fill="currentColor" stroke="none" />
+        </g>
+        <g id="i-share">
+          <circle cx="6" cy="12" r="2.5" />
+          <circle cx="17.5" cy="5.8" r="2.5" />
+          <circle cx="17.5" cy="18.2" r="2.5" />
+          <path d="m8.3 10.8 6.9-3.8M8.3 13.2l6.9 3.8" />
+        </g>
+        <g id="i-trash">
+          <path d="M4.5 6.6h15" />
+          <path d="M9.5 6.2V5a1.4 1.4 0 0 1 1.4-1.4h2.2A1.4 1.4 0 0 1 14.5 5v1.2" />
+          <path d="m6.6 6.6.8 12.1a1.8 1.8 0 0 0 1.8 1.7h5.6a1.8 1.8 0 0 0 1.8-1.7l.8-12.1" />
+          <path d="M10 10.4v6M14 10.4v6" />
+        </g>
+        <g id="i-refresh">
+          <path d="M4.6 12A7.4 7.4 0 0 1 17.2 6.8L19.4 9" />
+          <path d="M19.4 4.6V9H15" />
+          <path d="M19.4 12a7.4 7.4 0 0 1-12.6 5.2L4.6 15" />
+          <path d="M4.6 19.4V15H9" />
+        </g>
+      </defs>
+    </svg>
     <!-- SPLASH -->
     <div class="splash" id="splash">
       <div id="splash-merci"></div>
@@ -3803,21 +4081,21 @@
             <div class="hdr-sub">Nasıl karar verelim?</div>
           </div>
           <div class="hdr-badge" id="hdr-badge" style="display: none"></div>
-          <button class="hdr-home" id="home-btn">🏠</button>
-          <button class="menu-btn" id="menu-btn">☰</button>
+          <button class="hdr-home" id="home-btn" aria-label="Ana ekran"><svg class="ic" viewBox="0 0 24 24"><use href="#i-home"/></svg></button>
+          <button class="menu-btn" id="menu-btn" aria-label="Menü"><svg class="ic" viewBox="0 0 24 24"><use href="#i-menu"/></svg></button>
         </div>
 
         <div class="tabs">
           <div class="tab on" data-tab="wheel">
-            <span class="tab-icon">🎡</span>
+            <span class="tab-icon"><svg class="ic" viewBox="0 0 24 24"><use href="#i-wheel"/></svg></span>
             <span class="tab-label">Çark</span>
           </div>
           <div class="tab" data-tab="vote">
-            <span class="tab-icon">⭐</span>
+            <span class="tab-icon"><svg class="ic" viewBox="0 0 24 24"><use href="#i-star"/></svg></span>
             <span class="tab-label">Oylama</span>
           </div>
           <div class="tab" data-tab="cekilis">
-            <span class="tab-icon">🎉</span>
+            <span class="tab-icon"><svg class="ic" viewBox="0 0 24 24"><use href="#i-party"/></svg></span>
             <span class="tab-label">Çekiliş</span>
           </div>
           <div class="tab" data-tab="ai" id="tab-ai">
@@ -3862,7 +4140,7 @@
             onclick="clearWheel()"
             style="display: none; width: 100%; margin: 2px 0 6px; padding: 9px; border: 1px solid #f0d6d6; border-radius: 12px; background: #fff5f5; color: #d9534f; font-family: Nunito, sans-serif; font-weight: 700; font-size: 13px; cursor: pointer"
           >
-            🗑 Tüm seçenekleri temizle
+            <svg class="ic ic-t" viewBox="0 0 24 24"><use href="#i-trash"/></svg> Tüm seçenekleri temizle
           </button>
           <div class="wscene" id="wscene">
             <div class="wstage">
@@ -3906,7 +4184,7 @@
                 style="margin-top: 12px; font-size: 13px; padding: 10px"
                 onclick="shareResult('wheel')"
               >
-                📤 Sonucu Paylaş
+                <svg class="ic ic-t" viewBox="0 0 24 24"><use href="#i-share"/></svg> Sonucu Paylaş
               </button>
               <button
                 class="btn"
@@ -3995,7 +4273,7 @@
                 style="margin-top: 12px; font-size: 13px; padding: 10px"
                 onclick="startCekilis()"
               >
-                🔄 Tekrar Çek
+                <svg class="ic ic-t" viewBox="0 0 24 24"><use href="#i-refresh"/></svg> Tekrar Çek
               </button>
             </div>
           </div>
@@ -4307,7 +4585,7 @@
                   "
                 >
                   <button class="share-copy" id="whatsapp-btn">
-                    📤 Paylaş
+                    <svg class="ic ic-t" viewBox="0 0 24 24"><use href="#i-share"/></svg> Paylaş
                   </button>
                   <button class="share-copy" id="copy-link-btn">
                     🔗 Linki Kopyala
@@ -4326,7 +4604,7 @@
                 id="new-round-btn"
                 style="display: none; margin-top: 6px"
               >
-                🔄 Yeni Oylama Başlat
+                <svg class="ic ic-t" viewBox="0 0 24 24"><use href="#i-refresh"/></svg> Yeni Oylama Başlat
               </button>
               <button
                 class="btn ghost"
@@ -4339,7 +4617,7 @@
                 "
                 onclick="resetOnlineToRoleSelect()"
               >
-                🏠 Yeni Oda Oluştur / Odaya Katıl
+                <svg class="ic ic-t" viewBox="0 0 24 24"><use href="#i-home"/></svg> Yeni Oda Oluştur / Odaya Katıl
               </button>
               <div id="new-round-opts" style="display: none; margin-top: 12px">
                 <p class="lbl">Yeni Seçenekler (min 2)</p>
@@ -4363,7 +4641,7 @@
                   "
                 >
                   <button class="btn gold" id="confirm-new-round-btn">
-                    🔄 Oylamayı Başlat
+                    <svg class="ic ic-t" viewBox="0 0 24 24"><use href="#i-refresh"/></svg> Oylamayı Başlat
                   </button>
                   <button class="btn ghost" onclick="cancelNewRound()">
                     İptal
@@ -4487,7 +4765,7 @@
                 style="margin-top: 12px; font-size: 13px; padding: 10px"
                 onclick="shareResult('vote')"
               >
-                📤 Sonucu Paylaş
+                <svg class="ic ic-t" viewBox="0 0 24 24"><use href="#i-share"/></svg> Sonucu Paylaş
               </button>
               <button
                 class="btn"
@@ -4515,7 +4793,7 @@
                 "
                 onclick="resetVoteScreen()"
               >
-                🔄 Yeni Oylama
+                <svg class="ic ic-t" viewBox="0 0 24 24"><use href="#i-refresh"/></svg> Yeni Oylama
               </button>
             </div>
           </div>
@@ -4672,7 +4950,7 @@
                   cursor: pointer;
                 "
               >
-                🔄 Yeni Sohbet
+                <svg class="ic ic-t" viewBox="0 0 24 24"><use href="#i-refresh"/></svg> Yeni Sohbet
               </button>
               <button
                 onclick="openChatHistory()"
@@ -4734,7 +5012,7 @@
           </div>
           <div class="hist-actions">
             <button class="hist-mini-btn" id="hist-toggle">Detayları gör</button
-            ><button class="hist-clear" id="hist-clear">🗑 Temizle</button>
+            ><button class="hist-clear" id="hist-clear"><svg class="ic ic-t" viewBox="0 0 24 24" style="width:14px;height:14px;vertical-align:-2.5px"><use href="#i-trash"/></svg> Temizle</button>
           </div>
           <div id="hist-list" style="display: none"></div>
         </div>
@@ -5732,6 +6010,10 @@ function drawResultCard(opts) {
         }
         selectPlan("yearly");
         if (typeof KM_RC !== "undefined") KM_RC.loadOfferings();
+        // Hero maskotu (gözlüklü Merci) bir kez üret
+        var hm = document.getElementById("pro-hero-merci");
+        if (hm && !hm.innerHTML && typeof merciSVGGlasses === "function")
+          hm.innerHTML = merciSVGGlasses(112);
         document.getElementById("modal-pro").classList.add("on");
       };
       window.selectPlan = function (plan) {
@@ -6326,15 +6608,16 @@ function drawResultCard(opts) {
         watchModals: function () {
           if (!window.MutationObserver) return;
           var self = this;
+          // P1-4: rAF yerine ~250ms fren — spin sırasında her frame'de style
+          // mutasyonu oluyor; banner görünürlük kontrolü frame başına değil
+          // seyrek çalışsın. refreshBanner/_kbOpen mantığı AYNEN duruyor,
+          // yalnızca çağrı sıklığı düştü (en geç 250ms içinde yine çalışır).
           var obs = new MutationObserver(function () {
-            if (self._rafPending) return;
-            self._rafPending = true;
-            var run = function () {
-              self._rafPending = false;
+            if (self._refreshTmr) return;
+            self._refreshTmr = window.setTimeout(function () {
+              self._refreshTmr = null;
               self.refreshBanner();
-            };
-            if (window.requestAnimationFrame) window.requestAnimationFrame(run);
-            else window.setTimeout(run, 16);
+            }, 250);
           });
           obs.observe(document.documentElement, {
             subtree: true,
@@ -6863,13 +7146,21 @@ function drawResultCard(opts) {
       }
 
       var bRAFs = {};
+      var bTMOs = {};
       function gentleFloat(id) {
         cancelAnimationFrame(bRAFs[id]);
+        clearTimeout(bTMOs[id]);
         var t = Math.random() * 6;
         (function f() {
-          t += 0.025;
           var el = document.getElementById(id);
           if (!el) return;
+          // P1-7: Eleman gizliyken (onboarding kapandı / başka sekme) her frame
+          // rAF + style yazma — döngüyü bırak, seyrek yokla; görününce devam et.
+          if (el.offsetParent === null) {
+            bTMOs[id] = setTimeout(f, 400);
+            return;
+          }
+          t += 0.025;
           var ch = el.firstElementChild;
           if (ch && !el.classList.contains("cele"))
             ch.style.transform = "translateY(" + Math.sin(t) * 3 + "px)";
@@ -6911,6 +7202,39 @@ function drawResultCard(opts) {
             return;
           }
           navigator.vibrate && navigator.vibrate(ms);
+        } catch (e) {}
+      }
+      // ── ZENGİN HAPTİK: impact/notification (@capacitor/haptics zaten kurulu) ──
+      // vibEnabled kapalıysa hiçbiri çalışmaz. Capacitor yoksa (web) sessiz
+      // navigator.vibrate fallback'i; o da yoksa no-op — asla hata fırlatmaz.
+      // style: "LIGHT" (hafif dokunuş) | "MEDIUM" (önemli buton) | "HEAVY"
+      function hImpact(style, fbMs) {
+        if (!vibEnabled) return;
+        try {
+          var H =
+            window.Capacitor &&
+            window.Capacitor.Plugins &&
+            window.Capacitor.Plugins.Haptics;
+          if (H && H.impact) {
+            H.impact({ style: style });
+            return;
+          }
+          navigator.vibrate && navigator.vibrate(fbMs || 15);
+        } catch (e) {}
+      }
+      // Kazanan/sonuç anı (konfeti) için başarı haptiği
+      function hSuccess() {
+        if (!vibEnabled) return;
+        try {
+          var H =
+            window.Capacitor &&
+            window.Capacitor.Plugins &&
+            window.Capacitor.Plugins.Haptics;
+          if (H && H.notification) {
+            H.notification({ type: "SUCCESS" });
+            return;
+          }
+          navigator.vibrate && navigator.vibrate([40, 60, 90]);
         } catch (e) {}
       }
 
@@ -6964,17 +7288,21 @@ function drawResultCard(opts) {
         });
       }
       var _lastTickTime = 0;
+      var _tickBuf = null;
       function casinoTickGain(gain) {
         if (!soundEnabled) return;
         var a = ac();
         if (!a) return;
-        var len = ~~(a.sampleRate * 0.022),
-          buf = a.createBuffer(1, len, a.sampleRate),
-          d = buf.getChannelData(0);
-        for (var i = 0; i < len; i++)
-          d[i] = (Math.random() * 2 - 1) * Math.exp(-i / (len * 0.38));
+        // Noise buffer'ı BİR KEZ üret; her tikte alloc + doldurma döngüsü yapma (P2-8)
+        if (!_tickBuf || _tickBuf.sampleRate !== a.sampleRate) {
+          var len = ~~(a.sampleRate * 0.022);
+          _tickBuf = a.createBuffer(1, len, a.sampleRate);
+          var d = _tickBuf.getChannelData(0);
+          for (var i = 0; i < len; i++)
+            d[i] = (Math.random() * 2 - 1) * Math.exp(-i / (len * 0.38));
+        }
         var s = a.createBufferSource();
-        s.buffer = buf;
+        s.buffer = _tickBuf;
         var f = a.createBiquadFilter();
         f.type = "bandpass";
         f.frequency.value = 1200 + Math.random() * 600;
@@ -7158,7 +7486,24 @@ function drawResultCard(opts) {
         root.id = "km-tour";
         root.style.cssText = "position:fixed;inset:0;z-index:399999";
         document.body.appendChild(root);
+        // ── SCROLL KİLİDİ: tur boyunca kullanıcı kaydıramaz; adım geçişindeki
+        //    programatik scrollIntoView (overflow:hidden) çalışmaya devam eder.
+        //    Android WebView güvencesi: overlay üstündeki touchmove'u da kes.
+        var _tourScrollY = window.scrollY || document.documentElement.scrollTop || 0;
+        document.documentElement.classList.add("tour-lock");
+        root.addEventListener(
+          "touchmove",
+          function (e) {
+            e.preventDefault();
+          },
+          { passive: false },
+        );
         function end() {
+          // Kilidi kaldır + kullanıcıyı tur öncesi kaldığı yere döndür
+          document.documentElement.classList.remove("tour-lock");
+          try {
+            window.scrollTo(0, _tourScrollY);
+          } catch (e) {}
           if (root.parentNode) root.parentNode.removeChild(root);
         }
         function draw(s) {
@@ -7508,6 +7853,27 @@ function drawResultCard(opts) {
         if (max && arr.length > max) s = arr.slice(0, max).join("") + "…";
         return s;
       }
+      // Etiket memo'su: wheelLabel'daki Unicode regex her frame değil,
+      // seçenek başına BİR KEZ çalışsın (P2-10)
+      var _lblMemo = Object.create(null);
+      function _wlbl(t) {
+        var k = String(t == null ? "" : t);
+        var v = _lblMemo[k];
+        if (v === undefined) {
+          v = wheelLabel(k, 12);
+          _lblMemo[k] = v;
+        }
+        return v;
+      }
+      // P0-1: Spin/drag frame'lerinde canvas'ı yeniden BOYAMAK yerine, son tam
+      // çizimin açısına (_wDrawnAngle) göre CSS transform ile döndür (yalnız
+      // GPU-composite; repaint yok). Kazanan matematiği (wfA/avoidEdge/wi)
+      // wAngle değişkeni üzerinden çalışır — çizim yönteminden bağımsızdır.
+      var _wDrawnAngle = 0;
+      function wRotateTo(angle) {
+        var c = document.getElementById("wcanvas");
+        if (c) c.style.transform = "rotate(" + (angle - _wDrawnAngle) + "rad)";
+      }
       // Dilim rengine göre okunur etiket rengi (açık zeminde koyu yazı)
       function _textOn(hex) {
         var s = hex.replace("#", "");
@@ -7522,8 +7888,15 @@ function drawResultCard(opts) {
         var c = document.getElementById(cid);
         if (!c) return;
         var ctx = c.getContext("2d");
+        // P0-1: Tam çizim yapıldı → CSS rotasyonunu sıfırla, taban açıyı kaydet
+        // (spin frame'leri bu açıya göre wRotateTo ile döner)
+        if (cid === "wcanvas") {
+          _wDrawnAngle = angle || 0;
+          c.style.transform = "";
+        }
         // Retina: backing store'u cihaz çözünürlüğüne ölçekle (bulanıklık biter)
-        var dpr = Math.min(window.devicePixelRatio || 1, 3);
+        // dpr en fazla 2: dpr=3 cihazda ~990px yerine ~660px backing (P0-2)
+        var dpr = Math.min(window.devicePixelRatio || 1, 2);
         var W = c.clientWidth || c.offsetWidth || 200,
           H = c.clientHeight || c.offsetHeight || W;
         if (c.width !== Math.round(W * dpr) || c.height !== Math.round(H * dpr)) {
@@ -7547,16 +7920,12 @@ function drawResultCard(opts) {
         }
         var n = items.length,
           sl = (Math.PI * 2) / n;
-        // — Tekerlek altı yumuşak gölge (derinlik) —
-        ctx.save();
-        ctx.shadowColor = "rgba(76,29,149,.32)";
-        ctx.shadowBlur = 22;
-        ctx.shadowOffsetY = 8;
+        // — Taban dairesi (gölge artık #wcanvas CSS box-shadow'unda; canvas
+        // içinde shadowBlur çizmek her frame pahalıydı — P0-1) —
         ctx.beginPath();
         ctx.arc(cx, cy, r, 0, Math.PI * 2);
         ctx.fillStyle = "#fff";
         ctx.fill();
-        ctx.restore();
         // — 1) Dilim dolguları + ince beyaz ayraç —
         for (var i = 0; i < n; i++) {
           var a = angle + i * sl;
@@ -7620,7 +7989,7 @@ function drawResultCard(opts) {
           ctx.font = "700 " + fs + "px Nunito,sans-serif";
           ctx.textBaseline = "middle";
           ctx.textAlign = "right";
-          ctx.fillText(wheelLabel(items[j], 12), r - 12, 0);
+          ctx.fillText(_wlbl(items[j]), r - 12, 0);
           ctx.restore();
         }
         // — 5) Dış çerçeve (çift halka) —
@@ -7673,8 +8042,10 @@ function drawResultCard(opts) {
         if (!cv) return;
         if (id === "wcanvas") cv.classList.add("km-scroll"); // boş çark → kaydırılabilir
         var ctx = cv.getContext("2d");
+        // Önceki spinden kalan CSS rotasyonunu da temizle (P0-1)
+        cv.style.transform = "";
         // Retina + transform sıfırla (drawW'den miras kalan dpr ölçeğini ezme)
-        var dpr = Math.min(window.devicePixelRatio || 1, 3);
+        var dpr = Math.min(window.devicePixelRatio || 1, 2);
         var W = cv.clientWidth || 300;
         if (cv.width !== Math.round(W * dpr) || cv.height !== Math.round(W * dpr)) {
           cv.width = Math.round(W * dpr);
@@ -7758,12 +8129,16 @@ function drawResultCard(opts) {
           w = rel % sl;
         return Math.min(w, sl - w) / sl;
       }
+      // Drag boyunca çark merkezi sabit (wIdle animasyonu drag'de duruyor) —
+      // her pointermove'da getBoundingClientRect yapma, wDown'da BİR KEZ hesapla (P1-5)
+      var _wCenter = null;
       function ptrA(e) {
-        var c = document.getElementById("wcanvas").getBoundingClientRect();
-        return Math.atan2(
-          e.clientY - (c.top + c.height / 2),
-          e.clientX - (c.left + c.width / 2),
-        );
+        var p = _wCenter;
+        if (!p) {
+          var c = document.getElementById("wcanvas").getBoundingClientRect();
+          p = { x: c.left + c.width / 2, y: c.top + c.height / 2 };
+        }
+        return Math.atan2(e.clientY - p.y, e.clientX - p.x);
       }
       function showHint() {
         var h = document.getElementById("spin-hint");
@@ -7798,7 +8173,12 @@ function drawResultCard(opts) {
         document.getElementById("wr").style.display = "none";
         wheelHi = -1;
         _lastDragTick = -1;
+        // Drag başlarken idle salınımı durdur (P1-6) — merkez sabitlensin,
+        // SONRA merkezi bir kez ölç (P1-5)
+        document.body.classList.add("wheel-dragging");
         drawW("wcanvas", S.wheel, wAngle, -1);
+        var _wcr = document.getElementById("wcanvas").getBoundingClientRect();
+        _wCenter = { x: _wcr.left + _wcr.width / 2, y: _wcr.top + _wcr.height / 2 };
         dragging = true;
         lastA = ptrA(e);
         lastT = performance.now();
@@ -7831,13 +8211,22 @@ function drawResultCard(opts) {
           if (S.wheel.length >= 2) casinoTick();
         }
 
-        drawW("wcanvas", S.wheel, wAngle, -1);
+        // pointermove frame'den sık gelebilir (120Hz+): çizimi rAF'ta birleştir,
+        // repaint yerine yalnız CSS rotate (P0-1 + P1-5)
+        if (!_dragRAF)
+          _dragRAF = requestAnimationFrame(function () {
+            _dragRAF = 0;
+            wRotateTo(wAngle);
+          });
       }
       var _lastDragTick = -1;
+      var _dragRAF = 0;
 
       function wUp(e) {
         if (!dragging) return;
         dragging = false;
+        document.body.classList.remove("wheel-dragging");
+        _wCenter = null;
         try {
           document.getElementById("wcanvas").releasePointerCapture(e.pointerId);
         } catch (x) {}
@@ -7855,6 +8244,8 @@ function drawResultCard(opts) {
       function wCancel() {
         if (!dragging) return;
         dragging = false;
+        document.body.classList.remove("wheel-dragging");
+        _wCenter = null;
         if (Math.abs(dragAccum) > 0.08) {
           hideHint();
           launch(Math.abs(vel) || 0);
@@ -7882,7 +8273,7 @@ function drawResultCard(opts) {
             casinoTick();
           }
 
-          drawW("wcanvas", S.wheel, wAngle, -1);
+          wRotateTo(wAngle);
           if (Math.abs(v) > 0.002) requestAnimationFrame(fr);
           // Durdu, oyun başlamadı
         })(t0);
@@ -7892,8 +8283,8 @@ function drawResultCard(opts) {
         if (spinning || window._adPending) return;
         spinning = true;
         document.body.classList.add("wheel-spinning");
-        // Dönmeye başladığı an belirgin kickoff titreşimi
-        vib(55);
+        // Dönmeye başladığı an belirgin kickoff haptiği (önemli buton basışı)
+        hImpact("MEDIUM", 55);
         // Çark dönerken ekranın ortasına kaysın (odak)
         try {
           var _wstC = document.querySelector("#s-wheel .wstage");
@@ -7927,6 +8318,7 @@ function drawResultCard(opts) {
         var tickEvery = 0.25;
         var lastTickAngle = base;
         var lastVib = 0;
+        var lastSnd = 0;
 
         // Daha kademeli yavaşlama: cubic ease-out (p^3 yerine özel)
         function easeOutCubic(p) {
@@ -7942,7 +8334,11 @@ function drawResultCard(opts) {
           if (angleDiff >= tickEvery) {
             lastTickAngle += tickEvery * Math.floor(angleDiff / tickEvery);
             var speedRatio = 1 - p;
-            casinoTickGain(0.3 + speedRatio * 0.5);
+            // Tık sesi min 55ms aralıklı — spin başında her frame çalmasın (P2-8)
+            if (now - lastSnd > 55) {
+              casinoTickGain(0.3 + speedRatio * 0.5);
+              lastSnd = now;
+            }
             // Spin boyunca (baştan itibaren) tıkır titreşim — ~18/sn ile sınırlı
             if (now - lastVib > 55) {
               vib(6);
@@ -7950,7 +8346,7 @@ function drawResultCard(opts) {
             }
           }
 
-          drawW("wcanvas", S.wheel, wAngle, -1);
+          wRotateTo(wAngle);
           var _cm = document.getElementById("wheel-center-merci");
           if (_cm)
             _cm.style.transform =
@@ -8008,7 +8404,7 @@ function drawResultCard(opts) {
             vib(16);
             vibbed = true;
           }
-          drawW("wcanvas", S.wheel, wAngle, -1);
+          wRotateTo(wAngle);
           var _cm = document.getElementById("wheel-center-merci");
           if (_cm)
             _cm.style.transform =
@@ -8075,7 +8471,7 @@ function drawResultCard(opts) {
         })();
         addHist("🎡", win, "Çark", say);
         winSound();
-        vib(90);
+        hSuccess();
         confetti();
         // Her 2. çark sonucunda non-PRO'ya geçiş reklamı.
         // _adPending: reklam gösterilene kadar yeni spin engellenir (reklam dönen
@@ -8225,6 +8621,7 @@ function drawResultCard(opts) {
           return;
         }
         cekilisSpinning = true;
+        hImpact("MEDIUM", 40); // Çekilişi Başlat basışı
         document.getElementById("cr").style.display = "none";
         var stage = document.getElementById("cekilis-stage");
         var disp = document.getElementById("cekilis-display");
@@ -8283,7 +8680,7 @@ function drawResultCard(opts) {
         }
         document.getElementById("cr").style.display = "";
         winSound();
-        vib(90);
+        hSuccess();
         confetti();
         addHist("🎉", winner, "Çekiliş", say);
         try {
@@ -8421,7 +8818,7 @@ function drawResultCard(opts) {
         })();
         addHist("⭐", winner, masaOn ? "Masa" : "Oylama", say);
         winSound();
-        vib(90);
+        hSuccess();
         confetti();
         // Oylama sonucunda non-PRO'ya geçiş reklamı
         if (!isPremium && typeof KM_AD !== "undefined" && KM_AD.showInterstitial)
@@ -8438,6 +8835,7 @@ function drawResultCard(opts) {
         S.vote[n] = S.vote[n] === r ? 0 : r;
         render("vote");
         snd("add");
+        hImpact("MEDIUM", 20); // oy verme dokunuşu
       }
 
       // ═══════════════════ TIEBREAKER ═══════════════════
@@ -8620,7 +9018,7 @@ function drawResultCard(opts) {
         document.getElementById("tb-result").style.display = "";
         celebM("tb-merci", 80);
         winSound();
-        vib(90);
+        hSuccess();
         confetti();
         setTimeout(
           () => burstAt(document.querySelector("#tb-modal .mbox")),
@@ -8680,7 +9078,7 @@ function drawResultCard(opts) {
           vn.classList.add("shine");
           celebM("v-merci", 58);
           winSound();
-          vib(90);
+          hSuccess();
           confetti();
           setTimeout(() => {
             burstAt(card);
@@ -8797,7 +9195,7 @@ function drawResultCard(opts) {
               "</div></div></div>";
           });
           html +=
-            '<button id="chat-hist-clear" style="width:100%;margin-top:14px;background:#fff0f0;color:#c0392b;border:1px solid #f5c6c6;padding:10px;border-radius:12px;font-weight:700;cursor:pointer">🗑️ Tüm geçmişi sil</button>';
+            '<button id="chat-hist-clear" style="width:100%;margin-top:14px;background:#fff0f0;color:#c0392b;border:1px solid #f5c6c6;padding:10px;border-radius:12px;font-weight:700;cursor:pointer"><svg class="ic ic-t" viewBox="0 0 24 24" style="width:14px;height:14px;vertical-align:-2px"><use href="#i-trash"/></svg> Tüm geçmişi sil</button>';
         }
         card.innerHTML = html;
         ov.appendChild(card);
@@ -9104,7 +9502,7 @@ function drawResultCard(opts) {
             hint.textContent = "☝️ Yukarıdan seçenek ekle — çark dolsun!";
           }, 3500);
         }
-        vib(20);
+        hImpact("MEDIUM", 20); // karar butonu basışı
       }
       function sendOptionsToVote(opts) {
         if (!opts || !opts.length) return;
@@ -9116,7 +9514,7 @@ function drawResultCard(opts) {
         if (vr) vr.style.display = "none";
         render("vote");
         _doSw("vote");
-        vib(20);
+        hImpact("MEDIUM", 20); // karar butonu basışı
       }
       function appendDecisionButtons(opts) {
         var msgs = document.getElementById("chat-messages");
@@ -9272,7 +9670,7 @@ function drawResultCard(opts) {
           }
           if (data.merciComment) appendMsg("merci", data.merciComment, false);
           appendPlaceCards(data.places);
-          vib(30);
+          hImpact("LIGHT", 30);
         } catch (e) {
           appendMsg("merci", "Bağlantı sorunu, tekrar dene.", false);
         }
@@ -10139,9 +10537,8 @@ function drawResultCard(opts) {
           say + " (" + pts + " puan, " + cnt + " kişi)",
         );
         winSound();
-        vib(90);
+        hSuccess();
         confetti();
-        vib(200);
         // Online oylama sonucunda non-PRO'ya geçiş reklamı
         if (!isPremium && typeof KM_AD !== "undefined" && KM_AD.showInterstitial)
           setTimeout(function () {
@@ -10852,7 +11249,7 @@ function drawResultCard(opts) {
                 " puan · " +
                 cnt +
                 " kişi oyladı</span></div></div>";
-              vib(200);
+              hSuccess();
               confetti();
               snd("ding");
             } else if (
@@ -11033,7 +11430,7 @@ function drawResultCard(opts) {
               updW();
               if (added) {
                 snd("add");
-                vib(25);
+                hImpact("LIGHT", 25);
               }
             } else {
               alert(data.error || "Merci seçenek üretemedi, tekrar dene.");
@@ -11128,7 +11525,7 @@ function drawResultCard(opts) {
         updW();
         if (added) {
           snd("add");
-          vib(25);
+          hImpact("LIGHT", 25);
         }
       }
       function renderDailySuggestions() {
@@ -12068,6 +12465,24 @@ function drawResultCard(opts) {
         setTimeout(() => document.getElementById("splash").remove(), 500);
       }, 1200);
 
+      // ── HEADER: scroll'da beliren yumuşak gölge (pasif listener, sadece
+      //    class toggle — box-shadow transition CSS'te; blur/filter YOK) ──
+      (function () {
+        var _hdrEls = null,
+          _hdrSh = false;
+        function _updHdrShadow() {
+          if (!_hdrEls || !_hdrEls.length)
+            _hdrEls = document.querySelectorAll(".hdr");
+          var on =
+            (window.scrollY || document.documentElement.scrollTop || 0) > 4;
+          if (on === _hdrSh) return;
+          _hdrSh = on;
+          for (var i = 0; i < _hdrEls.length; i++)
+            _hdrEls[i].classList.toggle("scrolled", on);
+        }
+        window.addEventListener("scroll", _updHdrShadow, { passive: true });
+      })();
+
       // ── SCRIPT SONRASI HTML'Yİ DE KAPSAYAN BAĞLAMALAR ──
       // modal-pro, sound-btn, pro-skip-btn script'ten SONRA HTML'de olduğu için
       // window load sonrası bağlanmalı
@@ -12126,7 +12541,7 @@ function drawResultCard(opts) {
             var on = document.documentElement.classList.toggle("dark");
             localStorage.setItem("kmTheme", on ? "dark" : "light");
             _syncDark();
-            vib(20);
+            hImpact("LIGHT", 20);
           });
         }
         // ── TEMA SEÇİMİ (PRO) ──
@@ -12178,7 +12593,7 @@ function drawResultCard(opts) {
         document.querySelectorAll(".theme-sw").forEach(function (b) {
           b.addEventListener("click", function () {
             applyAccent(b.getAttribute("data-theme-val"));
-            vib(15);
+            hImpact("LIGHT", 15);
           });
         });
         var miSettings = document.getElementById("mi-settings");
@@ -13265,7 +13680,8 @@ function drawResultCard(opts) {
         </div>
         <div class="auth-perks">
           <div class="auth-perk">
-            <span class="auth-perk-icon">💾</span> Karar geçmişin güvende kalır
+            <span class="auth-perk-icon">📍</span> Yakınındaki gerçek mekan
+            önerileri (kafe, restoran...)
           </div>
           <div class="auth-perk">
             <span class="auth-perk-icon">🎁</span>
@@ -13326,19 +13742,21 @@ function drawResultCard(opts) {
 
     <!-- ═══ PRO MODAL ═══ -->
     <div class="pro-modal" id="modal-pro">
-      <div class="pro-box">
+      <div class="pro-box pro-hero-box">
+        <div class="pro-goldline"></div>
         <button
           onclick="document.getElementById('modal-pro').classList.remove('on')"
           style="
             position: absolute;
             top: 14px;
             right: 14px;
+            z-index: 7;
             width: 32px;
             height: 32px;
-            background: var(--ac-bg);
+            background: rgba(255, 255, 255, 0.16);
             border: none;
             border-radius: 10px;
-            color: var(--ac-d);
+            color: #fff;
             font-size: 18px;
             cursor: pointer;
             display: flex;
@@ -13350,11 +13768,15 @@ function drawResultCard(opts) {
         >
           ✕
         </button>
-        <div class="pro-badge">✨ KARAR MERCİİ PRO</div>
-        <div class="pro-title">Sınırsız Karar Ver!</div>
-        <div class="pro-sub">
-          Merci'ye istediğin kadar danış, reklamsız kullan, tüm geçmişini sakla.
+        <div class="pro-hero">
+          <div class="pro-badge">✨ KARAR MERCİİ PRO</div>
+          <div class="pro-hero-merci" id="pro-hero-merci"></div>
+          <div class="pro-title">Sınırsız Karar Ver!</div>
+          <div class="pro-sub">
+            Merci'ye istediğin kadar danış, reklamsız kullan, tüm geçmişini sakla.
+          </div>
         </div>
+        <div class="pro-hero-body">
         <div class="pro-perks">
           <div class="pro-perk">
             <span class="pro-perk-icon">🐙</span> Merci'ye Danış — sınırsız
@@ -13364,11 +13786,8 @@ function drawResultCard(opts) {
             <span class="pro-perk-icon">🚫</span> Tamamen reklamsız deneyim
           </div>
           <div class="pro-perk">
-            <span class="pro-perk-icon">📊</span> Sınırsız karar geçmişi &
-            istatistik
-          </div>
-          <div class="pro-perk">
-            <span class="pro-perk-icon">✨</span> Yeni özelliklere erken erişim
+            <span class="pro-perk-icon">📊</span>
+            <span>Sınırsız karar geçmişi &amp; istatistik<span class="pro-perk-sub">Ücretsizde: son 5 karar</span></span>
           </div>
         </div>
         <div class="pro-plans">
@@ -13405,6 +13824,8 @@ function drawResultCard(opts) {
             >Satın alımları geri yükle</span
           >
         </div>
+        </div>
+        <!-- /pro-hero-body -->
       </div>
     </div>
 
