@@ -4787,6 +4787,9 @@
                   🏆 Oylamayı Kapat
                 </button>
               </div>
+              <!-- CANLI OY TABLOSU (şeffaflık) — host da kim oyladı görsün.
+                   renderVoteTable() tüm .voter-board'lara basar (FAZ 2). -->
+              <div id="vote-table-host" class="voter-board" style="display: none"></div>
               <button
                 class="btn online-newround-btn"
                 id="new-round-btn"
@@ -10780,12 +10783,39 @@ function drawResultCard(opts) {
       // CANLI OY TABLOSU (şeffaflık) — participants: { id: {name, submitted, votes} }
       // FAZ 2: listenRoomAsParticipant() onSnapshot içinden
       //   renderVoteTable(data.participants, deviceId, data.hostId) çağrılacak.
+      // Kısa süreli bilgi baloncuğu (toast) — erken kapatma bildirimi vb.
+      function _kmToast(msg) {
+        try {
+          var t = document.createElement("div");
+          t.textContent = msg;
+          t.style.cssText =
+            "position:fixed;left:50%;bottom:calc(20px + var(--ad-bottom,0px));" +
+            "transform:translateX(-50%);background:rgba(30,10,60,.95);color:#fff;" +
+            "padding:11px 18px;border-radius:14px;font-size:13px;font-weight:800;" +
+            "z-index:399998;box-shadow:0 8px 30px rgba(0,0,0,.35);max-width:88%;" +
+            "text-align:center;font-family:'Nunito',sans-serif";
+          document.body.appendChild(t);
+          setTimeout(function () {
+            t.style.transition = "opacity .4s";
+            t.style.opacity = "0";
+            setTimeout(function () {
+              if (t.parentNode) t.parentNode.removeChild(t);
+            }, 400);
+          }, 3400);
+        } catch (e) {}
+      }
+      // FAZ 2 ŞEFFAFLIK: canlı oy tablosunu HERKESTE (host + katılımcı) göster.
+      // Tek fonksiyon, tüm .voter-board kapsayıcılarına aynı içeriği basar
+      // (#vote-table katılımcı ekranında, #vote-table-host host ekranında; hangi
+      // ekran görünürse o gösterir). participants: { id:{name, submitted, votes} }.
       function renderVoteTable(participants, myId, hostId) {
-        var el = document.getElementById("vote-table");
-        if (!el) return;
+        var boards = document.querySelectorAll(".voter-board");
+        if (!boards.length) return;
         var keys = Object.keys(participants || {});
         if (!keys.length) {
-          el.style.display = "none";
+          boards.forEach(function (el) {
+            el.style.display = "none";
+          });
           return;
         }
         var voted = keys.filter(
@@ -10814,7 +10844,7 @@ function drawResultCard(opts) {
             );
           })
           .join("");
-        el.innerHTML =
+        var html =
           '<div class="vb-head"><span class="h">Kim oyladı?</span><span class="c">' +
           voted +
           "/" +
@@ -10824,7 +10854,10 @@ function drawResultCard(opts) {
           '%"></i></div><div class="vb-list">' +
           rows +
           "</div>";
-        el.style.display = "";
+        boards.forEach(function (el) {
+          el.innerHTML = html;
+          el.style.display = "";
+        });
       }
       function setMasaPeople(n) {
         masaPeopleCount = n;
@@ -11315,6 +11348,8 @@ function drawResultCard(opts) {
                   "</span>",
               )
               .join("");
+            // FAZ 2: canlı oy tablosu (host da kim oyladı/bekliyor görsün)
+            renderVoteTable(parts, deviceId, data.hostId);
             if (data.status === "closed" && data.winner) {
               showOnlineWinner(data);
               // new-round-btn ve reset-online-btn showOnlineWinner içinde yönetiliyor
@@ -11761,6 +11796,21 @@ function drawResultCard(opts) {
             if (wc)
               wc.textContent =
                 voted + "/" + Object.keys(parts).length + " oy kullanıldı";
+            // FAZ 2: canlı oy tablosu (katılımcı da KİM oy verdi/bekliyor görsün →
+            // host'un sessizce erken kapatması artık gizlenemez).
+            renderVoteTable(parts, deviceId, data.hostId);
+            // Erken kapatma bildirimi: ben oy vermeden (voting ekranındayken) host
+            // oylamayı bitirdiyse haber ver. submit-btn hâlâ görünürse = oy vermedim.
+            var _iVoted = parts[deviceId] && parts[deviceId].submitted === true;
+            var _wasVoting =
+              document.getElementById("submit-vote-btn").style.display !== "none";
+            if (
+              (data.status === "closed" || data.status === "tied") &&
+              _wasVoting &&
+              !_iVoted
+            ) {
+              _kmToast("⏹️ Oylama host tarafından sonlandırıldı");
+            }
             if (data.status === "closed" && data.winner) {
               clearTimerInterval();
               document.getElementById("submit-vote-btn").style.display = "none";
