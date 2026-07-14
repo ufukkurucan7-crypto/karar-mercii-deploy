@@ -4309,6 +4309,61 @@
       html.dark .chat-av-merci {
         background: #1a1430;
       }
+      /* ═══ Deploy #18: Merci(AI) sekmesi + Geçmiş panelleri dark beyaz-fix ═══ */
+      /* (a) En sağdaki "Merci" sekmesi pasifken açık gradient (#tab-ai:not(.on))
+         → dark'ta beyaz görünüyordu. Koyu zemin; maskot/label çevresine hafif
+         parıltı ile logo dark zeminde görünür kalır. */
+      html.dark #tab-ai:not(.on) {
+        background: linear-gradient(145deg, #2a2140, #1e1733);
+        border-color: #3a2f55;
+      }
+      html.dark #tab-ai:not(.on) .tab-merci-glow {
+        background: linear-gradient(
+          135deg,
+          rgba(167, 139, 250, 0.22) 0%,
+          rgba(196, 181, 253, 0.1) 100%
+        );
+      }
+      html.dark #tab-ai:not(.on) .tab-label {
+        background: linear-gradient(90deg, var(--ac-l), var(--ac-ll));
+        -webkit-background-clip: text;
+        background-clip: text;
+      }
+      /* (b) "Merci'nin Notu" özet kutusu (.hist-summary) — class-tabanlı
+         var(--ac-bg) inline catch-all'a takılmıyordu. */
+      html.dark .hist-summary {
+        background: #1a1430;
+        border-color: #33285a;
+      }
+      html.dark .htxt2 {
+        color: #ece8f7;
+      }
+      /* (c) "Detayları gör" → açılan geçmiş kartları + grafik sarmalı + mini buton */
+      html.dark .hist-item {
+        background: #1e1733;
+        border-color: #342a4f;
+      }
+      html.dark .hist-txt {
+        color: #ece8f7;
+      }
+      html.dark .hist-cmt,
+      html.dark .hist-time {
+        color: #b9addf;
+      }
+      html.dark .hist-mini-btn {
+        background: #271d3f;
+        color: var(--ac-ll);
+        border-color: #3a2f55;
+      }
+      html.dark .hist-mini-btn:hover {
+        background: var(--ac-d2);
+        color: #fff;
+        border-color: var(--ac-d);
+      }
+      html.dark .hist-chart-wrap {
+        background: #1e1733;
+        border-color: #342a4f;
+      }
       html.dark .ai-intro {
         background: #1a1430;
         border-color: #33285a;
@@ -8444,6 +8499,29 @@ function drawResultCard(opts) {
         _lastTickTime = now;
         casinoTickGain(0.6);
       }
+      // Çekiliş "Dramatik Yavaşlama" (Deploy #18): ahşap-blok tık.
+      // cekilis-demo.html Alt.1'den port. 45ms iç throttle → hızlıda boğulmaz,
+      // yavaşlamada doğal seyrekleşir. Sinek-vızıltısı (riser) BİLEREK yok.
+      var _woodTickTime = 0;
+      function cekilisWoodTick() {
+        if (!soundEnabled) return;
+        var now = performance.now();
+        if (now - _woodTickTime < 45) return;
+        _woodTickTime = now;
+        var a = ac();
+        if (!a || a.state !== "running") return;
+        var o = a.createOscillator(),
+          g = a.createGain();
+        o.type = "sine";
+        o.frequency.setValueAtTime(760, a.currentTime);
+        g.gain.setValueAtTime(0.0001, a.currentTime);
+        g.gain.exponentialRampToValueAtTime(0.1, a.currentTime + 0.012);
+        g.gain.exponentialRampToValueAtTime(0.0001, a.currentTime + 0.05);
+        o.connect(g);
+        g.connect(a.destination);
+        o.start(a.currentTime);
+        o.stop(a.currentTime + 0.1);
+      }
       function msnSound() {
         if (!soundEnabled) return;
         var a = ac();
@@ -10293,12 +10371,14 @@ function drawResultCard(opts) {
           reel.appendChild(it);
         });
         var finalY = -(winPos * ITEM - center);
-        var DUR = 4600; // Deploy #14: daha dramatik (~1.8x uzun)
+        // Deploy #18: "Dramatik Yavaşlama" (cekilis-demo Alt.1). 4.6→6.5 sn,
+        // sert kuyruk eğrisi → sona doğru neredeyse durur.
+        var DUR = 6500;
         reel.style.transition = "none";
         reel.style.transform = "translateY(0px)";
         void reel.offsetWidth;
         reel.style.transition =
-          "transform " + DUR / 1000 + "s cubic-bezier(0.10,0.58,0.18,1)";
+          "transform " + DUR / 1000 + "s cubic-bezier(0.06,0.72,0.10,1)";
         reel.style.transform = "translateY(" + finalY + "px)";
         var _done = false;
         var _finish = function () {
@@ -10307,11 +10387,11 @@ function drawResultCard(opts) {
           vib(12);
           finishCekilis(winner);
         };
-        // DARK-PAK #16 madde5: makara sesi reel'in GERÇEK hızına senkron.
-        // Her item merkezden geçtikçe tık; casinoTick'in 55ms iç limiti hızlıda
+        // Deploy #18: makara sesi reel'in GERÇEK hızına senkron ahşap-blok tık.
+        // Her item merkezden geçtikçe cekilisWoodTick; 45ms iç limiti hızlıda
         // boğulmayı önler, yavaşta doğal seyrekleşir → yavaşlama ile senkron.
-        // Kazananda net fanfar finishCekilis'te (winSound + hSuccess).
-        // soundEnabled kontrolü casinoTick içinde (kapalıysa hiç çalmaz).
+        // Sinek-vızıltısı (riser) BİLEREK yok. Kazananda parlak arpej
+        // finishCekilis'te (winSound + hSuccess). soundEnabled kontrolü içeride.
         var _lastItem = -1;
         (function _reelTick() {
           if (_done) return;
@@ -10326,7 +10406,7 @@ function drawResultCard(opts) {
           var item = Math.round(Math.abs(y) / ITEM);
           if (item !== _lastItem) {
             _lastItem = item;
-            casinoTick();
+            cekilisWoodTick();
           }
           requestAnimationFrame(_reelTick);
         })();
