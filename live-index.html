@@ -9329,14 +9329,20 @@ function drawResultCard(opts) {
             _tbr.scrollIntoView({ block: "center" });
           });
         } catch (e) {}
-        celebM("tb-merci", 80);
-        winSound();
-        hSuccess();
-        confetti();
-        setTimeout(
-          () => burstAt(document.querySelector("#tb-modal .mbox")),
-          120,
-        );
+        // KÜRE (globe) beraberliğinde kutlama ÇİFT oluyordu: modal içinde burada +
+        // sonra normal sonuç ekranında (closeTb / showOnlineWinner). Küre dalında
+        // modal-içi kutlamayı ATLA → tek kutlama küre gidince normal ekranda olsun
+        // (kazanan küre içinde zaten gösteriliyor). MİNİ ÇARK (wheel) davranışı AYNEN.
+        if (tbType !== "globe") {
+          celebM("tb-merci", 80);
+          winSound();
+          hSuccess();
+          confetti();
+          setTimeout(
+            () => burstAt(document.querySelector("#tb-modal .mbox")),
+            120,
+          );
+        }
         if (shareCode) {
           // Online: only the host writes the final closed result. Participants just watch and wait for the snapshot.
           if (amHost) {
