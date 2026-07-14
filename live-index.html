@@ -1674,8 +1674,8 @@
       }
       .v1-card {
         position: relative;
-        border-radius: 22px;
-        padding: 20px 18px 18px;
+        border-radius: 18px;
+        padding: 14px 15px;
         margin-bottom: 14px;
         background:
           radial-gradient(120% 90% at 80% -10%, rgba(var(--ac-shadow), .10), transparent 60%),
@@ -1708,15 +1708,18 @@
       }
       .v1-head {
         display: flex;
-        flex-direction: column;
+        flex-direction: row;
         align-items: center;
-        text-align: center;
+        gap: 12px;
+        text-align: left;
       }
+      .v1-head-tx { min-width: 0; }
       .v1-merci-wrap {
         position: relative;
-        width: 96px;
-        height: 80px;
-        margin-bottom: 6px;
+        width: 60px;
+        height: 50px;
+        margin-bottom: 0;
+        flex-shrink: 0;
         animation: weBreathe 4s ease-in-out infinite;
       }
       .v1-merci-wrap::before {
@@ -1741,7 +1744,7 @@
            (Fredoka'nın ş cedilla'sı farklı görünüyordu) */
         font-family: "Nunito", sans-serif;
         font-weight: 900;
-        font-size: 17px;
+        font-size: 15.5px;
         color: var(--ac-d);
         margin: 0;
       }
@@ -1749,11 +1752,11 @@
         color: var(--ac-l2);
       }
       .v1-sub {
-        font-size: 12.5px;
+        font-size: 11.5px;
         color: #6b7280;
-        margin: 3px 0 16px;
-        line-height: 1.45;
-        max-width: 240px;
+        margin: 2px 0 0;
+        line-height: 1.4;
+        max-width: none;
       }
       html.dark .v1-sub {
         color: #9a93ad;
@@ -1766,7 +1769,7 @@
         font-weight: 800;
         color: var(--ac);
         letter-spacing: .2px;
-        margin: 2px 0 10px;
+        margin: 12px 0 8px;
       }
       html.dark .wd-title {
         color: var(--ac-l2);
@@ -1979,25 +1982,33 @@
         gap: 5px;
         margin-bottom: 10px;
       }
+      /* Oy satırı — tek satır: isim solda + yıldızlar sağda (Deploy #8) */
       .oitem {
         display: flex;
-        flex-direction: column;
-        gap: 6px;
-        padding: 10px 12px;
-        border: 2px solid var(--ac-bd);
-        border-radius: 10px;
+        flex-direction: row;
+        align-items: center;
+        gap: 10px;
+        padding: 9px 11px;
+        border: 1.5px solid var(--ac-bd);
+        border-radius: 13px;
         background: var(--ac-bg2);
       }
       .oitop {
+        flex: 1;
+        min-width: 0;
         display: flex;
         align-items: center;
         gap: 8px;
       }
       .oname {
         flex: 1;
-        font-size: 13px;
+        min-width: 0;
+        font-size: 13.5px;
         font-weight: 800;
         color: var(--ac-dd);
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
       }
       .rbtn {
         width: 24px;
@@ -2020,18 +2031,23 @@
       }
       .stars {
         display: flex;
-        gap: 4px;
+        gap: 2px;
+        flex-shrink: 0;
       }
       .star {
-        font-size: 20px;
+        font-size: 22px;
         cursor: pointer;
         color: #dcd4f5;
         line-height: 1;
         user-select: none;
-        transition: color 0.1s;
+        padding: 3px 1px;
+        transition: color 0.1s, transform 0.1s;
       }
       .star.on {
         color: #f5a623;
+      }
+      .star:active {
+        transform: scale(1.2);
       }
 
       /* Buttons */
@@ -2130,8 +2146,33 @@
         font-weight: 900;
         color: var(--ac-dd);
         letter-spacing: 8px;
-        margin: 8px 0;
+        margin: 4px 0 2px;
       }
+      /* Oda kodu etiketi + ipucu (Deploy #8) */
+      .code-eyebrow {
+        font-size: 10px;
+        font-weight: 900;
+        letter-spacing: 1.4px;
+        color: var(--ac);
+        text-transform: uppercase;
+        margin-top: 6px;
+      }
+      html.dark .code-eyebrow { color: var(--ac-l2); }
+      .code-help {
+        font-size: 11px;
+        font-weight: 700;
+        color: #6b7280;
+        margin: 0 0 6px;
+      }
+      html.dark .code-help { color: #9a93ad; }
+      /* Katıl inputu — gri placeholder (Deploy #8) */
+      #join-input::placeholder {
+        letter-spacing: 1.5px;
+        font-size: 13px;
+        font-weight: 800;
+        color: #b9b1d4;
+      }
+      html.dark #join-input::placeholder { color: #5c5478; }
       .share-link {
         font-size: 11px;
         font-weight: 700;
@@ -2529,45 +2570,39 @@
       }
 
       /* === Merci'ye Danış Hero Banner === */
+      /* ── Merci hero — yatay kompakt (Deploy #8) ── */
       .merci-ai-hero {
         margin: 0 0 14px;
         background: linear-gradient(
           145deg,
           var(--ac-dd) 0%,
-          var(--ac-d2) 50%,
+          var(--ac-d2) 55%,
           var(--ac) 100%
         );
-        border-radius: 20px;
-        padding: 12px 16px 16px;
+        border-radius: 18px;
+        padding: 13px 15px;
         position: relative;
-        overflow: visible;
-        text-align: center;
-        box-shadow: 0 8px 28px rgba(var(--ac-shadow),0.32);
+        overflow: hidden;
+        box-shadow: 0 6px 20px rgba(var(--ac-shadow),0.28);
+        display: flex;
+        align-items: center;
+        gap: 13px;
+        text-align: left;
       }
       .merci-ai-hero::before {
         content: "";
         position: absolute;
-        top: -30px;
-        right: -30px;
-        width: 120px;
-        height: 120px;
+        top: -34px;
+        right: -24px;
+        width: 96px;
+        height: 96px;
         border-radius: 50%;
         background: rgba(167, 139, 250, 0.18);
-      }
-      .merci-ai-hero::after {
-        content: "";
-        position: absolute;
-        bottom: -20px;
-        left: -20px;
-        width: 80px;
-        height: 80px;
-        border-radius: 50%;
-        background: rgba(196, 181, 253, 0.12);
+        pointer-events: none;
       }
       .merci-ai-hero-mascot {
+        flex-shrink: 0;
         display: flex;
-        justify-content: center;
-        margin-bottom: 6px;
         position: relative;
         z-index: 1;
         overflow: visible;
@@ -2575,50 +2610,55 @@
       .merci-ai-hero-mascot::before {
         content: "";
         position: absolute;
-        width: 150px;
-        height: 150px;
+        width: 92px;
+        height: 92px;
         top: 50%;
         left: 50%;
         transform: translate(-50%, -50%);
-        background: radial-gradient(circle, rgba(255, 255, 255, 0.28), transparent 65%);
+        background: radial-gradient(circle, rgba(255, 255, 255, 0.26), transparent 65%);
         z-index: -1;
         pointer-events: none;
       }
       .merci-ai-hero-mascot svg {
         overflow: visible;
       }
-      .merci-ai-hero-title {
-        font-size: 30px;
-        font-weight: 900;
-        color: #fff;
-        margin-bottom: 7px;
+      .merci-ai-hero-txt {
         position: relative;
         z-index: 1;
-        letter-spacing: 0.5px;
+        min-width: 0;
+      }
+      .merci-ai-hero-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: wrap;
+        margin-bottom: 3px;
+      }
+      .merci-ai-hero-title {
+        font-size: 21px;
+        font-weight: 900;
+        color: #fff;
+        letter-spacing: 0.4px;
+        line-height: 1;
         text-shadow: 0 2px 10px rgba(20, 6, 40, 0.25);
       }
       .merci-ai-hero-sub {
-        font-size: 12px;
+        font-size: 11.5px;
         font-weight: 700;
         color: var(--ac-ll);
-        line-height: 1.5;
-        position: relative;
-        z-index: 1;
+        line-height: 1.4;
       }
       .merci-ai-hero-badge {
         display: inline-block;
-        background: rgba(255, 255, 255, 0.2);
-        border: 1px solid rgba(255, 255, 255, 0.32);
+        background: rgba(255, 255, 255, 0.18);
+        border: 1px solid rgba(255, 255, 255, 0.3);
         color: #fff;
-        font-size: 11px;
+        font-size: 9.5px;
         font-weight: 900;
-        padding: 4px 12px;
-        border-radius: 20px;
-        margin-bottom: 10px;
-        letter-spacing: 0.6px;
-        backdrop-filter: blur(6px);
-        position: relative;
-        z-index: 1;
+        padding: 3px 9px;
+        border-radius: 999px;
+        letter-spacing: 0.4px;
+        white-space: nowrap;
       }
       /* Hızlı başla butonları */
       .ai-quick-grid {
@@ -3481,18 +3521,22 @@
         overflow: hidden !important;
       }
       .vote-mode-btn {
-        padding: 22px 10px;
+        padding: 12px 12px;
         background: var(--ac-bg);
         border: 2px solid var(--ac-ll);
-        border-radius: 18px;
+        border-radius: 15px;
         cursor: pointer;
-        text-align: center;
+        text-align: left;
         font-family: "Nunito", sans-serif;
         color: var(--ac-dd);
         transition: all 0.15s;
         width: 100%;
-        box-shadow: 0 3px 14px rgba(var(--ac-shadow),0.08);
+        box-shadow: 0 3px 12px rgba(var(--ac-shadow),0.07);
+        display: flex;
+        align-items: center;
+        gap: 11px;
       }
+      .vmode-tx { min-width: 0; }
       .vote-mode-btn:hover,
       .vote-mode-btn.on {
         background: var(--ac);
@@ -3515,14 +3559,14 @@
       html.dark .vstep i { background:#2a2140; }
       html.dark .vstep.on span { color:var(--ac-ll); }
       /* Mod kartları (.vote-mode-btn yeniden derinlik/kart görünümü) */
-      .vmode-ic { width:46px; height:46px; margin:0 auto 8px; border-radius:14px; background:var(--ac-bg3); display:flex; align-items:center; justify-content:center; transition:background .15s; }
-      .vmode-ic svg { width:26px; height:26px; stroke:var(--ac-d); fill:none; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
+      .vmode-ic { width:38px; height:38px; flex-shrink:0; margin:0; border-radius:11px; background:var(--ac-bg3); display:flex; align-items:center; justify-content:center; transition:background .15s; }
+      .vmode-ic svg { width:21px; height:21px; stroke:var(--ac-d); fill:none; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
       .vote-mode-btn.on .vmode-ic { background:rgba(255,255,255,.22); }
       .vote-mode-btn.on .vmode-ic svg { stroke:#fff; }
-      .vmode-t { font-size:14px; font-weight:900; }
-      .vmode-d { font-size:10.5px; font-weight:700; color:var(--ac-l2); margin-top:3px; line-height:1.35; }
+      .vmode-t { font-size:13.5px; font-weight:900; line-height:1.1; }
+      .vmode-d { font-size:10px; font-weight:700; color:var(--ac-l2); margin-top:2px; line-height:1.3; }
       .vote-mode-btn.on .vmode-d { color:var(--ac-ll); }
-      .vmode-badge { position:absolute; top:-8px; right:10px; font-size:8.5px; font-weight:900; letter-spacing:.3px; background:var(--ac); color:#fff; padding:2px 8px; border-radius:999px; box-shadow:0 3px 8px rgba(var(--ac-shadow),.4); }
+      .vmode-badge { position:absolute; top:-7px; right:10px; font-size:8.5px; font-weight:900; letter-spacing:.3px; background:var(--ac); color:#fff; padding:2px 8px; border-radius:999px; box-shadow:0 3px 8px rgba(var(--ac-shadow),.4); }
       .vote-mode-btn { position:relative; }
       html.dark .vmode-ic { background:#2a2140; }
       html.dark .vmode-ic svg { stroke:var(--ac-ll); }
@@ -3667,6 +3711,57 @@
         border-color: var(--ac-d2);
         color: #fff;
       }
+      /* Oda bağlam çipi — çift "Oda Oluştur" yerine (Deploy #8) */
+      #room-ctx-chip { display: none; }
+      .ctx-chip {
+        align-items: center;
+        gap: 9px;
+        padding: 10px 12px;
+        border-radius: 13px;
+        background: linear-gradient(135deg, var(--ac-dd), var(--ac-d2));
+        color: #fff;
+        margin-bottom: 14px;
+        box-shadow: 0 6px 18px rgba(var(--ac-shadow),.28);
+      }
+      .ctx-chip .ctx-ic {
+        width: 30px; height: 30px; flex-shrink: 0;
+        border-radius: 9px; background: rgba(255,255,255,.18);
+        display: flex; align-items: center; justify-content: center; font-size: 15px;
+      }
+      .ctx-chip .ctx-mid { flex: 1; min-width: 0; }
+      .ctx-chip .ctx-t { font-size: 13.5px; font-weight: 900; line-height: 1.1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      .ctx-chip .ctx-s { font-size: 10.5px; font-weight: 700; opacity: .85; margin-top: 2px; }
+      .ctx-chip .ctx-edit {
+        flex-shrink: 0;
+        background: rgba(255,255,255,.16);
+        border: 1px solid rgba(255,255,255,.28);
+        color: #fff; font-family: "Nunito", sans-serif; font-weight: 900;
+        font-size: 11px; padding: 6px 11px; border-radius: 999px; cursor: pointer;
+      }
+      /* Sonuç aksiyonları — yeni tur (birincil) vs odadan çık (ikincil) (Deploy #8) */
+      .online-newround-btn {
+        text-align: center;
+        line-height: 1.2;
+        padding: 11px;
+      }
+      .online-newround-btn .onr-big { display: block; font-size: 14.5px; font-weight: 900; }
+      .online-newround-btn .onr-sub { display: block; font-size: 10.5px; font-weight: 700; opacity: .9; margin-top: 2px; }
+      .online-act-div { display: flex; align-items: center; gap: 10px; margin: 12px 0; color: #a99fc4; font-size: 10.5px; font-weight: 800; letter-spacing: .5px; }
+      .online-act-div::before, .online-act-div::after { content: ""; flex: 1; height: 1px; background: var(--ac-bd); }
+      html.dark .online-act-div { color: #6b6582; }
+      html.dark .online-act-div::before, html.dark .online-act-div::after { background: #33285a; }
+      .online-leave-btn {
+        width: 100%; display: flex; align-items: center; justify-content: center; gap: 6px;
+        padding: 10px; border-radius: 12px; border: 1.5px solid var(--ac-bd); background: transparent;
+        color: #8b8299; font-family: "Nunito", sans-serif; font-weight: 800; font-size: 12.5px; cursor: pointer;
+      }
+      html.dark .online-leave-btn { border-color: #33285a; color: #8a83a0; }
+      .online-leave-btn .onl-sub { font-size: 9.5px; font-weight: 700; opacity: .8; }
+      /* Kişi sayısı — küçük tek satır kompakt segmentler (Deploy #8) */
+      .pcount-row { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 12px; }
+      .pcount-row .onl-sel-btn { flex: 1; min-width: 34px; padding: 8px 4px; border-width: 1.5px; border-radius: 9px; font-size: 12.5px; line-height: 1; text-align: center; }
+      .pcount-row .onl-sel-btn.other { flex: 0 0 auto; min-width: 44px; display: inline-flex; align-items: center; justify-content: center; gap: 3px; font-size: 11px; }
+      .pcount-row .onl-sel-btn.other svg { width: 12px; height: 12px; stroke: currentColor; fill: none; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
       /* ── ONLINE SETUP POPUP MODAL ── */
       .online-popup-overlay {
         display: none;
@@ -4245,8 +4340,10 @@
           <div class="v1-card" id="wheel-empty-card">
             <div class="v1-head">
               <div class="v1-merci-wrap m-idle" id="wheel-card-merci"></div>
-              <h2 class="v1-title">Çark boş, hadi dolduralım! 🎡</h2>
-              <p class="v1-sub">Hazır bir konu seç ya da kendin ekle 👇</p>
+              <div class="v1-head-tx">
+                <h2 class="v1-title">Çark boş, dolduralım! 🎡</h2>
+                <p class="v1-sub">Hazır konu seç ya da kendin ekle 👇</p>
+              </div>
             </div>
             <div class="wd-title">⚡ Hızlı Başlat</div>
             <div class="wd-chips" id="wheel-daily"></div>
@@ -4454,9 +4551,9 @@
             </div>
             <div
               style="
-                display: grid;
-                grid-template-columns: repeat(2, 1fr);
-                gap: 6px;
+                display: flex;
+                flex-direction: column;
+                gap: 8px;
                 margin-bottom: 14px;
               "
             >
@@ -4468,8 +4565,10 @@
                 <div class="vmode-ic">
                   <svg viewBox="0 0 24 24"><rect x="6.5" y="3" width="11" height="18" rx="2.4"/><path d="M10.5 18.2h3"/></svg>
                 </div>
-                <div class="vmode-t">Bu Cihazda</div>
-                <div class="vmode-d">Tek telefon, elden ele</div>
+                <div class="vmode-tx">
+                  <div class="vmode-t">Bu Cihazda</div>
+                  <div class="vmode-d">Tek telefon, elden ele</div>
+                </div>
               </button>
               <button
                 class="vote-mode-btn"
@@ -4480,8 +4579,10 @@
                 <div class="vmode-ic">
                   <svg viewBox="0 0 24 24"><path d="M5 12.5a9 9 0 0 1 14 0"/><path d="M8 15.5a5 5 0 0 1 8 0"/><circle cx="12" cy="18.5" r="1.4" fill="currentColor" stroke="none"/></svg>
                 </div>
-                <div class="vmode-t">Online</div>
-                <div class="vmode-d">Herkes kendi telefonundan</div>
+                <div class="vmode-tx">
+                  <div class="vmode-t">Online</div>
+                  <div class="vmode-d">Herkes kendi telefonundan</div>
+                </div>
               </button>
             </div>
           </div>
@@ -4602,6 +4703,21 @@
             </div>
             <!-- Seçenek Ekleme (popup onayından sonra görünür) -->
             <div id="online-setup" style="display: none">
+              <!-- Bağlam çipi: oda adı + ayarlar (toggle yerine) -->
+              <div id="room-ctx-chip" class="ctx-chip">
+                <div class="ctx-ic">📡</div>
+                <div class="ctx-mid">
+                  <div class="ctx-t" id="ctx-room-name">Oda</div>
+                  <div class="ctx-s" id="ctx-room-meta">—</div>
+                </div>
+                <button
+                  type="button"
+                  class="ctx-edit"
+                  onclick="openOnlineSetupPopup()"
+                >
+                  ✎ Düzenle
+                </button>
+              </div>
               <p class="lbl">Seçenek Ekle (min 2)</p>
               <div class="irow">
                 <input
@@ -4615,7 +4731,7 @@
                 Seçenek ekle, arkadaşların oylasın! 📡
               </div>
               <button class="btn gold" id="create-room-btn">
-                📡 Odayı Oluştur
+                📡 Odayı Oluştur ve Kodu Al
               </button>
             </div>
             <!-- Host view -->
@@ -4627,7 +4743,9 @@
                 >
                   Oda hazır!
                 </p>
+                <div class="code-eyebrow">🔑 ODA KODU</div>
                 <div class="share-code" id="share-code">----</div>
+                <p class="code-help">Arkadaşların bu kodla odana katılır</p>
                 <div
                   id="host-timer"
                   class="timer-bar"
@@ -4670,24 +4788,28 @@
                 </button>
               </div>
               <button
-                class="btn ghost"
+                class="btn online-newround-btn"
                 id="new-round-btn"
                 style="display: none; margin-top: 6px"
               >
-                <svg class="ic ic-t" viewBox="0 0 24 24"><use href="#i-refresh"/></svg> Yeni Oylama Başlat
+                <span class="onr-big"><svg class="ic ic-t" viewBox="0 0 24 24"><use href="#i-refresh"/></svg> Aynı odada yeni tur</span>
+                <span class="onr-sub">Herkes bağlı kalır · sadece seçenekleri değiştir</span>
               </button>
+              <div
+                class="online-act-div"
+                id="new-round-divider"
+                style="display: none"
+              >
+                VEYA
+              </div>
               <button
-                class="btn ghost"
+                class="online-leave-btn"
                 id="reset-online-btn"
-                style="
-                  display: none;
-                  margin-top: 6px;
-                  border-color: var(--ac-ll);
-                  color: var(--ac);
-                "
+                style="display: none"
                 onclick="resetOnlineToRoleSelect()"
               >
-                <svg class="ic ic-t" viewBox="0 0 24 24"><use href="#i-home"/></svg> Yeni Oda Oluştur / Odaya Katıl
+                <svg class="ic ic-t" viewBox="0 0 24 24"><use href="#i-home"/></svg> Odadan çık
+                <span class="onl-sub">— yeni oda kur / başka odaya katıl</span>
               </button>
               <div id="new-round-opts" style="display: none; margin-top: 12px">
                 <p class="lbl">Yeni Seçenekler (min 2)</p>
@@ -4721,12 +4843,13 @@
             </div>
             <!-- Join view -->
             <div id="online-join" style="display: none">
-              <div class="irow" style="margin-top: 4px">
+              <p class="lbl" style="margin-top: 2px">Oda kodunu gir</p>
+              <div class="irow">
                 <input
                   type="text"
                   id="join-input"
                   maxlength="4"
-                  placeholder="ABCD"
+                  placeholder="ODA KODU"
                   style="
                     text-transform: uppercase;
                     letter-spacing: 4px;
@@ -4954,11 +5077,15 @@
             <!-- Hero banner -->
             <div class="merci-ai-hero">
               <div class="merci-ai-hero-mascot" id="ai-hero-merci"></div>
-              <div class="merci-ai-hero-title">Merci</div>
-              <div class="merci-ai-hero-badge">✨ Akıllı Karar Asistanın</div>
-              <div class="merci-ai-hero-sub">
-                Kararsız mısın? Durumu anlat — saniyede seçenek üretir,
-                istersen senin için seçer.
+              <div class="merci-ai-hero-txt">
+                <div class="merci-ai-hero-row">
+                  <span class="merci-ai-hero-title">Merci</span>
+                  <span class="merci-ai-hero-badge">✨ Akıllı Asistan</span>
+                </div>
+                <div class="merci-ai-hero-sub">
+                  Kararsız mısın? Durumu anlat — saniyede seçenek üretir,
+                  senin için seçer.
+                </div>
               </div>
             </div>
 
@@ -10701,9 +10828,17 @@ function drawResultCard(opts) {
         }
         closeOnlineSetupPopup();
         document.getElementById("online-setup").style.display = "";
-        document.getElementById("online-role-row").style.display = "flex";
-        document.getElementById("role-host-btn").classList.add("on");
-        document.getElementById("role-join-btn").classList.remove("on");
+        // Çift "Oda Oluştur" önlemi: üst toggle'ı gizle, yerine bağlam çipi göster
+        document.getElementById("online-role-row").style.display = "none";
+        var chip = document.getElementById("room-ctx-chip");
+        if (chip) {
+          document.getElementById("ctx-room-name").textContent = name;
+          var metaTxt = roomMaxP + " kişi";
+          metaTxt +=
+            roomTimeLimit > 0 ? " · " + roomTimeLimit + " dk süre" : " · süresiz";
+          document.getElementById("ctx-room-meta").textContent = metaTxt;
+          chip.style.display = "flex";
+        }
         // Seçenek ekleme alanı açıldı → artık kategori seçimi anlamlı, göster
         var cw = document.getElementById("cats-vote-wrap");
         if (cw) cw.style.display = "block";
@@ -10803,6 +10938,8 @@ function drawResultCard(opts) {
           if (_sbx) _sbx.style.display = "";
           var _nrb = document.getElementById("new-round-btn");
           if (_nrb) _nrb.style.display = "none";
+          var _nrd = document.getElementById("new-round-divider");
+          if (_nrd) _nrd.style.display = "none";
           var _rob = document.getElementById("reset-online-btn");
           if (_rob) _rob.style.display = "none";
           var _nro = document.getElementById("new-round-opts");
@@ -11065,6 +11202,8 @@ function drawResultCard(opts) {
         // odayı bozduğu için online modda GİZLENİR (gereksiz/bozuk buton kalkar).
         var nrb = document.getElementById("new-round-btn");
         if (nrb) nrb.style.display = amHost ? "" : "none";
+        var nrd = document.getElementById("new-round-divider");
+        if (nrd) nrd.style.display = amHost ? "" : "none";
         var rstBtn = document.getElementById("reset-online-btn");
         if (rstBtn) rstBtn.style.display = "";
         var vnvBtn = document.getElementById("vr-new-vote-btn");
@@ -11129,6 +11268,10 @@ function drawResultCard(opts) {
         newRoundOpts = [];
         renderNROpts();
         document.getElementById("new-round-btn").style.display = "none";
+        var nrd0 = document.getElementById("new-round-divider");
+        if (nrd0) nrd0.style.display = "none";
+        var rstb0 = document.getElementById("reset-online-btn");
+        if (rstb0) rstb0.style.display = "none";
         document.getElementById("new-round-opts").style.display = "";
         document.getElementById("host-vote-section").style.display = "none";
         document.getElementById("vr").style.display = "none";
@@ -11162,6 +11305,8 @@ function drawResultCard(opts) {
         document.getElementById("new-round-opts").style.display = "none";
         document.getElementById("reset-online-btn").style.display = "none";
         document.getElementById("new-round-btn").style.display = "none";
+        var _nrdR = document.getElementById("new-round-divider");
+        if (_nrdR) _nrdR.style.display = "none";
         // share-box'ı tekrar göster (yeni oda kurulunca lazım)
         var shareBox = document.querySelector("#online-host .share-box");
         if (shareBox) shareBox.style.display = "";
@@ -12132,7 +12277,7 @@ function drawResultCard(opts) {
         // Maskotu kart içine bas (bir kez)
         var m = document.getElementById("wheel-card-merci");
         if (m && !m.innerHTML && typeof merciSVG === "function")
-          m.innerHTML = merciSVG(96);
+          m.innerHTML = merciSVG(60);
         // Tek raf "Hızlı Başlat" çipleri — ilk 2'si ⭐ öne çıkan (.hot)
         var idxs = dailySuggestionIndices(8);
         var html = "";
@@ -12254,7 +12399,7 @@ function drawResultCard(opts) {
         if (m === "ai") {
           var heroEl = document.getElementById("ai-hero-merci");
           if (heroEl && !heroEl.innerHTML) {
-            setM("ai-hero-merci", 120, "think");
+            setM("ai-hero-merci", 66, "think");
             gentleFloat("ai-hero-merci");
           }
           // Tab ikonunu da set et
@@ -14467,35 +14612,22 @@ function drawResultCard(opts) {
         <div class="irow" style="margin-bottom: 14px">
           <input id="room-name" type="text" placeholder="örn. Pizza Gecesi" />
         </div>
-        <p class="lbl">Katılımcı Sayısı (host dahil)</p>
-        <div class="onl-sel-row" id="maxp-row" style="margin-bottom: 4px">
-          <button class="onl-sel-btn" data-val="2" onclick="setMaxP(2)">
-            2
-          </button>
-          <button class="onl-sel-btn" data-val="3" onclick="setMaxP(3)">
-            3
-          </button>
-          <button class="onl-sel-btn" data-val="4" onclick="setMaxP(4)">
-            4
-          </button>
-          <button class="onl-sel-btn" data-val="5" onclick="setMaxP(5)">
-            5
-          </button>
-          <button class="onl-sel-btn" data-val="6" onclick="setMaxP(6)">
-            6
-          </button>
-          <button class="onl-sel-btn" data-val="8" onclick="setMaxP(8)">
-            8
-          </button>
-          <button class="onl-sel-btn" data-val="10" onclick="setMaxP(10)">
-            10
-          </button>
+        <p class="lbl">Kaç kişi oy verecek? (sen dahil)</p>
+        <div class="pcount-row" id="maxp-row" style="margin-bottom: 4px">
+          <button class="onl-sel-btn" data-val="2" onclick="setMaxP(2)">2</button>
+          <button class="onl-sel-btn" data-val="3" onclick="setMaxP(3)">3</button>
+          <button class="onl-sel-btn" data-val="4" onclick="setMaxP(4)">4</button>
+          <button class="onl-sel-btn" data-val="5" onclick="setMaxP(5)">5</button>
+          <button class="onl-sel-btn" data-val="6" onclick="setMaxP(6)">6</button>
+          <button class="onl-sel-btn" data-val="8" onclick="setMaxP(8)">8</button>
+          <button class="onl-sel-btn" data-val="10" onclick="setMaxP(10)">10</button>
           <button
-            class="onl-sel-btn"
+            class="onl-sel-btn other"
             id="maxp-custom-btn"
+            title="Diğer"
             onclick="toggleMaxPCustom()"
           >
-            ✏️ Özel
+            <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Diğer
           </button>
         </div>
         <div id="maxp-custom-wrap" style="display: none; margin-bottom: 8px">
