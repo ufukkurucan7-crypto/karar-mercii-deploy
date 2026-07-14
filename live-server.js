@@ -288,6 +288,13 @@ app.post("/merci", rateLimit, authAndQuota, async (req, res) => {
 Tanımıyorsan normal yorum yap. Espriyi kısa tut, 1 cümle.`
       : "";
 
+    // ── KONUM DÜZELTME İŞARETİ ──
+    // Otomatik (GPS/reverse-geocode) konum yanlış çıkabiliyor (canlı bug: kullanıcı
+    // Ümraniye'deyken sistem "Tuzla" dedi). Kullanıcı YAZIYLA doğru semti/şehri
+    // verirse model [[SETLOC:Yer]] işareti koyar; sunucu bunu forward-geocode edip
+    // (Nominatim) yeni koordinatı client'a döner, client konumu günceller.
+    const setLocHint = `\nKONUM DÜZELTME: Kullanıcı bulunduğu yeri YAZIYLA söyler ya da düzeltirse (örn. "ben Ümraniye'deyim", "yok Kadıköy'deyim", "konumum yanlış, Beşiktaş'tayım"), cevabının EN BAŞINA [[SETLOC:YerAdı]] işareti koy — köşeli parantez içine SADECE o semt/şehir adını yaz (tek yer, ilçe+şehir olabilir: "Ümraniye, İstanbul"). Böylece konum oraya güncellenir. Sonra normal cevabını ver; kullanıcı yakında yer de soruyorsa ayrıca uygun [[NEARBY:tür]] işaretini de ekle. DİKKAT: bu işaret SADECE kullanıcının KENDİ bulunduğu konum içindir; sohbette geçen rastgele/anı yer adı ("geçen yıl Bodrum'a gittik") bunu TETİKLEMEZ.`;
+
     const systemPrompt = `Sen Merci — mor, sevimli ama keskin zekâlı bir karar-ahtapotu. İnsanların kararsızlığını bitirmek senin işin ve bundan keyif alıyorsun. Uygulamanın yıldızı sensin, sıkıcı bir asistan değil.
 
 TARZIN:
@@ -300,7 +307,7 @@ NE YAPARSIN:
 - Alakasız soruda (genel bilgi, matematik, kod) nazikçe geçiştir: "Ben karar kollarımı onun için sallamıyorum 🐙 Ama bir ikilemin varsa anlat, çözeriz!"
 - Kullanıcı "bilmiyorum / fark etmez" derse çarka yönlendir: "Kaderine bırak — çevir bakalım! 🎡" Grup büyük ve oylama mantıklıysa: "Bunu kalabalık çözer, oylamaya alalım 📊"
 - Kısıt gelince ("2 kişiyiz", "arabam yok", "bütçe az") soru sormadan DİREKT uygun alternatif öner. Eksik bilgi varsa en fazla 1 netleştirme sorusu sor — peş peşe soru yağdırma.
-${historyContext}${locationContext}${resultPrompt}${winnerEspriPrompt}
+${historyContext}${locationContext}${setLocHint}${resultPrompt}${winnerEspriPrompt}
 
 SEÇENEK BUTONU (SIK kullan): Cevapta 2+ somut seçilebilir seçenek varsa (yemek/film/mekan/aktivite; cümle içinde bile), YA DA kullanıcı "sen karar ver" deyince veya sen çarka yönlendirince — cevabının EN SONUNA [[SECENEKLER: ad1 | ad2 | ad3]] ekle (2-8 kısa isim, | ile ayır). Örn: "Pizza mı burger mi? [[SECENEKLER: Pizza | Burger]]" — "Çevir bakalım! [[SECENEKLER: Korku | Komedi | Aksiyon]]". Tek kesin öneride işaret KOYMA.
 
@@ -336,6 +343,24 @@ KIRMIZI ÇİZGİLER:
       text = lastStop > 20 ? trimmed.slice(0, lastStop + 1) : trimmed + " …";
     }
 
+    // ── KONUM DÜZELTME (SETLOC) → FORWARD-GEOCODE ──
+    // Kullanıcı konumunu yazıyla verince model [[SETLOC:Yer]] koyar. İşareti
+    // metinden HER durumda temizle (eski client bilmese de HAM sızmasın), sonra
+    // yer adını Nominatim ile koordinata çevir; başarılıysa client'a döndür.
+    let setLocation = null;
+    const slMatch = text.match(/\[\[\s*SETLOC\s*:\s*([^\]]+?)\s*\]\]/i);
+    text = text.replace(/\[\[\s*SETLOC\s*:[^\]]*\]\]/gi, "").trim();
+    if (slMatch && slMatch[1]) {
+      const place = slMatch[1].trim().slice(0, 60);
+      if (place) {
+        try {
+          setLocation = await forwardGeocode(place, location);
+        } catch (e) {
+          console.error("SETLOC geocode error:", e.message);
+        }
+      }
+    }
+
     // ── İŞARET NORMALİZASYONU (savunma hattı) ──
     // Model işaret biçimini yine de bozabilir (canlıda görüldü:
     // "[[NEED_LOCATION:TUR:bar]]"). Client regex'i tanıyamayınca işaret ekrana
@@ -353,7 +378,10 @@ KIRMIZI ÇİZGİLER:
       },
     );
 
-    res.json({ text: text || "Bir şeyler ters gitti, tekrar dene!" });
+    res.json({
+      text: text || "Bir şeyler ters gitti, tekrar dene!",
+      setLocation, // yazıyla verilen konumun koordinatı (varsa) → client günceller
+    });
   } catch (error) {
     console.error("API Error:", error.message);
     res.status(500).json({ error: "Merci şu an müsait değil, tekrar dene!" });
@@ -489,6 +517,71 @@ const KIND_TR = {
   cinema: "sinema",
 };
 
+// Yazıyla verilen semt/şehri koordinata çevir (Nominatim forward-geocode).
+// Otomatik konum yanlışsa kullanıcının metinle verdiği yere ÖNCELİK verilir.
+// Türkiye'ye ve (varsa) mevcut şehre bias'lanır; UA zorunlu (Nominatim politikası).
+async function forwardGeocode(place, near) {
+  let q = place;
+  if (!/(türkiye|turkey)/i.test(q)) q += ", Türkiye";
+  const url =
+    "https://nominatim.openstreetmap.org/search?format=json&limit=1&accept-language=tr&q=" +
+    encodeURIComponent(q);
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 8000);
+  try {
+    const r = await fetch(url, {
+      headers: {
+        "User-Agent": "KararMercii/1.0 (https://kararmercii.com)",
+        Accept: "application/json",
+      },
+      signal: ctrl.signal,
+    });
+    const arr = await r.json();
+    if (Array.isArray(arr) && arr[0] && arr[0].lat && arr[0].lon) {
+      const lat = parseFloat(arr[0].lat);
+      const lng = parseFloat(arr[0].lon);
+      if (isFinite(lat) && isFinite(lng)) {
+        // Kısa etiket: display_name'in ilk 2 parçası (semt, ilçe/şehir)
+        const parts = String(arr[0].display_name || place)
+          .split(",")
+          .map((s) => s.trim())
+          .filter(Boolean);
+        const name = parts.slice(0, 2).join(", ") || place;
+        return { lat, lng, name };
+      }
+    }
+  } finally {
+    clearTimeout(timer);
+  }
+  return null;
+}
+
+// ── SPESİFİK İSTEK → MUTFAK/İSİM DARALTMA ──
+// Kullanıcı "sushi/pizza/kebap" gibi SPESİFİK bir şey isteyince tüm yemekçileri
+// (baklavacı, balıkçı, dönerci...) listelemek YANLIŞ. Bu kurallar isteği yalnız
+// ilgili türe daraltır: önce OSM cuisine tag'iyle ara, bulamazsan mekan İSMİNDE
+// eşleştir, o da yoksa dürüstçe "tam X yok, en yakın alternatifler" de.
+// test = kullanıcı sorgusunda aranan kelime; cuisine = Overpass cuisine regex;
+// name = mekan adında aranan regex; label = karta/mesaja yazılacak Türkçe etiket.
+const CUISINE_RULES = [
+  { test: /su\s?shi|suşi|japon/i, cuisine: "sushi|japanese|asian", name: /sushi|suşi|japon/i, label: "suşi/japon" },
+  { test: /pizza|pizzac/i, cuisine: "pizza|italian", name: /pizza/i, label: "pizza" },
+  { test: /burger|hamburger/i, cuisine: "burger|american", name: /burger/i, label: "burger" },
+  { test: /döner|doner/i, cuisine: "kebab|doner", name: /döner|doner/i, label: "döner" },
+  { test: /kebap|kebab|ocakbaş|ocakbas|mangal|(^|\W)ızgara|(^|\W)izgara/i, cuisine: "kebab|barbecue|turkish", name: /kebap|kebab|ocakbaş|mangal|ızgara|izgara/i, label: "kebap/ızgara" },
+  { test: /balık|balik|deniz ürün|seafood/i, cuisine: "seafood|fish", name: /balık|balik/i, label: "balık/deniz" },
+  { test: /çin|chinese|noodle|\bwok\b/i, cuisine: "chinese|asian|noodle", name: /chinese|çin|wok|noodle/i, label: "çin/asya" },
+  { test: /italyan|italian|makarna|\bpasta\b/i, cuisine: "italian|pizza", name: /italyan|italian|pasta/i, label: "italyan" },
+  { test: /meksika|mexican|taco|burrito/i, cuisine: "mexican", name: /meksika|mexican|taco|burrito/i, label: "meksika" },
+  { test: /vegan|vejetaryen|vejeteryan|vegetarian/i, cuisine: "vegan|vegetarian", name: /vegan|vejetaryen/i, label: "vegan/vejetaryen" },
+  { test: /kahvaltı|kahvalti|breakfast|brunch/i, cuisine: "breakfast|brunch", name: /kahvaltı|kahvalti|breakfast|brunch/i, label: "kahvaltı" },
+  { test: /steak|biftek|steakhouse|steak house/i, cuisine: "steak_house|steak|barbecue", name: /steak|biftek/i, label: "steakhouse" },
+  { test: /pide|lahmacun/i, cuisine: "pide|lahmacun|turkish", name: /pide|lahmacun/i, label: "pide/lahmacun" },
+  { test: /çiğ ?köfte|cig ?kofte|çiğköfte/i, cuisine: "", name: /çiğ ?köfte|cig ?kofte/i, label: "çiğ köfte" },
+  { test: /köfte|kofte/i, cuisine: "kebab|turkish", name: /köfte|kofte/i, label: "köfte" },
+  { test: /tost|sandviç|sandvic|sandwich/i, cuisine: "sandwich", name: /tost|sandviç|sandwich/i, label: "tost/sandviç" },
+];
+
 function haversine(la1, lo1, la2, lo2) {
   const R = 6371000;
   const toR = (d) => (d * Math.PI) / 180;
@@ -530,6 +623,11 @@ app.post("/nearby", rateLimit, async (req, res) => {
       return res.status(400).json({ error: "Konum geçersiz." });
     const typeKey = String((req.body && req.body.type) || "food");
     const locName = String((req.body && req.body.locName) || "").slice(0, 60);
+    // Kullanıcının ham isteği (ör. "yakında sushi var mı"). Spesifik tür daraltması
+    // için kullanılır; yoksa (eski client) davranış eskisi gibi bucket bazlı kalır.
+    const query = String((req.body && req.body.query) || "")
+      .toLowerCase()
+      .slice(0, 80);
     const radius = Math.min(
       Math.max(parseInt(req.body && req.body.radius) || 2500, 300),
       5000,
@@ -550,7 +648,7 @@ app.post("/nearby", rateLimit, async (req, res) => {
 
     // Overpass sorgusu (boş dönerse radius'u büyütüp 1 kez daha dene → "bulamadım" azalır)
     // selectors artık TAM-EŞLEŞME selektör DİZİSİ (regex-contains DEĞİL) → her biri ayrı blok.
-    const selectors = OVERPASS_FILTERS[typeKey] || OVERPASS_FILTERS.food;
+    const bucketSelectors = OVERPASS_FILTERS[typeKey] || OVERPASS_FILTERS.food;
     // ÇOKLU ENDPOINT: overpass-api.de sık sık "server too busy" (Dispatcher timeout)
     // verip JSON yerine HTML döndürüyordu → .json() patlıyor → boş liste → hiç mekan
     // gelmiyordu (ANA BUG). Şimdi birden fazla mirror'ı sırayla deniyoruz ve dönen
@@ -561,8 +659,8 @@ app.post("/nearby", rateLimit, async (req, res) => {
       "https://overpass.private.coffee/api/interpreter",
       "https://maps.mail.ru/osm/tools/overpass/api/interpreter",
     ];
-    async function runOverpass(r) {
-      const blocks = selectors
+    async function runOverpass(r, sels) {
+      const blocks = sels
         .map(
           (s) =>
             `node${s}(around:${r},${lat},${lng});way${s}(around:${r},${lat},${lng});`,
@@ -613,11 +711,57 @@ app.post("/nearby", rateLimit, async (req, res) => {
     }
     // Boş dönerse yarıçapı KADEMELİ büyüt → "civarda yok" demek yerine en yakın
     // GERÇEK mekanları (isim + mesafe) getir; kullanıcı uzak olsa da ismiyle görsün.
-    let els = await runOverpass(radius);
-    const expandSteps = [5000, 12000, 25000];
-    for (let i = 0; i < expandSteps.length && !els.length; i++) {
-      if (expandSteps[i] > radius) els = await runOverpass(expandSteps[i]);
+    async function runExpanding(sels) {
+      let out = await runOverpass(radius, sels);
+      const steps = [5000, 12000, 25000];
+      for (let i = 0; i < steps.length && !out.length; i++) {
+        if (steps[i] > radius) out = await runOverpass(steps[i], sels);
+      }
+      return out;
     }
+
+    // ── SPESİFİK İSTEK DARALTMA ──
+    // Kullanıcı "sushi/pizza/kebap" gibi spesifik bir şey istediyse (query'de kelime
+    // eşleşiyorsa) SADECE o türü göster. Sıra: (A) OSM cuisine tag ile ara → (B) tag
+    // yoksa bucket'tan mekan İSMİNDE eşleştir → (C) o da yoksa DÜRÜSTÇE bucket'a
+    // genişle (broadened=true) ve mesajda "tam X yok, en yakın alternatifler" de.
+    // Yalnız yeme-içme bucket'larında uygulanır (bar/aktivite'de mutfak anlamsız).
+    const rule =
+      query && ["food", "cafe", "dessert"].includes(typeKey)
+        ? CUISINE_RULES.find((c) => c.test.test(query))
+        : null;
+    let els = [];
+    let broadened = false;
+    let bucketTried = false;
+    // Tier A: cuisine tag daraltması (yeme-içme amenity'leri içinde)
+    if (rule && rule.cuisine) {
+      els = await runExpanding([
+        `["amenity"~"^(restaurant|fast_food|cafe|ice_cream)$"]["cuisine"~"${rule.cuisine}",i]`,
+      ]);
+    }
+    // Tier B: cuisine tag'i yoksa, bucket sonuçlarını mekan İSMİNE göre süz
+    if (rule && !els.length) {
+      const bucketEls = await runExpanding(bucketSelectors);
+      bucketTried = true;
+      const named = bucketEls.filter(
+        (e) =>
+          e.tags &&
+          rule.name.test(String(e.tags["name:tr"] || e.tags.name || "")),
+      );
+      if (named.length) {
+        els = named; // isimle eşleşen gerçek "X Sushi" yerleri → alakalı
+      } else if (bucketEls.length) {
+        els = bucketEls; // spesifik tür hiç yok → en yakın alternatifler
+        broadened = true;
+      }
+    }
+    // Bucket varsayılanı (spesifik istek yok ya da yukarıda denenmedi)
+    if (!els.length && !bucketTried) {
+      els = await runExpanding(bucketSelectors);
+    }
+    // Kartta/etikette gösterilecek Türkçe tür adı: spesifik ve gerçekten bulunduysa
+    // rule.label ("suşi/japon"); genişletildiyse ham OSM kategorisi (KIND_TR) kalır.
+    const forceKind = rule && !broadened ? rule.label : "";
 
     const seen = {};
     // Adı "baro / barosu / association / hukuk / avukat" içeren POI'ler = hukuk
@@ -634,7 +778,9 @@ app.post("/nearby", rateLimit, async (req, res) => {
         // haritada olmayan (beklenmedik/alakasız) tag varsa POI listeden ELENİR.
         const tag =
           e.tags && (e.tags.amenity || e.tags.shop || e.tags.leisure);
-        const kindTr = tag && KIND_TR[tag];
+        // Spesifik istek gerçekten bulunduysa etiketi o türe sabitle ("suşi/japon");
+        // yoksa bilinen OSM kategorisini Türkçeye çevir. Bilinmeyen tag = ELE.
+        const kindTr = forceKind || (tag && KIND_TR[tag]);
         if (!kindTr) return null; // tanınmayan/alakasız kategori → gösterme
         if (NAME_BLOCKLIST.test(String(name))) return null; // baro/hukuk kurumu → ele
         const phone =
@@ -691,7 +837,17 @@ app.post("/nearby", rateLimit, async (req, res) => {
         typeKey
       ] || typeKey;
     try {
-      if (places.length) {
+      if (places.length && broadened) {
+        // DÜRÜST GENİŞLETME: kullanıcı spesifik bir şey istedi (rule.label) ama o tür
+        // civarda çıkmadı → uydurmadan, "tam onu bulamadım, en yakın alternatifler"
+        // de. Haiku'ya gerek yok, hallüsinasyon riskini sıfırla (deterministik).
+        const near = places
+          .slice(0, 3)
+          .map((p) => p.name)
+          .join(", ");
+        merciComment =
+          `Tam olarak "${rule.label}" çıkmadı buralarda 🐙 Ama en yakın ${typeLabel} yerleri şunlar: ${near}. Beğenirsen aşağıdan bak 👇`;
+      } else if (places.length) {
         const top = places
           .slice(0, 6)
           .map((p) => `${p.name} (${p.dist}m)`)
@@ -708,7 +864,8 @@ app.post("/nearby", rateLimit, async (req, res) => {
               role: "user",
               content:
                 (locName ? "Kullanıcı " + locName + " civarında.\n" : "") +
-                "Tür: " + typeKey + "\nEn yakın gerçek mekanlar (isim + mesafe): " + top,
+                "Tür: " + (rule ? rule.label : typeLabel) +
+                "\nEn yakın gerçek mekanlar (isim + mesafe): " + top,
             },
           ],
         });
@@ -720,13 +877,19 @@ app.post("/nearby", rateLimit, async (req, res) => {
         // olmadan semt/mekan UYDURMAK yasak → yer ismi verme; başka tür ya da çarka
         // yönlendir. (Gerçek mekan bulunduğunda uzak da olsa yukarıdaki dal kartları döndürür.)
         merciComment =
-          `Bu civarda ${typeLabel} pek çıkmadı 🐙 Başka bir tür dene — kafe, yemek ya da aktivite gibi — ya da çarkı çevir, ne çıkarsa o!`;
+          `Bu civarda ${rule ? '"' + rule.label + '"' : typeLabel} pek çıkmadı 🐙 Başka bir tür dene — kafe, yemek ya da aktivite gibi — ya da çarkı çevir, ne çıkarsa o!`;
       }
     } catch (e) {
       console.error("Nearby Merci comment error:", e.message);
     }
 
-    res.json({ places, merciComment: merciComment.trim(), isPro });
+    res.json({
+      places,
+      merciComment: merciComment.trim(),
+      isPro,
+      broadened, // spesifik tür bulunamadı, alternatif gösterildi mi (client bilgilendirme)
+      matched: rule ? rule.label : "", // eşleşen spesifik tür etiketi (varsa)
+    });
   } catch (e) {
     console.error("Nearby Error:", e.message);
     res.status(500).json({ error: "Konum önerisi alınamadı, tekrar dene." });
