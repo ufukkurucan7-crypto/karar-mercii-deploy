@@ -3502,6 +3502,92 @@
       .vote-mode-btn.on .ai-intro-sub {
         color: var(--ac-ll);
       }
+      /* ═══ OYLAMA YENİDEN TASARIM (Varyant A — rehberli adım akışı) ═══ */
+      /* Adım göstergesi */
+      .vote-steps { display:flex; align-items:center; justify-content:center; gap:6px; margin:2px 0 16px; }
+      .vstep { display:flex; align-items:center; gap:6px; }
+      .vstep i { width:22px; height:22px; border-radius:50%; background:var(--ac-bg3); color:var(--ac-l2); font-style:normal; font-size:11px; font-weight:900; display:flex; align-items:center; justify-content:center; transition:background .2s, color .2s; }
+      .vstep.on i { background:var(--ac); color:#fff; }
+      .vstep.done i { background:#16a34a; color:#fff; }
+      .vstep span { font-size:10px; font-weight:800; color:var(--ac-l2); }
+      .vstep.on span { color:var(--ac-d); }
+      .vstep-line { width:14px; height:2px; background:var(--ac-bd); border-radius:2px; }
+      html.dark .vstep i { background:#2a2140; }
+      html.dark .vstep.on span { color:var(--ac-ll); }
+      /* Mod kartları (.vote-mode-btn yeniden derinlik/kart görünümü) */
+      .vmode-ic { width:46px; height:46px; margin:0 auto 8px; border-radius:14px; background:var(--ac-bg3); display:flex; align-items:center; justify-content:center; transition:background .15s; }
+      .vmode-ic svg { width:26px; height:26px; stroke:var(--ac-d); fill:none; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
+      .vote-mode-btn.on .vmode-ic { background:rgba(255,255,255,.22); }
+      .vote-mode-btn.on .vmode-ic svg { stroke:#fff; }
+      .vmode-t { font-size:14px; font-weight:900; }
+      .vmode-d { font-size:10.5px; font-weight:700; color:var(--ac-l2); margin-top:3px; line-height:1.35; }
+      .vote-mode-btn.on .vmode-d { color:var(--ac-ll); }
+      .vmode-badge { position:absolute; top:-8px; right:10px; font-size:8.5px; font-weight:900; letter-spacing:.3px; background:var(--ac); color:#fff; padding:2px 8px; border-radius:999px; box-shadow:0 3px 8px rgba(var(--ac-shadow),.4); }
+      .vote-mode-btn { position:relative; }
+      html.dark .vmode-ic { background:#2a2140; }
+      html.dark .vmode-ic svg { stroke:var(--ac-ll); }
+      /* Kişi sayısı — people-box + stepper */
+      .vpeople { display:flex; align-items:center; gap:12px; background:var(--ac-bg2); border:1.5px solid var(--ac-bd); border-radius:16px; padding:12px 14px; margin-bottom:12px; }
+      .vpeople .vp-l { flex:1; }
+      .vpeople .vp-l .h { font-size:13px; font-weight:900; color:var(--ac-dd); }
+      .vpeople .vp-l .s { font-size:10.5px; font-weight:700; color:var(--ac-l2); margin-top:1px; }
+      .vstepper { display:flex; align-items:center; gap:8px; }
+      .vstepper button { width:34px; height:34px; border-radius:10px; border:1.5px solid var(--ac-ll); background:#fff; color:var(--ac-d); font-size:20px; font-weight:900; cursor:pointer; line-height:1; font-family:"Nunito",sans-serif; transition:transform .1s; }
+      .vstepper button:active { transform:scale(.9); }
+      .vstepper .val { min-width:26px; text-align:center; font-size:20px; font-weight:900; color:var(--ac-dd); }
+      html.dark .vpeople { background:#1a1430; border-color:#33285a; }
+      html.dark .vpeople .vp-l .h { color:#ece8f7; }
+      html.dark .vstepper button { background:#241b3a; border-color:#3a2f55; color:var(--ac-ll); }
+      html.dark .vstepper .val { color:#ece8f7; }
+      /* Hızlı Başlat kartı (çark empty-card diliyle tutarlı) */
+      .vqs-card { position:relative; border-radius:20px; padding:14px 16px; margin-bottom:12px; background:radial-gradient(120% 90% at 80% -10%, rgba(var(--ac-shadow),.10), transparent 60%), linear-gradient(180deg,#fff,var(--ac-bg2)); border:1px solid var(--ac-bd); box-shadow:0 14px 34px -20px rgba(var(--ac-shadow),.45); overflow:hidden; }
+      html.dark .vqs-card { background:linear-gradient(180deg,#221d33,#1a1626); border-color:#352c52; }
+      .vqs-title { display:flex; align-items:center; gap:6px; font-size:12px; font-weight:900; color:var(--ac); letter-spacing:.2px; margin-bottom:10px; }
+      .vqs-title::after { content:""; flex:1; height:1px; background:linear-gradient(90deg,var(--ac-bd),transparent); }
+      html.dark .vqs-title { color:var(--ac-ll); }
+      /* Kategori çipleri kart içinde sarmalı görünsün (yatay scroll yerine) */
+      .vqs-card .cats { flex-wrap:wrap; overflow:visible; -webkit-mask-image:none; mask-image:none; padding-right:0; margin-bottom:0; }
+      .vqs-div { display:flex; align-items:center; gap:10px; margin:14px 0 10px; color:#aab; font-size:11px; font-weight:700; }
+      .vqs-div::before, .vqs-div::after { content:""; flex:1; height:1px; background:var(--ac-bd); }
+      html.dark .vqs-div { color:#6b6582; }
+      .vqs-merci-btn { width:100%; display:flex; align-items:center; justify-content:center; gap:7px; padding:11px; border-radius:14px; cursor:pointer; font-family:"Fredoka","Nunito",sans-serif; font-weight:700; font-size:13.5px; color:var(--ac-d); background:rgba(255,255,255,.7); border:1.5px solid var(--ac-bd); transition:transform .12s; }
+      .vqs-merci-btn:active { transform:scale(.97); }
+      .vqs-merci-btn:disabled { opacity:.7; cursor:default; }
+      html.dark .vqs-merci-btn { background:rgba(255,255,255,.04); border-color:#3d3460; color:var(--ac-ll); }
+      /* Canlı oy tablosu (online şeffaflık) */
+      .voter-board { border:1.5px solid var(--ac-bd); border-radius:16px; padding:12px 14px; background:var(--ac-bg2); margin-bottom:12px; }
+      html.dark .voter-board { background:#1a1430; border-color:#33285a; }
+      .vb-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; }
+      .vb-head .h { font-size:12px; font-weight:900; color:var(--ac-dd); }
+      html.dark .vb-head .h { color:#ece8f7; }
+      .vb-head .c { font-size:12px; font-weight:900; color:var(--ac); }
+      .vb-progress { height:7px; border-radius:999px; background:var(--ac-bg3); overflow:hidden; margin-bottom:10px; }
+      html.dark .vb-progress { background:#2a2140; }
+      .vb-progress > i { display:block; height:100%; border-radius:999px; background:linear-gradient(90deg,var(--ac),var(--ac-l)); transition:width .4s; }
+      .vb-list { display:flex; flex-direction:column; gap:6px; }
+      .vb-row { display:flex; align-items:center; gap:9px; font-size:13px; font-weight:800; }
+      .vb-row .dot { width:22px; height:22px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:12px; flex-shrink:0; }
+      .vb-row.voted .dot { background:#dcfce7; color:#16a34a; }
+      .vb-row.waiting .dot { background:#fef3c7; color:#d97706; }
+      html.dark .vb-row.voted .dot { background:#14331f; color:#4ade80; }
+      html.dark .vb-row.waiting .dot { background:#3a2c10; color:#fbbf24; }
+      .vb-row .nm { flex:1; color:var(--ac-dd); }
+      html.dark .vb-row .nm { color:#e8e1f7; }
+      .vb-row .st { font-size:10.5px; font-weight:800; }
+      .vb-row.voted .st { color:#16a34a; }
+      .vb-row.waiting .st { color:#d97706; }
+      .vb-row .you { font-size:8.5px; background:var(--ac); color:#fff; padding:1px 6px; border-radius:999px; margin-left:2px; }
+      /* Ayarlar — menü içi slide-in sayfa (popup yerine) */
+      .settings-panel { position:fixed; top:0; right:0; bottom:0; width:min(300px,86vw); background:#fff; z-index:29999; transform:translateX(100%); transition:transform .28s cubic-bezier(0.4,0,0.2,1); display:flex; flex-direction:column; box-shadow:-6px 0 30px rgba(var(--ac-shadow),.2); visibility:hidden; }
+      .settings-panel.on { transform:translateX(0); visibility:visible; }
+      .settings-panel-hdr { display:flex; align-items:center; gap:10px; padding:16px 14px; border-bottom:2px solid var(--ac-bg); }
+      .settings-panel-hdr .back { width:36px; height:36px; border-radius:10px; background:var(--ac-bg); border:none; color:var(--ac-d); font-size:22px; font-weight:900; cursor:pointer; display:flex; align-items:center; justify-content:center; font-family:"Nunito",sans-serif; line-height:1; }
+      .settings-panel-hdr .ttl { flex:1; font-size:16px; font-weight:900; color:var(--ac-dd); }
+      .settings-panel-body { flex:1; overflow-y:auto; padding:14px; }
+      html.dark .settings-panel { background:#100c1c; }
+      html.dark .settings-panel-hdr { border-bottom-color:#2a2140; }
+      html.dark .settings-panel-hdr .back { background:#1e1733; color:var(--ac-ll); }
+      html.dark .settings-panel-hdr .ttl { color:#f2eefc; }
       .timer-bar {
         background: var(--ac-dd);
         color: #fff;
@@ -4329,6 +4415,14 @@
 
         <!-- OYLAMA -->
         <div class="sec" id="s-vote">
+          <!-- Rehberli adım göstergesi -->
+          <div class="vote-steps" id="vote-steps">
+            <div class="vstep on" id="vstep-1"><i>1</i><span>Mod</span></div>
+            <div class="vstep-line"></div>
+            <div class="vstep" id="vstep-2"><i>2</i><span>Kimler</span></div>
+            <div class="vstep-line"></div>
+            <div class="vstep" id="vstep-3"><i>3</i><span>Oyla</span></div>
+          </div>
           <!-- Mod Seçimi -->
           <div id="vote-mode-select">
             <div style="text-align: center; margin: 4px 0 16px">
@@ -4371,126 +4465,54 @@
                 id="vm-masa"
                 onclick="setVoteMode('masa')"
               >
-                <div style="font-size: 22px">📱</div>
-                <div style="font-size: 10px; font-weight: 900; margin-top: 3px">
-                  Tek Cihaz
+                <div class="vmode-ic">
+                  <svg viewBox="0 0 24 24"><rect x="6.5" y="3" width="11" height="18" rx="2.4"/><path d="M10.5 18.2h3"/></svg>
                 </div>
-                <div
-                  style="
-                    font-size: 9px;
-                    font-weight: 700;
-                    color: var(--ac-l2);
-                    margin-top: 1px;
-                  "
-                >
-                  Masa Modu
-                </div>
+                <div class="vmode-t">Bu Cihazda</div>
+                <div class="vmode-d">Tek telefon, elden ele</div>
               </button>
               <button
                 class="vote-mode-btn"
                 id="vm-online"
                 onclick="setVoteMode('online')"
               >
-                <div style="font-size: 22px">📡</div>
-                <div style="font-size: 10px; font-weight: 900; margin-top: 3px">
-                  Online
+                <div class="vmode-badge">CANLI</div>
+                <div class="vmode-ic">
+                  <svg viewBox="0 0 24 24"><path d="M5 12.5a9 9 0 0 1 14 0"/><path d="M8 15.5a5 5 0 0 1 8 0"/><circle cx="12" cy="18.5" r="1.4" fill="currentColor" stroke="none"/></svg>
                 </div>
-                <div
-                  style="
-                    font-size: 9px;
-                    font-weight: 700;
-                    color: var(--ac-l2);
-                    margin-top: 1px;
-                  "
-                >
-                  Herkes katılsın
-                </div>
+                <div class="vmode-t">Online</div>
+                <div class="vmode-d">Herkes kendi telefonundan</div>
               </button>
             </div>
           </div>
 
-          <!-- Kategori Seç - mod seçilince görünür -->
-          <div id="cats-vote-wrap" style="display: none">
-            <p class="lbl">Kategori seç</p>
+          <!-- Hızlı Başlat kartı (çark empty-card diliyle tutarlı) — mod seçilince görünür -->
+          <div id="cats-vote-wrap" class="vqs-card" style="display: none">
+            <div class="vqs-title">⚡ Hızlı Başlat</div>
             <div class="cats" id="cats-vote"></div>
+            <div class="vqs-div">ya da</div>
+            <button
+              class="vqs-merci-btn"
+              id="vote-merci-fill"
+              onclick="merciFillVote()"
+            >
+              ✨ Merci doldursun
+            </button>
           </div>
 
           <!-- Tek Cihaz -->
           <div id="vote-local" style="display: none">
-            <!-- Kişi sayısı seçimi - confirm öncesi -->
+            <!-- Kişi sayısı — people-box + −/+ stepper (confirm öncesi) -->
             <div id="masa-people-wrap" style="margin-bottom: 12px">
-              <p class="lbl">Kaç kişi oylayacak?</p>
-              <div
-                style="
-                  display: flex;
-                  gap: 6px;
-                  flex-wrap: wrap;
-                  margin-bottom: 8px;
-                "
-                id="masa-people-row"
-              >
-                <button
-                  class="onl-sel-btn on"
-                  data-pc="2"
-                  onclick="setMasaPeople(2)"
-                >
-                  2
-                </button>
-                <button
-                  class="onl-sel-btn"
-                  data-pc="3"
-                  onclick="setMasaPeople(3)"
-                >
-                  3
-                </button>
-                <button
-                  class="onl-sel-btn"
-                  data-pc="4"
-                  onclick="setMasaPeople(4)"
-                >
-                  4
-                </button>
-                <button
-                  class="onl-sel-btn"
-                  data-pc="5"
-                  onclick="setMasaPeople(5)"
-                >
-                  5
-                </button>
-                <button
-                  class="onl-sel-btn"
-                  data-pc="10"
-                  onclick="setMasaPeople(10)"
-                >
-                  10
-                </button>
-                <button
-                  class="onl-sel-btn"
-                  id="masa-custom-btn"
-                  onclick="toggleMasaCustom()"
-                >
-                  ✏️
-                </button>
-              </div>
-              <div
-                id="masa-custom-wrap"
-                style="display: none; margin-bottom: 8px"
-              >
-                <div class="irow" style="align-items: center">
-                  <input
-                    id="masa-custom-inp"
-                    type="number"
-                    min="2"
-                    placeholder="Kişi sayısı..."
-                    style="width: 100%"
-                  />
-                  <button
-                    class="abtn"
-                    onclick="applyMasaCustom()"
-                    style="font-size: 13px; padding: 11px 14px"
-                  >
-                    ✓
-                  </button>
+              <div class="vpeople">
+                <div class="vp-l">
+                  <div class="h">👥 Kaç kişi oylayacak?</div>
+                  <div class="s">2+ kişi — sırayla herkes oy verir</div>
+                </div>
+                <div class="vstepper">
+                  <button type="button" onclick="voteAdjPeople(-1)" aria-label="Azalt">−</button>
+                  <span class="val" id="masa-people-val">2</span>
+                  <button type="button" onclick="voteAdjPeople(1)" aria-label="Artır">+</button>
                 </div>
               </div>
               <button
@@ -4499,7 +4521,7 @@
                 onclick="confirmMasaPeople()"
                 style="margin-top: 4px"
               >
-                ✅ Tamam, oylama başlasın
+                Oylamaya Başla →
               </button>
             </div>
             <!-- Kilit durumu - kişi sayısı onaylandı -->
@@ -4744,6 +4766,10 @@
                 style="display: none"
               ></div>
               <div class="olist" id="participant-list"></div>
+              <!-- CANLI OY TABLOSU (şeffaflık) — renderVoteTable() doldurur.
+                   FAZ 2: listenRoomAsParticipant() içindeki onSnapshot'ta
+                   renderVoteTable(data.participants, deviceId, data.hostId) çağrılacak. -->
+              <div id="vote-table" class="voter-board" style="display: none"></div>
               <button class="btn" id="submit-vote-btn">✅ Oyumu İlet</button>
               <button
                 class="btn ghost"
@@ -6787,7 +6813,7 @@ function drawResultCard(opts) {
         },
         // Ekranda açık bir popup/modal var mı?
         modalSelectors:
-          ".menu-overlay.on, .info-modal.on, .pro-modal.on, .auth-modal.on, .confirm-modal.on, .modal-overlay.on, .online-popup-overlay.on, #online-setup-popup.on, #paywall-wrap, #chat-hist-overlay, #km-tour",
+          ".menu-overlay.on, .info-modal.on, .pro-modal.on, .auth-modal.on, .confirm-modal.on, .modal-overlay.on, .online-popup-overlay.on, #online-setup-popup.on, #paywall-wrap, #chat-hist-overlay, #km-tour, .settings-panel.on",
         anyModalOpen: function () {
           try {
             return !!document.querySelector(this.modalSelectors);
@@ -7668,7 +7694,28 @@ function drawResultCard(opts) {
             sel: '.tab[data-tab="vote"]',
             pose: "default",
             title: "⭐ Oylama",
-            body: "Kalabalıksanız oylayın: Tek Cihaz, elden ele Masa modu ya da Online oda (herkes kendi telefonundan — oda kur veya kodla katıl).",
+            body: "Kalabalıksanız birlikte karar verin! 3 adımlı rehber sizi yönlendirir: önce mod, sonra kimler, sonra oylama 👇",
+          },
+          {
+            tab: "vote",
+            sel: "#vote-mode-select",
+            pose: "default",
+            title: "1️⃣ Nasıl oylayalım?",
+            body: "İki yol var: <b>Bu Cihazda</b> tek telefonu elden ele dolaştırın; <b>Online</b>'da herkes kendi telefonundan bağlanır (oda kur ya da kodla katıl).",
+          },
+          {
+            tab: "vote",
+            sel: "#vote-mode-select",
+            pose: "default",
+            title: "2️⃣ Kaç kişi?",
+            body: '"Bu Cihazda"yı seçince <b>−/+</b> ile kişi sayısını ayarla. 2+ kişi = sıra sırayla herkese geçer (masa modu).',
+          },
+          {
+            tab: "vote",
+            sel: "#vote-mode-select",
+            pose: "default",
+            title: "⚡ Hızlı Başlat",
+            body: "Tıpkı çarktaki gibi: hazır konu seç (Ne yesek, nereye gidelim...) ya da <b>✨ Merci doldursun</b> de — seçenekleri ben üreteyim!",
           },
           {
             tab: "cekilis",
@@ -7683,6 +7730,17 @@ function drawResultCard(opts) {
             pose: "glasses",
             title: "🧠 Merci'ye Danış",
             body: "Ne yesek, nereye gidelim, ne izlesek diye sor — durumunu anlat, sana en iyi seçenekleri öneririm. Kararsız kalırsan senin için seçerim 🐙",
+          },
+          {
+            sel: "#menu-btn",
+            pose: "default",
+            title: "☰ Menü",
+            body: "Buradan Pro üyelik, karar geçmişin, ayarlar ve daha fazlasına ulaşırsın.",
+          },
+          {
+            pose: "glasses",
+            title: "⚙️ Ayarlar",
+            body: "Menü → Ayarlar'dan karanlık modu, ses ve titreşimi aç/kapat; PRO ile renk temasını değiştir. Hazırsan başlayalım! 🎉",
           },
         ];
         var i = 0;
@@ -8965,8 +9023,11 @@ function drawResultCard(opts) {
         document.getElementById("vr").style.display = "none";
         var st = document.getElementById("masa-status");
         if (st) st.style.display = "none";
+        var vt = document.getElementById("vote-table");
+        if (vt) vt.style.display = "none";
         render("vote");
         updateVoteUI();
+        setVoteStep(1);
       }
       function showVWin(winner) {
         var say = getSaying(winner);
@@ -10242,6 +10303,137 @@ function drawResultCard(opts) {
       }
       var masaPeopleConfirmed = false;
       var masaPeopleCount = 2;
+      // ── OYLAMA REHBERLİ AKIŞ: adım göstergesi (görsel, mantığı etkilemez) ──
+      function setVoteStep(n) {
+        for (var s = 1; s <= 3; s++) {
+          var el = document.getElementById("vstep-" + s);
+          if (!el) continue;
+          el.classList.remove("on", "done");
+          if (s < n) el.classList.add("done");
+          else if (s === n) el.classList.add("on");
+        }
+      }
+      // Kişi sayısı −/+ stepper → mevcut setMasaPeople mantığını kullanır
+      function voteAdjPeople(delta) {
+        var n = (masaPeopleCount || 2) + delta;
+        if (n < 2) n = 2;
+        if (n > 20) n = 20;
+        setMasaPeople(n);
+        var v = document.getElementById("masa-people-val");
+        if (v) v.textContent = n;
+      }
+      // "✨ Merci doldursun" (oylama) — çarktaki merciFillWheel ile aynı /options
+      // hattı; online modda onlineOpts'a, yerelde S.vote'a ekler.
+      function merciFillVote() {
+        if (!currentUser) {
+          signInWithGoogle();
+          return;
+        }
+        var btn = document.getElementById("vote-merci-fill");
+        var viEl = document.getElementById("vi");
+        var theme = ((viEl && viEl.value) || "").trim();
+        var orig = btn ? btn.textContent : "";
+        if (btn) {
+          btn.disabled = true;
+          btn.style.opacity = "0.7";
+          btn.textContent = "🐙 Merci düşünüyor…";
+        }
+        currentUser
+          .getIdToken()
+          .then((token) =>
+            fetch("/options", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: "Bearer " + token,
+              },
+              body: JSON.stringify({ theme: theme, count: 6 }),
+            }),
+          )
+          .then((r) => r.json().then((data) => ({ status: r.status, data })))
+          .then(({ status, data }) => {
+            if (status === 429) {
+              showPaywall();
+              return;
+            }
+            if (status === 401) {
+              signInWithGoogle();
+              return;
+            }
+            if (data.options && data.options.length) {
+              if (voteMode === "online") {
+                data.options.forEach(function (o) {
+                  if (onlineOpts.indexOf(o) < 0) onlineOpts.push(o);
+                });
+                if (typeof renderOnlineOpts === "function") renderOnlineOpts();
+              } else {
+                data.options.forEach(function (o) {
+                  if (!(o in S.vote)) S.vote[o] = 0;
+                });
+                render("vote");
+              }
+              if (viEl) viEl.value = "";
+              snd("add");
+            }
+          })
+          .catch(function () {})
+          .finally(function () {
+            if (btn) {
+              btn.disabled = false;
+              btn.style.opacity = "1";
+              btn.textContent = orig || "✨ Merci doldursun";
+            }
+          });
+      }
+      // CANLI OY TABLOSU (şeffaflık) — participants: { id: {name, submitted, votes} }
+      // FAZ 2: listenRoomAsParticipant() onSnapshot içinden
+      //   renderVoteTable(data.participants, deviceId, data.hostId) çağrılacak.
+      function renderVoteTable(participants, myId, hostId) {
+        var el = document.getElementById("vote-table");
+        if (!el) return;
+        var keys = Object.keys(participants || {});
+        if (!keys.length) {
+          el.style.display = "none";
+          return;
+        }
+        var voted = keys.filter(
+          (k) => participants[k] && participants[k].submitted === true,
+        ).length;
+        var pct = Math.round((voted / keys.length) * 100);
+        var rows = keys
+          .map(function (k) {
+            var p = participants[k] || {};
+            var isVoted = p.submitted === true;
+            var tags = "";
+            if (hostId && k === hostId) tags += '<span class="you">HOST</span>';
+            if (myId && k === myId) tags += '<span class="you">SEN</span>';
+            return (
+              '<div class="vb-row ' +
+              (isVoted ? "voted" : "waiting") +
+              '"><span class="dot">' +
+              (isVoted ? "✓" : "⏳") +
+              '</span><span class="nm">' +
+              esc(p.name || "?") +
+              " " +
+              tags +
+              '</span><span class="st">' +
+              (isVoted ? "verdi" : "bekleniyor") +
+              "</span></div>"
+            );
+          })
+          .join("");
+        el.innerHTML =
+          '<div class="vb-head"><span class="h">Kim oyladı?</span><span class="c">' +
+          voted +
+          "/" +
+          keys.length +
+          '</span></div><div class="vb-progress"><i style="width:' +
+          pct +
+          '%"></i></div><div class="vb-list">' +
+          rows +
+          "</div>";
+        el.style.display = "";
+      }
       function setMasaPeople(n) {
         masaPeopleCount = n;
         document
@@ -10288,6 +10480,7 @@ function drawResultCard(opts) {
         voteTurn = 1;
         totals = {};
         updateVoteUI();
+        setVoteStep(3);
         snd("ding");
       }
 
@@ -10344,6 +10537,7 @@ function drawResultCard(opts) {
           Object.keys(S.vote).forEach((k) => (S.vote[k] = 0));
           render("vote");
           updateVoteUI();
+          setVoteStep(2);
         }
         // Oylama başladıysa (ilk kişi bile yıldız verdiyse) onaysız değiştirme —
         // eskiden voteTurn===1'de sessizce açılıyordu, kişi sayısı serbest kalıyordu.
@@ -10444,6 +10638,10 @@ function drawResultCard(opts) {
         totals = {};
         voteClosed = false;
         updateVoteUI();
+        // Adım 2'ye geç + kişi sayısı stepper değerini senkronla
+        setVoteStep(2);
+        var pv = document.getElementById("masa-people-val");
+        if (pv) pv.textContent = masaPeopleCount || 2;
         snd("click");
       }
 
@@ -10588,6 +10786,7 @@ function drawResultCard(opts) {
             name + " — Oda açık";
           renderHostVoteList();
           listenRoomAsHost(code);
+          setVoteStep(3); // online oda açıldı → adım göstergesi "Oyla"ya geç
           snd("ding");
           logEv("room_create", { option_count: onlineOpts.length });
           if (roomTimeLimit > 0)
@@ -10738,23 +10937,47 @@ function drawResultCard(opts) {
             (p) => p.submitted === true,
           ).length;
           var totalCount = Object.keys(parts).length;
-          // Confirm if not everyone has voted
+          // Herkes oy vermediyse: ham confirm yerine STİLİZE onay + bekleyen isimleri
           if (voterCount < totalCount) {
-            if (
-              !confirm(
-                "Henüz " +
-                  (totalCount - voterCount) +
-                  " kişi oy göndermedi, yine de kapatmak istiyor musunuz?",
-              )
-            )
-              return;
+            var _waiting = Object.keys(parts)
+              .filter((k) => parts[k].submitted !== true)
+              .map((k) => (parts[k] && parts[k].name) || "?");
+            showConfirm(
+              totalCount - voterCount + " kişi henüz oy vermedi",
+              (_waiting.length ? _waiting.join(", ") + " bekleniyor. " : "") +
+                voterCount +
+                "/" +
+                totalCount +
+                " oy hazır. Şimdi bitirirsen bekleyenlerin oyu sayılmaz.",
+              function () {
+                _finalizeClose(shareCode, data);
+              },
+              "Yine de Bitir",
+              "Bekle",
+            );
+            return;
           }
+          // Herkes oy verdi → doğrudan sonuçlandır
+          _finalizeClose(shareCode, data);
+        } catch (e) {
+          alert("Hata: " + e.message);
+        }
+      }
+
+      // Oyları say + Firestore'a kazanan/beraberlik yaz (closeVoting'den ayrıldı;
+      // mantık birebir korundu — stilize onaydan SONRA çağrılır).
+      async function _finalizeClose(code, data) {
+        try {
+          var parts = data.participants || {};
+          var voterCount = Object.values(parts).filter(
+            (p) => p.submitted === true,
+          ).length;
           if (voterCount === 0) {
             var t = {};
             data.options.forEach((o) => (t[o] = 0));
             await db
               .collection("rooms")
-              .doc(shareCode)
+              .doc(code)
               .update({ status: "tied", tieItems: data.options });
             return;
           }
@@ -10774,7 +10997,7 @@ function drawResultCard(opts) {
           if (winners.length > 1) {
             // Write tied status — ALL listeners will open tiebreaker UI
             tbAnimKey = "";
-            await db.collection("rooms").doc(shareCode).update({
+            await db.collection("rooms").doc(code).update({
               status: "tied",
               tieItems: winners,
               winner: null,
@@ -10785,7 +11008,7 @@ function drawResultCard(opts) {
             });
           } else {
             // Clear winner — write to Firestore, ALL listeners will show result
-            await db.collection("rooms").doc(shareCode).update({
+            await db.collection("rooms").doc(code).update({
               status: "closed",
               winner: winners[0],
               winnerPoints: sorted[0][1],
@@ -11078,6 +11301,7 @@ function drawResultCard(opts) {
           document.getElementById("online-participant").style.display = "";
           renderParticipant(data.options);
           listenRoomAsParticipant(shareCode);
+          setVoteStep(3); // odaya katıldı → adım göstergesi "Oyla"ya geç
           if (data.timeLimit > 0)
             startTimer(data.timeLimit * 60, "p-timer-display", () =>
               submitVote(),
@@ -12941,7 +13165,7 @@ function drawResultCard(opts) {
         var miSettings = document.getElementById("mi-settings");
         if (miSettings)
           miSettings.addEventListener("click", function () {
-            closeMenu();
+            // Menü açık kalır; ayarlar sayfası ÜSTÜNE kayar (geri oku menüye döndürür)
             var m = document.getElementById("modal-settings");
             if (m) m.classList.add("on");
           });
@@ -13007,6 +13231,9 @@ function drawResultCard(opts) {
           var md = document.getElementById("menu-drawer");
           if (mo) mo.classList.remove("on");
           if (md) md.classList.remove("on");
+          // Ayarlar slide-in sayfası açıksa onu da kapat
+          var sp = document.getElementById("modal-settings");
+          if (sp) sp.classList.remove("on");
         }
         var menuBtn = document.getElementById("menu-btn");
         if (menuBtn) {
@@ -13026,6 +13253,11 @@ function drawResultCard(opts) {
         window.closeInfoModal = function (id) {
           var el = document.getElementById(id);
           if (el) el.classList.remove("on");
+        };
+        // Ayarlar slide-in sayfasını kapat (menü açık kalır)
+        window.closeSettingsPanel = function () {
+          var sp = document.getElementById("modal-settings");
+          if (sp) sp.classList.remove("on");
         };
         function openInfoModal(id) {
           closeMenu();
@@ -13289,39 +13521,14 @@ function drawResultCard(opts) {
     </div>
 
     <!-- ═══ AYARLAR MODAL ═══ -->
-    <div class="info-modal" id="modal-settings">
-      <div class="info-modal-box" style="padding: 18px 16px 22px; max-height: 80vh">
-        <div
-          style="display: flex; align-items: center; gap: 8px; margin-bottom: 14px"
-        >
-          <span style="font-size: 20px">⚙️</span>
-          <div
-            style="
-              flex: 1;
-              font-size: 16px;
-              font-weight: 900;
-              color: var(--ac-dd);
-            "
-          >
-            Ayarlar
-          </div>
-          <button
-            onclick="closeInfoModal('modal-settings')"
-            style="
-              background: var(--ac-bg);
-              border: none;
-              border-radius: 8px;
-              width: 30px;
-              height: 30px;
-              font-size: 16px;
-              cursor: pointer;
-              color: var(--ac-d);
-            "
-          >
-            ✕
-          </button>
-        </div>
-
+    <!-- AYARLAR: menü içi slide-in sayfa (popup değil) — geri oku ile menüye döner -->
+    <div class="settings-panel" id="modal-settings">
+      <div class="settings-panel-hdr">
+        <button class="back" onclick="closeSettingsPanel()" aria-label="Geri">‹</button>
+        <span class="ttl">Ayarlar</span>
+        <span style="font-size: 20px">⚙️</span>
+      </div>
+      <div class="settings-panel-body">
         <button class="set-row" id="sound-btn">
           <span class="set-ic" id="sound-icon">🔊</span>
           <span class="set-lbl">Ses</span>
