@@ -693,7 +693,13 @@
         display: flex;
         gap: 6px;
         margin-top: 6px;
-        margin-left: 36px;
+        /* Balonun ALTINA, sol kenarıyla hizalı düşsün: .msg-merci flex-wrap'lı →
+           tam satır kapla (flex 0 0 100%) ki avatar+balonun sağına taşıp 👎'yi
+           ekran dışına itmesin. İç boşlukla avatar(32)+gap(8) kadar içeri al. */
+        flex: 0 0 100%;
+        box-sizing: border-box;
+        margin-left: 0;
+        padding-left: 40px;
         max-height: 40px;
         overflow: hidden;
         transition:
@@ -2766,6 +2772,7 @@
       .msg-merci {
         display: flex;
         align-items: flex-start;
+        flex-wrap: wrap;
         gap: 8px;
         align-self: flex-start;
         max-width: 92%;
@@ -6097,15 +6104,21 @@ function drawResultCard(opts) {
       }
 
       // ── CONFIRM MODAL (premium/auth çıkışı için) ──
-      window.showConfirm = function (title, sub, onYes) {
+      window.showConfirm = function (title, sub, onYes, yesLabel, noLabel) {
         var box = document.getElementById("confirm-modal");
         document.getElementById("confirm-title").innerHTML = title;
         document.getElementById("confirm-sub").innerHTML = sub;
-        document.getElementById("confirm-yes-btn").onclick = function () {
+        var yb = document.getElementById("confirm-yes-btn");
+        var nb = document.getElementById("confirm-no-btn");
+        // Özel etiket verilmezse jenerik varsayılana dön → diğer showConfirm
+        // çağrıları ("çıkış" onayları vb.) aynen "Evet, çık"/"Hayır, kal" kalır.
+        yb.textContent = yesLabel || "Evet, çık";
+        nb.textContent = noLabel || "Hayır, kal";
+        yb.onclick = function () {
           box.classList.remove("on");
           onYes();
         };
-        document.getElementById("confirm-no-btn").onclick = function () {
+        nb.onclick = function () {
           box.classList.remove("on");
         };
         box.classList.add("on");
@@ -7968,8 +7981,10 @@ function drawResultCard(opts) {
           // Mevcut seçenek varsa uyar
           if (S.wheel.length > 0) {
             showConfirm(
-              "Seçenekler silinecek ⚠️",
-              "El ile eklediğiniz seçenekler gidecek. Kategori yüklensin mi?",
+              "Eklediğin seçenekler silinsin mi?",
+              'El ile eklediğin seçenekler silinip "' +
+                cat.n +
+                '" listesi yüklenecek. Onaylıyor musun?',
               function () {
                 S.wheel = cat.i.slice();
                 wheelHi = -1;
@@ -7977,6 +7992,8 @@ function drawResultCard(opts) {
                 updW();
                 snd("add");
               },
+              "Evet, yükle",
+              "Vazgeç",
             );
             return;
           }
@@ -7996,8 +8013,10 @@ function drawResultCard(opts) {
             // Mevcut seçenek varsa uyar (sadece seçenek eklenmişse)
             if (Object.keys(S.vote).length > 0) {
               showConfirm(
-                "Seçenekler silinecek ⚠️",
-                "El ile eklediğiniz seçenekler gidecek. Kategori yüklensin mi?",
+                "Eklediğin seçenekler silinsin mi?",
+                'El ile eklediğin seçenekler silinip "' +
+                  cat.n +
+                  '" listesi yüklenecek. Onaylıyor musun?',
                 function () {
                   S.vote = {};
                   cat.i.forEach((x) => (S.vote[x] = 0));
@@ -8006,6 +8025,8 @@ function drawResultCard(opts) {
                   render(mode);
                   snd("add");
                 },
+                "Evet, yükle",
+                "Vazgeç",
               );
               return;
             }
@@ -9824,6 +9845,11 @@ function drawResultCard(opts) {
         html += "</div>";
         wrap.innerHTML = html;
         msgs.appendChild(wrap);
+        // Gösterilen mekan isimlerini biriktir → "başka öner" bunları hariç tutar
+        window._shownPlaces = window._shownPlaces || [];
+        places.slice(0, 8).forEach(function (p) {
+          if (p && p.name) window._shownPlaces.push(p.name);
+        });
         setTimeout(function () {
           wrap.scrollIntoView({ behavior: "smooth", block: "start" });
         }, 50);
@@ -9832,6 +9858,21 @@ function drawResultCard(opts) {
         if (!currentUser) {
           signInWithGoogle();
           return;
+        }
+        query = query || window._lastNearbyQuery || "";
+        // "başka/beğenmedim" → öncekileri hariç tut + yarıçapı genişlet; değilse sıfırla
+        var isMore =
+          /beğenme|begenme|başka|baska|farklı|farkli|başkas|baskas|olmadı|olmadi|sevmedi|hoşuma|hosuma/i.test(
+            query,
+          );
+        if (isMore) {
+          window._nearbyRadius = Math.min(
+            (window._nearbyRadius || 2500) + 3500,
+            20000,
+          );
+        } else {
+          window._shownPlaces = [];
+          window._nearbyRadius = 2500;
         }
         appendMsg("merci", "📍 Konumuna bakıyorum...", false);
         var pos = null,
@@ -9877,7 +9918,9 @@ function drawResultCard(opts) {
               type: type,
               // Ham kullanıcı sorgusu: server /nearby'da niyeti (ör. "kokoreç yiyelim")
               // gerçek mekan filtrelemesine katsın. Açık query yoksa son AI sorusuna düş.
-              query: query || window._lastNearbyQuery || "",
+              query: query,
+              exclude: isMore ? (window._shownPlaces || []).slice(-40) : [],
+              radius: window._nearbyRadius || 2500,
               locName: localStorage.getItem("kmUserLocation") || "",
             }),
           });
