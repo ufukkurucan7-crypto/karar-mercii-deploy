@@ -918,6 +918,25 @@
         text-align: center;
         box-shadow: 0 1px 3px rgba(var(--ac-shadow), 0.4);
       }
+      /* ═══ PAYWALL SEÇİLİ PLAN CİLASI (Deploy #13) ═══ */
+      .pro-plan.selected { animation: proPlanGlow 2.2s ease-in-out infinite; }
+      @keyframes proPlanGlow {
+        0%, 100% { box-shadow: 0 0 0 2px rgba(var(--ac-shadow), 0.22), 0 6px 18px rgba(var(--ac-shadow), 0.3); }
+        50% { box-shadow: 0 0 0 4px rgba(var(--ac-shadow), 0.4), 0 12px 28px rgba(var(--ac-shadow), 0.55); }
+      }
+      .pro-plan.selected::after { animation: proCheckPop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1); }
+      @keyframes proCheckPop {
+        from { transform: scale(0) rotate(-45deg); }
+        to { transform: scale(1) rotate(0); }
+      }
+      /* Perkler modal açılınca kademeli belirir (reduced-motion'da görünür kalır) */
+      .pro-modal.on .pro-perks .pro-perk { animation: proPerkIn 0.45s ease both; }
+      .pro-modal.on .pro-perks .pro-perk:nth-child(1) { animation-delay: 0.08s; }
+      .pro-modal.on .pro-perks .pro-perk:nth-child(2) { animation-delay: 0.16s; }
+      .pro-modal.on .pro-perks .pro-perk:nth-child(3) { animation-delay: 0.24s; }
+      @keyframes proPerkIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+      /* Güven satırı */
+      .pro-hero-body .pro-trust { display: flex; align-items: center; justify-content: center; gap: 6px; margin-top: 10px; font-size: 10.5px; font-weight: 800; color: var(--ac-l2); letter-spacing: 0.2px; }
       .pro-plan-badge {
         position: absolute;
         top: -10px;
@@ -3011,6 +3030,45 @@
       .wstage.win-pop {
         animation: wWinPop 0.55s ease;
       }
+      /* ═══ ÇARK KAZANAN SPOTLIGHT (Deploy #13 — canvas'a DOKUNMAZ, DOM overlay) ═══ */
+      .wspot { position: absolute; inset: 0; border-radius: 50%; z-index: 4; pointer-events: none; }
+      .wspot-mask, .wspot-vig, .wspot-ring { position: absolute; opacity: 0; transition: opacity 0.4s ease; will-change: opacity; }
+      .wspot-mask { inset: 0; border-radius: 50%; }
+      .wspot-vig { inset: -3%; border-radius: 50%; background: radial-gradient(circle at 50% 50%, transparent 46%, rgba(15,5,35,0.32) 88%); }
+      .wspot-ring { top: 3%; left: 50%; width: 30%; height: 30%; transform: translateX(-50%); border-radius: 50%; border: 3px solid #ffd76a; box-shadow: 0 0 18px 4px rgba(255,215,106,0.75); }
+      .wspot.on .wspot-mask, .wspot.on .wspot-vig { opacity: 1; }
+      .wspot.on .wspot-ring { animation: wspotRing 1.6s ease-out; }
+      @keyframes wspotRing {
+        0% { opacity: 0; transform: translateX(-50%) scale(0.7); }
+        20% { opacity: 1; }
+        100% { opacity: 0; transform: translateX(-50%) scale(1.4); }
+      }
+      /* ═══ ÇEKİLİŞ SLOT MAKİNESİ (Deploy #13 — GPU translateY) ═══ */
+      .cekilis-slot {
+        position: relative; height: 168px; overflow: hidden; border-radius: 18px;
+        background: var(--ac-bg2); border: 2px solid var(--ac-ll);
+        -webkit-mask-image: linear-gradient(180deg, transparent, #000 26%, #000 74%, transparent);
+        mask-image: linear-gradient(180deg, transparent, #000 26%, #000 74%, transparent);
+      }
+      html.dark .cekilis-slot { background: #1a1430; border-color: #33285a; }
+      .cekilis-reel { position: absolute; left: 0; right: 0; top: 0; will-change: transform; }
+      .cekilis-slot-item { height: 56px; display: flex; align-items: center; justify-content: center; font-family: "Nunito", sans-serif; font-size: 26px; font-weight: 900; color: var(--ac-d2); padding: 0 10px; }
+      html.dark .cekilis-slot-item { color: var(--ac-ll); }
+      .cekilis-slot-line { position: absolute; top: 50%; left: 8px; right: 8px; height: 56px; transform: translateY(-50%); border: 2px solid var(--ac); border-radius: 12px; pointer-events: none; box-shadow: 0 4px 14px -6px rgba(var(--ac-shadow),0.5); }
+      /* ═══ SONUÇ → MERCİ'YE SOR KÖPRÜ ÇİPİ (Deploy #13) ═══ */
+      .merci-bridge {
+        display: inline-flex; align-items: center; gap: 8px; margin: 14px auto 2px;
+        padding: 10px 14px; border-radius: 999px; border: 1.5px solid var(--ac-bd);
+        background: rgba(var(--ac-shadow), 0.06); color: var(--ac-d);
+        font-family: "Nunito", sans-serif; font-weight: 800; font-size: 12.5px;
+        cursor: pointer; max-width: 100%; transition: transform 0.12s, background 0.15s;
+        animation: mbIn 0.5s 0.3s both;
+      }
+      html.dark .merci-bridge { background: rgba(var(--ac-shadow), 0.16); border-color: #46396f; color: var(--ac-ll); }
+      .merci-bridge:active { transform: scale(0.97); }
+      .merci-bridge .mb-tx { text-align: left; line-height: 1.25; }
+      .merci-bridge .mb-ar { font-weight: 900; }
+      @keyframes mbIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
       /* Çark göbeğindeki maskot (dönerken buton kaybolunca görünür) */
       #wheel-center-merci {
         position: absolute;
@@ -4194,6 +4252,40 @@
           <path d="M19.4 12a7.4 7.4 0 0 1-12.6 5.2L4.6 15" />
           <path d="M4.6 19.4V15H9" />
         </g>
+        <!-- Menü & toolbar ikonları (Deploy #13) -->
+        <g id="i-question">
+          <path d="M9.3 9.2a2.8 2.8 0 0 1 5.4 1c0 1.9-2.7 2.1-2.7 4.1" />
+          <circle cx="12" cy="17.8" r=".6" fill="currentColor" stroke="none" />
+        </g>
+        <g id="i-info">
+          <circle cx="12" cy="12" r="8.4" />
+          <path d="M12 11v5.2" />
+          <circle cx="12" cy="7.9" r=".7" fill="currentColor" stroke="none" />
+        </g>
+        <g id="i-mail">
+          <rect x="3.5" y="5.5" width="17" height="13" rx="2.2" />
+          <path d="m4.2 7 7.8 5.8L19.8 7" />
+        </g>
+        <g id="i-lock">
+          <rect x="5.4" y="10.4" width="13.2" height="9.2" rx="2.2" />
+          <path d="M8.4 10.4V8a3.6 3.6 0 0 1 7.2 0v2.4" />
+        </g>
+        <g id="i-doc">
+          <rect x="6" y="4.4" width="12" height="16" rx="2.2" />
+          <path d="M9 9h6M9 12.4h6M9 15.8h4" />
+        </g>
+        <g id="i-clock">
+          <circle cx="12" cy="12" r="8.2" />
+          <path d="M12 7.4V12l3 1.9" />
+        </g>
+        <g id="i-settings">
+          <circle cx="12" cy="12" r="3.1" />
+          <path d="M12 3.4v2.3M12 18.3v2.3M4.6 7.8l2 1.1M17.4 15.1l2 1.1M4.6 16.2l2-1.1M17.4 8.9l2-1.1" />
+        </g>
+        <g id="i-logout">
+          <path d="M13.5 4.5H6.4A1.5 1.5 0 0 0 4.9 6v12a1.5 1.5 0 0 0 1.5 1.5h7.1" />
+          <path d="M18.6 12H9.4M15.4 8.4 19 12l-3.6 3.6" />
+        </g>
       </defs>
     </svg>
     <!-- SPLASH -->
@@ -4487,10 +4579,10 @@
             🎉 Çekilişi Başlat
           </button>
           <div id="cekilis-stage" style="display: none; text-align: center; margin: 18px 0">
-            <div
-              id="cekilis-display"
-              style="font-family: 'Nunito', sans-serif; font-size: 30px; font-weight: 900; color: var(--ac-d); min-height: 44px; padding: 18px 10px; border-radius: 18px; background: var(--ac-bg2); border: 2px solid var(--ac-ll)"
-            ></div>
+            <div id="cekilis-display" class="cekilis-slot">
+              <div id="cekilis-reel" class="cekilis-reel"></div>
+              <div class="cekilis-slot-line"></div>
+            </div>
           </div>
           <div id="cr" style="display: none">
             <div class="rcard">
@@ -5171,7 +5263,7 @@
                   cursor: pointer;
                 "
               >
-                🕘 Geçmiş
+                <svg class="ic ic-t" viewBox="0 0 24 24"><use href="#i-clock"/></svg> Geçmiş
               </button>
               <button
                 onclick="showAIHelp()"
@@ -5186,9 +5278,12 @@
                   font-weight: 900;
                   color: var(--ac-d);
                   cursor: pointer;
+                  display: flex;
+                  align-items: center;
+                  justify-content: center;
                 "
               >
-                ?
+                <svg class="ic" viewBox="0 0 24 24" style="width:17px;height:17px"><use href="#i-question"/></svg>
               </button>
             </div>
             <div class="chat-input-row">
@@ -6362,6 +6457,58 @@ function drawResultCard(opts) {
           }
         }, 200);
       };
+
+      // ═══ SONUÇ → MERCİ'YE SOR KÖPRÜSÜ (Deploy #13) ═══
+      // Kazanan bir yemek/mekan türündeyse sonuç kartına bağlamlı çip ekle →
+      // Merci sekmesine geç + inputu "yakınımda yer öner" ile ön-doldur.
+      function _isPlaceLike(name) {
+        if (!name) return false;
+        var s = String(name).toLocaleLowerCase("tr");
+        var kw = [
+          "yemek","restoran","restaurant","kafe","cafe","kahve","pizza","burger",
+          "sushi","kebap","kebab","döner","doner","dürüm","lahmacun","pide","köfte",
+          "mangal","balık","çiğ köfte","tost","waffle","tatlı","dondurma","pastane",
+          "fırın","bar","pub","meyhane","brunch","kahvaltı","boba","fast food","mekan",
+          "gezi","park","sinema","müze","plaj","sahil","alışveriş","avm","otel","tatil",
+          "piknik","kafeterya","lokanta","ocakbaşı",
+        ];
+        for (var i = 0; i < kw.length; i++) if (s.indexOf(kw[i]) >= 0) return true;
+        return false;
+      }
+      function merciBridgeGo(winner) {
+        try {
+          logEv("cross_feature_bridge", { winner: winner });
+        } catch (e) {}
+        _doSw("ai");
+        setTimeout(function () {
+          var ctx = document.getElementById("ai-ctx");
+          if (ctx) {
+            ctx.value = winner + " için yakınımda güzel bir yer öner";
+            ctx.focus();
+          }
+        }, 200);
+      }
+      function injectMerciBridge(cardEl, winner) {
+        try {
+          if (!cardEl || !_isPlaceLike(winner)) return;
+          var old = cardEl.querySelector(".merci-bridge");
+          if (old) old.remove();
+          var chip = document.createElement("button");
+          chip.type = "button";
+          chip.className = "merci-bridge";
+          chip.innerHTML =
+            '<span class="mb-ic">🐙</span><span class="mb-tx"></span><span class="mb-ar">→</span>';
+          chip.querySelector(".mb-tx").textContent =
+            "'" + winner + "' için yer mi arıyorsun? Merci'ye sor";
+          chip.onclick = function () {
+            merciBridgeGo(winner);
+          };
+          var say = cardEl.querySelector(".rsay");
+          if (say && say.insertAdjacentElement)
+            say.insertAdjacentElement("afterend", chip);
+          else cardEl.appendChild(chip);
+        } catch (e) {}
+      }
 
       window.signInWithGoogle = signInWithGoogle;
       window.signOut = signOut;
@@ -9206,9 +9353,42 @@ function drawResultCard(opts) {
           }
         })(t0);
       }
+      // Kazanan dilim spotlight'ı — .wstage üstüne DOM overlay (canvas'a dokunmaz).
+      // Kazanan dilim pointer altında (üstte) durduğu için delik hep tepede.
+      function wheelSpotlight(n) {
+        try {
+          var st = document.querySelector("#s-wheel .wstage");
+          if (!st || !n || n < 2) return;
+          var old = st.querySelector(".wspot");
+          if (old) old.remove();
+          var seg = 360 / n,
+            half = seg / 2;
+          var ov = document.createElement("div");
+          ov.className = "wspot";
+          ov.innerHTML =
+            '<div class="wspot-mask" style="background:conic-gradient(from ' +
+            -half +
+            "deg, transparent 0deg " +
+            seg +
+            "deg, rgba(15,5,35,0.62) " +
+            seg +
+            'deg 360deg)"></div><div class="wspot-vig"></div><div class="wspot-ring"></div>';
+          st.appendChild(ov);
+          requestAnimationFrame(function () {
+            ov.classList.add("on");
+          });
+          setTimeout(function () {
+            ov.classList.remove("on");
+            setTimeout(function () {
+              if (ov.parentNode) ov.parentNode.removeChild(ov);
+            }, 480);
+          }, 1700);
+        } catch (e) {}
+      }
       function finishW(wi) {
         wheelHi = wi;
         drawW("wcanvas", S.wheel, wAngle, wi);
+        wheelSpotlight(S.wheel.length);
         // Kazanan belli olunca döndür butonunu geri getir (önceden DEĞİL)
         var _sb = document.getElementById("wspin-btn");
         if (_sb) {
@@ -9257,6 +9437,7 @@ function drawResultCard(opts) {
             el.classList.add("cele");
           }
         })();
+        injectMerciBridge(card, win);
         addHist("🎡", win, "Çark", say);
         winSound();
         hSuccess();
@@ -9426,33 +9607,46 @@ function drawResultCard(opts) {
           stage.scrollIntoView({ block: "center", behavior: "smooth" });
         } catch (e) {}
         var names = S.cekilis.slice();
-        // Rastgelelik baştaki OFSET ile sağlanır; animasyon süre dolunca NEREDE
-        // duruyorsa O isim kazanır → görsel son isim = kazanan (eskiden baştan
-        // ayrı 'winner' seçilip ekrana basılıyordu, durduğu isimden farklı
-        // oluyordu). Ofset rastgele olduğu için kazanan da rastgele, ama hizalama
-        // için fazladan dönmeye gerek kalmaz → süre liste boyundan bağımsız ~2.6s.
-        var off = Math.floor(Math.random() * names.length);
-        var i = 0,
-          elapsed = 0,
-          total = 2600,
-          delay = 60,
-          winner;
-        function tick() {
-          var idx = (i + off) % names.length;
-          disp.textContent = names[idx];
-          vib(5);
-          elapsed += delay;
-          if (elapsed >= total) {
-            winner = names[idx];
-            disp.textContent = "🎉 " + winner;
-            finishCekilis(winner);
-            return;
-          }
-          i++;
-          delay = 60 + (elapsed / total) * 260; // giderek yavaşla
-          setTimeout(tick, delay);
-        }
-        tick();
+        var n = names.length;
+        // Kazanan: üniform rastgele (eski davranışla aynı dağılım — rastgele talihli).
+        // GÖRSEL slot makarasına dönüştürüldü; kazanan seçimi + finishCekilis + #cr
+        // + konfeti AYNEN korunur, yalnız animasyon değişti (Deploy #13).
+        var winnerIdx = Math.floor(Math.random() * n);
+        var winner = names[winnerIdx];
+        var reel = document.getElementById("cekilis-reel");
+        var ITEM = 56,
+          WIN = 168,
+          center = (WIN - ITEM) / 2,
+          loops = 6;
+        // Uzun şerit: birkaç tur rastgele + sonda kazanan (ortada duracak).
+        var strip = [];
+        for (var L = 0; L < loops; L++)
+          for (var q = 0; q < n; q++) strip.push(names[q]);
+        var winPos = strip.length; // kazananın şeritteki indeksi
+        strip.push(winner);
+        for (var e = 1; e <= 3; e++) strip.push(names[(winnerIdx + e) % n]);
+        reel.innerHTML = "";
+        strip.forEach(function (nm) {
+          var it = document.createElement("div");
+          it.className = "cekilis-slot-item";
+          it.textContent = nm;
+          reel.appendChild(it);
+        });
+        var finalY = -(winPos * ITEM - center);
+        reel.style.transition = "none";
+        reel.style.transform = "translateY(0px)";
+        void reel.offsetWidth;
+        reel.style.transition = "transform 2.6s cubic-bezier(0.12,0.62,0.2,1)";
+        reel.style.transform = "translateY(" + finalY + "px)";
+        var _done = false;
+        var _finish = function () {
+          if (_done) return;
+          _done = true;
+          vib(12);
+          finishCekilis(winner);
+        };
+        reel.addEventListener("transitionend", _finish, { once: true });
+        setTimeout(_finish, 2750); // transitionend gelmezse güvence
       }
       function finishCekilis(winner) {
         cekilisSpinning = false;
@@ -9477,6 +9671,7 @@ function drawResultCard(opts) {
           el.classList.add("cele");
         }
         document.getElementById("cr").style.display = "";
+        injectMerciBridge(document.querySelector("#cr .rcard"), winner);
         winSound();
         hSuccess();
         confetti();
@@ -14092,25 +14287,25 @@ function drawResultCard(opts) {
           <span style="color: #fff; font-size: 18px">›</span>
         </button>
         <button class="menu-item" id="mi-tutorial">
-          <span class="menu-item-icon">❓</span> Nasıl Kullanılır
+          <span class="menu-item-icon"><svg class="ic" viewBox="0 0 24 24"><use href="#i-question"/></svg></span> Nasıl Kullanılır
         </button>
         <button class="menu-item" id="mi-about">
-          <span class="menu-item-icon">ℹ️</span> Hakkında
+          <span class="menu-item-icon"><svg class="ic" viewBox="0 0 24 24"><use href="#i-info"/></svg></span> Hakkında
         </button>
         <button class="menu-item" id="mi-contact">
-          <span class="menu-item-icon">✉️</span> Bize Ulaşın
+          <span class="menu-item-icon"><svg class="ic" viewBox="0 0 24 24"><use href="#i-mail"/></svg></span> Bize Ulaşın
         </button>
         <button class="menu-item" id="mi-privacy">
-          <span class="menu-item-icon">🔒</span> Gizlilik Politikası
+          <span class="menu-item-icon"><svg class="ic" viewBox="0 0 24 24"><use href="#i-lock"/></svg></span> Gizlilik Politikası
         </button>
         <button class="menu-item" id="mi-terms">
-          <span class="menu-item-icon">📋</span> Kullanım Koşulları
+          <span class="menu-item-icon"><svg class="ic" viewBox="0 0 24 24"><use href="#i-doc"/></svg></span> Kullanım Koşulları
         </button>
         <button class="menu-item" id="mi-rate">
-          <span class="menu-item-icon">⭐</span> Bizi Puanla
+          <span class="menu-item-icon"><svg class="ic" viewBox="0 0 24 24"><use href="#i-star"/></svg></span> Bizi Puanla
         </button>
         <button class="menu-item" id="mi-settings">
-          <span class="menu-item-icon">⚙️</span> Ayarlar
+          <span class="menu-item-icon"><svg class="ic" viewBox="0 0 24 24"><use href="#i-settings"/></svg></span> Ayarlar
           <span style="margin-left: auto; color: var(--ac-l2); font-size: 18px">›</span>
         </button>
         <button
@@ -14118,7 +14313,7 @@ function drawResultCard(opts) {
           id="mi-logout"
           style="display: none; border-top: 2px solid var(--ac-bg)"
         >
-          <span class="menu-item-icon">🚪</span> Çıkış Yap
+          <span class="menu-item-icon"><svg class="ic" viewBox="0 0 24 24"><use href="#i-logout"/></svg></span> Çıkış Yap
         </button>
       </div>
     </div>
@@ -14972,6 +15167,7 @@ function drawResultCard(opts) {
         <button class="pro-btn" id="pro-buy-btn" onclick="buyPro()">
           ⭐ Pro'ya Geç
         </button>
+        <div class="pro-trust">🔒 Google Play güvencesi · İstediğin an iptal</div>
         <span class="pro-skip" id="pro-skip-btn">Belki sonra… →</span>
         <div style="text-align: center; margin-top: 12px">
           <span
