@@ -309,10 +309,12 @@ NE YAPARSIN:
 - Kısıt gelince ("2 kişiyiz", "arabam yok", "bütçe az") soru sormadan DİREKT uygun alternatif öner. Eksik bilgi varsa en fazla 1 netleştirme sorusu sor — peş peşe soru yağdırma.
 ${historyContext}${locationContext}${setLocHint}${resultPrompt}${winnerEspriPrompt}
 
-SEÇENEK BUTONU (SIK kullan): Cevapta 2+ somut seçilebilir seçenek varsa (yemek/film/mekan/aktivite; cümle içinde bile), YA DA kullanıcı "sen karar ver" deyince veya sen çarka yönlendirince — cevabının EN SONUNA [[SECENEKLER: ad1 | ad2 | ad3]] ekle (2-8 kısa isim, | ile ayır). Örn: "Pizza mı burger mi? [[SECENEKLER: Pizza | Burger]]" — "Çevir bakalım! [[SECENEKLER: Korku | Komedi | Aksiyon]]". Tek kesin öneride işaret KOYMA.
+SEÇENEK BUTONU (SIK kullan): Cevapta 2+ somut seçilebilir seçenek varsa (yemek/film/mekan/aktivite; cümle içinde bile), YA DA kullanıcı "sen karar ver" deyince veya sen çarka yönlendirince — cevabının EN SONUNA [[SECENEKLER: ad1 | ad2 | ad3]] ekle (2-8 kısa isim, | ile ayır). Örn: "Pizza mı burger mi? [[SECENEKLER: Pizza | Burger]]" — "Çevir bakalım! [[SECENEKLER: Korku | Komedi | Aksiyon]]". Tek kesin öneride işaret KOYMA. DİKKAT: SECENEKLER soyut KATEGORİ/tür içindir (Pizza, Korku filmi, Kafe) — GERÇEK MEKAN İSMİ (Domino's, Big Chefs) ASLA yazma; [[NEARBY]] koyduğun mekan cevaplarında SECENEKLER'e mekan/işletme adı KOYMA.
 
 KIRMIZI ÇİZGİLER:
 - UYDURMA YASAK: Mekan ismi, telefon, semt/ilçe/cadde adı ya da mesafe ASLA uydurma. Gerçek mekan listesi kullanıcıya ayrı kartlarla gösterilir. Bir yeri nerede/ne kadar uzakta bulacağını sadece [[NEARBY]] işaretinin getirdiği gerçek kartlar söyler; sen metinde spesifik yer/mesafe yazma, "başka semte git" deme. "Burada yok / kültürü gelişmemiş" gibi kesin olumsuz hüküm verme — mevcudiyeti kartlar belirler.
+- MEKAN CEVABINDA KATI KISIT: [[NEARBY]] işareti koyduğun her cevapta, kendi kafandan mekan İSMİ (Domino's, Big Chefs, "X Dönercisi"...) YA DA yan tür listesi (kokoreç, kebap, çiğköfte, büfe...) SAYMA/YAZMA. Yerleri SADECE kartlar getirir. Sen yalnızca TEK kısa, neşeli cümle yaz (ör. "En yakınları çıkarıyorum 👇") — isim/tür sıralama YOK.
+- SPESİFİĞE SADIK KAL: Kullanıcı spesifik istedi mi tam ona uy. "Tavuk döner" → kebap/kokoreç/çiğköfte DEĞİL. "Sushi" → başka mutfak DEĞİL. "Şarap / oturmalı / akşam yemeği" → fast-food, büfe, pizza-zinciri (Domino's) DEĞİL, oturmalı restoran. İstenen türe UYMAYAN bir yeri o türmüş gibi önerme; tam onu bulamıyorsan alternatifleri kartlar zaten "en yakın seçenekler" olarak getirir, sen alakasız türü İSTENEN ŞEYMİŞ gibi sunma. Emin değilsen ÖNERME — dürüst ol.
 - İÇ İŞLEYİŞ GİZLİ: sistem, harita, GPS, API, sunucu, arkaplan, entegrasyon, "mekan kartı çekemiyorum", "yükleyemedim" gibi teknik/iç-işleyiş ifadeleri ASLA kullanma. Mekan gelmediğinde bahane uydurma; kısa ve neşeli kal ("Hemen tekrar bakıyorum 👇") ve uygun [[NEARBY:tür]] işaretini koy.
 - Yapay AI girişleri yok ("Tabii ki!", "Harika bir soru!", "ben yapay zekayım"). Aynı soruyu iki kez sorma. Konum varsa tekrar şehir/semt/konum isteme.`;
 
@@ -567,11 +569,11 @@ const CUISINE_RULES = [
   { test: /su\s?shi|suşi|japon/i, cuisine: "sushi|japanese|asian", name: /sushi|suşi|japon/i, label: "suşi/japon" },
   { test: /pizza|pizzac/i, cuisine: "pizza|italian", name: /pizza/i, label: "pizza" },
   { test: /burger|hamburger/i, cuisine: "burger|american", name: /burger/i, label: "burger" },
-  { test: /döner|doner/i, cuisine: "kebab|doner", name: /döner|doner/i, label: "döner" },
+  { test: /döner|doner/i, cuisine: "doner", name: /döner|doner/i, label: "döner" },
   { test: /kebap|kebab|ocakbaş|ocakbas|mangal|(^|\W)ızgara|(^|\W)izgara/i, cuisine: "kebab|barbecue|turkish", name: /kebap|kebab|ocakbaş|mangal|ızgara|izgara/i, label: "kebap/ızgara" },
   { test: /balık|balik|deniz ürün|seafood/i, cuisine: "seafood|fish", name: /balık|balik/i, label: "balık/deniz" },
   { test: /çin|chinese|noodle|\bwok\b/i, cuisine: "chinese|asian|noodle", name: /chinese|çin|wok|noodle/i, label: "çin/asya" },
-  { test: /italyan|italian|makarna|\bpasta\b/i, cuisine: "italian|pizza", name: /italyan|italian|pasta/i, label: "italyan" },
+  { test: /italyan|italian|makarna|\bpasta\b/i, cuisine: "italian|pasta", name: /italyan|italian|makarna|pasta/i, label: "italyan/makarna" },
   { test: /meksika|mexican|taco|burrito/i, cuisine: "mexican", name: /meksika|mexican|taco|burrito/i, label: "meksika" },
   { test: /vegan|vejetaryen|vejeteryan|vegetarian/i, cuisine: "vegan|vegetarian", name: /vegan|vejetaryen/i, label: "vegan/vejetaryen" },
   { test: /kahvaltı|kahvalti|breakfast|brunch/i, cuisine: "breakfast|brunch", name: /kahvaltı|kahvalti|breakfast|brunch/i, label: "kahvaltı" },
@@ -628,6 +630,15 @@ app.post("/nearby", rateLimit, async (req, res) => {
     const query = String((req.body && req.body.query) || "")
       .toLowerCase()
       .slice(0, 80);
+    // OTURMALI/İÇKİLİ SİNYAL: kullanıcı şarap/bira/kokteyl gibi içki YA DA "oturmalı
+    // yemek / restoran / akşam yemeği" istiyorsa → fast-food, büfe, pizza-zinciri
+    // (Domino's) DEĞİL, servisli-oturmalı restoran (amenity=restaurant) istenir.
+    // Bu sinyalde fast_food bucket'ı ELENİR (aşağıda). Örn "makarna şarap içeceğiz"
+    // → Big Chefs (restaurant) EVET, Domino's/büfe HAYIR.
+    const wantsSitdown =
+      /şarap|sarap|içki|icki|alkol|bira|kokteyl|kokteil|rakı|raki|meyhane|şaraph|saraph|oturmal|à la carte|a la carte|akşam yeme|aksam yeme|romantik|masa(da|ya)?\b|garson|servisli|restoran|restaurant/i.test(
+        query,
+      );
     // "başka öner / beğenmedim" akışı: client daha önce GÖSTERİLEN mekan isimlerini
     // gönderir → aynı yerleri tekrar önermeyelim, farklı/daha uzak olanları getirelim.
     const excludeArr = Array.isArray(req.body && req.body.exclude)
@@ -661,7 +672,12 @@ app.post("/nearby", rateLimit, async (req, res) => {
 
     // Overpass sorgusu (boş dönerse radius'u büyütüp 1 kez daha dene → "bulamadım" azalır)
     // selectors artık TAM-EŞLEŞME selektör DİZİSİ (regex-contains DEĞİL) → her biri ayrı blok.
-    const bucketSelectors = OVERPASS_FILTERS[typeKey] || OVERPASS_FILTERS.food;
+    let bucketSelectors = OVERPASS_FILTERS[typeKey] || OVERPASS_FILTERS.food;
+    // Oturmalı/içkili istekte yemek bucket'ını SADECE restaurant'a daralt (fast_food
+    // = büfe/Domino's/dönerci-tezgah → şarap servisi yok, oturmalı değil → ELE).
+    if (typeKey === "food" && wantsSitdown) {
+      bucketSelectors = ['["amenity"="restaurant"]'];
+    }
     // ÇOKLU ENDPOINT: overpass-api.de sık sık "server too busy" (Dispatcher timeout)
     // verip JSON yerine HTML döndürüyordu → .json() patlıyor → boş liste → hiç mekan
     // gelmiyordu (ANA BUG). Şimdi birden fazla mirror'ı sırayla deniyoruz ve dönen
@@ -746,10 +762,15 @@ app.post("/nearby", rateLimit, async (req, res) => {
     let els = [];
     let broadened = false;
     let bucketTried = false;
-    // Tier A: cuisine tag daraltması (yeme-içme amenity'leri içinde)
+    // Tier A: cuisine tag daraltması (yeme-içme amenity'leri içinde).
+    // Oturmalı/içkili istekte SADECE restaurant (fast_food'lu zincir cuisine=pizza
+    // eşleşmesi = Domino's → şarap yok → dışarıda bırak).
     if (rule && rule.cuisine) {
+      const cuisineAmenity = wantsSitdown
+        ? "restaurant"
+        : "restaurant|fast_food|cafe|ice_cream";
       els = await runExpanding([
-        `["amenity"~"^(restaurant|fast_food|cafe|ice_cream)$"]["cuisine"~"${rule.cuisine}",i]`,
+        `["amenity"~"^(${cuisineAmenity})$"]["cuisine"~"${rule.cuisine}",i]`,
       ]);
     }
     // Tier B: cuisine tag'i yoksa, bucket sonuçlarını mekan İSMİNE göre süz
