@@ -247,8 +247,8 @@ app.post("/merci", rateLimit, authAndQuota, async (req, res) => {
     // "[[NEED_LOCATION:TUR:bar]]" gibi bozuk işaret üretti (canlı bug, 13 Tem) →
     // artık birebir örnekle anlatılıyor; "TUR" kelimesi prompt'ta GEÇMİYOR.
     const locationContext = location
-      ? `\nKONUM VAR: Kullanıcı ${location} içinde; konum hazır, tekrar konum/şehir/semt İSTEME. Kullanıcı yakında yer sorarsa ("nereye gidelim / dışarı çıkalım / yiyelim / içelim / bar / kahve / tatlı" vb.) YA DA mekan gelmedi diye takılırsa ("hani / nerede / ee?") YA DA önerilenleri beğenmeyip başkasını isterse ("beğenmedim / başka öner / farklı yerler / başkası yok mu / bunlar olmadı"), cevabının EN BAŞINA şu biçimde bir işaret koy: [[NEARBY:bar]] — iki nokta sonrasına SADECE şu kelimelerden BİRİNİ yaz: food, cafe, dessert, bar, activity (emin değilsen activity; başka kelime ya da ikinci iki nokta YOK). Örnek cevap: "[[NEARBY:bar]] En yakınları çıkarıyorum 👇". İşaretten sonra TEK kısa olumlu cümle yaz. Bu işaret gerçek mekanları (isim, mesafe) otomatik getirir; komşu semtten gelebilir, sorun değil. Sadece sohbet/yorumsa işaret KOYMA.`
-      : `\nKONUM YOK: Uygulama konumu otomatik alabiliyor — kullanıcıya ŞEHİR/SEMT/KONUM SORMA. Kullanıcı yakında yer sorarsa YA DA bir yere gitmek istediğini söylerse ("rakıya gidiyoruz", "kahve içelim" gibi), soru sormadan cevabının EN BAŞINA şu biçimde bir işaret koy: [[NEED_LOCATION:bar]] — iki nokta sonrasına SADECE şu kelimelerden BİRİNİ yaz: food, cafe, dessert, bar, activity (başka kelime ya da ikinci iki nokta YOK). Örnek cevap: "[[NEED_LOCATION:bar]] Yakınındakilere bakıyorum 👇". Tek istisna: kullanıcı zaten şehir/semt yazdıysa işaret KOYMA, o bölgeye göre öner.`;
+      ? `\nKONUM VAR: Kullanıcı ${location} içinde; konum hazır, tekrar konum/şehir/semt İSTEME. Kullanıcı yakında yer sorarsa ("nereye gidelim / dışarı çıkalım / yiyelim / içelim / bar / kahve / tatlı" vb.) YA DA mekan gelmedi diye takılırsa ("hani / nerede / ee?") YA DA önerilenleri beğenmeyip başkasını isterse ("beğenmedim / başka öner / farklı yerler / başkası yok mu / bunlar olmadı"), cevabının EN BAŞINA şu biçimde bir işaret koy: [[NEARBY:bar]] — iki nokta sonrasına SADECE şu kelimelerden BİRİNİ yaz: food, cafe, dessert, bar, activity (emin değilsen activity; başka kelime ya da ikinci iki nokta YOK). ÖNEMLİ: bar = YALNIZ bira/kokteyl/gece kulübü içindir. Rakı, meyhane, balık, meze, "rakı balık", "meyhaneye gidelim" gibi istekler bar DEĞİL food'dur (meyhane/balık lokantası oturmalı restorandır) → bunlarda [[NEARBY:food]] kullan, ASLA [[NEARBY:bar]] yazma. Örnek cevap: "[[NEARBY:bar]] En yakınları çıkarıyorum 👇". İşaretten sonra TEK kısa olumlu cümle yaz. Bu işaret gerçek mekanları (isim, mesafe) otomatik getirir; komşu semtten gelebilir, sorun değil. MEKAN DÜRÜSTLÜĞÜ: önerdiğin mekanların menü/içki/fiyat bilgisine sahip DEĞİLSİN ve mekan kartlarında da bu YAZMAZ (kartta sadece isim + "yol tarifi" butonu var). "Kartlarda yazıyor", "listesinde görürsün", "menüde var" DEME; bir mekânda belirli bir şeyin (rakı, spesifik yemek) olduğunu GARANTİ ETME ("kesin vardır" YOK). Dürüst ol: "meyhane/balık lokantası olduğu için genelde bulunur, emin olmak istersen mekânı arayabilirsin" gibi. Sadece sohbet/yorumsa işaret KOYMA.`
+      : `\nKONUM YOK: Uygulama konumu otomatik alabiliyor — kullanıcıya ŞEHİR/SEMT/KONUM SORMA. Kullanıcı yakında yer sorarsa YA DA bir yere gitmek istediğini söylerse ("rakıya gidiyoruz", "kahve içelim" gibi), soru sormadan cevabının EN BAŞINA şu biçimde bir işaret koy: [[NEED_LOCATION:bar]] — iki nokta sonrasına SADECE şu kelimelerden BİRİNİ yaz: food, cafe, dessert, bar, activity (başka kelime ya da ikinci iki nokta YOK). ÖNEMLİ: bar = YALNIZ bira/kokteyl/gece kulübü içindir. Rakı, meyhane, balık, meze, "rakı balık", "rakıya gidiyoruz" gibi istekler bar DEĞİL food'dur (meyhane/balık lokantası oturmalı restorandır) → bunlarda [[NEED_LOCATION:food]] kullan, ASLA [[NEED_LOCATION:bar]] yazma. Örnek cevap: "[[NEED_LOCATION:bar]] Yakınındakilere bakıyorum 👇". Tek istisna: kullanıcı zaten şehir/semt yazdıysa işaret KOYMA, o bölgeye göre öner.`;
 
     // ── SONUÇ BAĞLAMI (Merci'ye Sor'dan geliyorsa) ──
     let resultPrompt = "";
@@ -580,6 +580,10 @@ const CUISINE_RULES = [
   { test: /burger|hamburger/i, cuisine: "burger", name: /burger/i, label: "burger" },
   { test: /döner|doner/i, cuisine: "doner", name: /döner|doner/i, label: "döner" },
   { test: /kebap|kebab|ocakbaş|ocakbas|mangal|(^|\W)ızgara|(^|\W)izgara/i, cuisine: "kebab|barbecue|grill|mangal", name: /kebap|kebab|ocakbaş|mangal|ızgara|izgara/i, label: "kebap/ızgara" },
+  // Meyhane / rakı-balık: bar/pub DEĞİL, meze+deniz mahsulü ağırlıklı oturmalı mekan.
+  // OSM'de "meyhane" zayıf etiketli → seafood/fish cuisine + isim eşleşmesi; bulunmazsa
+  // (Tier C) genel restoran'a genişler. ASLA bar bucket'ına düşmez (typeKey food'a zorlandı).
+  { test: /meyhane|rakı|raki|meze/i, cuisine: "seafood|fish", name: /meyhane|balık|balik|meze/i, label: "meyhane/balık" },
   { test: /balık|balik|deniz ürün|seafood/i, cuisine: "seafood|fish", name: /balık|balik/i, label: "balık/deniz" },
   { test: /çin|chinese|noodle|\bwok\b/i, cuisine: "chinese|noodle", name: /chinese|çin|wok|noodle/i, label: "çin/asya" },
   { test: /italyan|italian|makarna|\bpasta\b/i, cuisine: "italian|pasta", name: /italyan|italian|makarna|pasta/i, label: "italyan/makarna" },
@@ -636,7 +640,7 @@ app.post("/nearby", rateLimit, async (req, res) => {
     const lng = parseFloat(req.body && req.body.lng);
     if (!isFinite(lat) || !isFinite(lng))
       return res.status(400).json({ error: "Konum geçersiz." });
-    const typeKey = String((req.body && req.body.type) || "food");
+    let typeKey = String((req.body && req.body.type) || "food");
     const locName = String((req.body && req.body.locName) || "").slice(0, 60);
     // Kullanıcının ham isteği (ör. "yakında sushi var mı"). Spesifik tür daraltması
     // için kullanılır; yoksa (eski client) davranış eskisi gibi bucket bazlı kalır.
@@ -652,6 +656,18 @@ app.post("/nearby", rateLimit, async (req, res) => {
       /şarap|sarap|içki|icki|alkol|bira|kokteyl|kokteil|rakı|raki|meyhane|şaraph|saraph|oturmal|à la carte|a la carte|akşam yeme|aksam yeme|romantik|masa(da|ya)?\b|garson|servisli|restoran|restaurant/i.test(
         query,
       );
+    // RAKI/MEYHANE/BALIK NİYETİ — bar/pub DEĞİL, meyhane / balık lokantası / oturmalı
+    // restoran ister. Rakı bir bar/pub içkisi DEĞİLDİR (bar/pub = bira & kokteyl);
+    // "rakı balık" meyhane & seafood/restaurant mekânıdır. Model/client bu isteği
+    // yanlışlıkla type=bar'a (alkol sanıp) yönlendirebiliyor (canlı bug: "rakı balık"
+    // → pub/bar önerildi). Server SON SÖZ: bu niyet sinyali varsa food'a ZORLA ki
+    // aşağıda bar/pub/nightclub selektörleri HİÇ kullanılmasın; CUISINE_RULES seafood
+    // kuralı devreye girsin (meyhane OSM'de zayıf etiketli → seafood/restaurant'a düşer).
+    const meyhaneIntent =
+      /meyhane|rakı|raki|balık|balik|deniz ürün|deniz urun|meze/i.test(query);
+    if (meyhaneIntent && !["food", "cafe", "dessert"].includes(typeKey)) {
+      typeKey = "food";
+    }
     // "başka öner / beğenmedim" akışı: client daha önce GÖSTERİLEN mekan isimlerini
     // gönderir → aynı yerleri tekrar önermeyelim, farklı/daha uzak olanları getirelim.
     const excludeArr = Array.isArray(req.body && req.body.exclude)
@@ -942,7 +958,8 @@ app.post("/nearby", rateLimit, async (req, res) => {
           system:
             "Sen Merci, sevimli bir karar-ahtapotu. Sana kullanıcıya EN YAKIN GERÇEK mekanların listesi (isim + mesafe) verilir. " +
             "KISA (1-2 cümle), samimi, Türkçe ve TUTARLI tekil 'sen' diliyle (asla 'siz') bir öneri yap: birini öne çıkar, GERÇEK mesafeye değin (uzaksa dürüstçe söyle, örn. '~3 km, taksiyle kısa'), oyunbaz ol. " +
-            "Mekanlar mahallende değil komşu semtte olabilir — bu normal, listedeki gerçek mesafeyi kullan. Listedeki isimler/mesafeler DIŞINDA hiçbir mekan/semt/mesafe UYDURMA. En fazla 1 emoji.",
+            "Mekanlar mahallende değil komşu semtte olabilir — bu normal, listedeki gerçek mesafeyi kullan. Listedeki isimler/mesafeler DIŞINDA hiçbir mekan/semt/mesafe UYDURMA. En fazla 1 emoji. " +
+            "DÜRÜSTLÜK: Sana yalnız mekan ADI + MESAFE verildi; menü/içki/fiyat bilgisi YOK. Mekan kartlarında da SADECE isim + 'yol tarifi' butonu var — menü/içki listesi/fiyat YAZMAZ. Bu yüzden 'kartlarda yazıyor', 'listesinde görürsün', 'menüde var' DEME ve bir mekânda belirli bir şeyin (rakı, spesifik yemek) bulunduğunu GARANTİ ETME ('kesin vardır' YASAK). Gerekiyorsa 'meyhane/balık lokantası genelde bulundurur, emin olmak istersen mekânı arayabilirsin' gibi temkinli konuş.",
           messages: [
             {
               role: "user",
