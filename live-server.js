@@ -86,6 +86,81 @@ initializeApp({
 });
 const adminDb = getFirestore();
 
+// ── ÇEVRİMİÇİ OYLAMA: sunucu tarafı zamanlı otomatik kapanış ──
+// Host cihazı kapalı olsa bile closesAt dolan açık odaları sunucu kapatır.
+// Bu, client _finalizeClose (live-index.html) tally mantığının BİREBİR portudur;
+// yazılan alanlar client ile aynı olmalı ki showOnlineWinner kazanan kartını okuyabilsin.
+// Admin SDK Firestore kurallarını bypass eder (delete:false engel değil).
+async function autoCloseExpiredRooms() {
+  try {
+    const now = Date.now();
+    // Tek-alan eşitlik filtresi (status=="open") → composite index GEREKTİRMEZ.
+    // closesAt'ı JS tarafında süzeriz (index'siz range+eşitlik karışımından kaçınmak için).
+    const snap = await adminDb
+      .collection("rooms")
+      .where("status", "==", "open")
+      .get();
+    for (const docSnap of snap.docs) {
+      const d0 = docSnap.data();
+      // closesAt yoksa (süresiz oda veya eski oda) ya da henüz dolmadıysa atla.
+      if (!d0.closesAt || d0.closesAt > now) continue;
+      await adminDb.runTransaction(async (tx) => {
+        const fresh = await tx.get(docSnap.ref);
+        if (!fresh.exists) return;
+        const data = fresh.data();
+        if (data.status !== "open") return; // host/başkası bu arada kapatmış
+        if (!data.closesAt || data.closesAt > Date.now()) return; // süre uzamış/temizlenmiş
+        // === TALLY (client _finalizeClose ile AYNI) ===
+        const parts = data.participants || {};
+        const options = data.options || [];
+        const voterCount = Object.values(parts).filter(
+          (p) => p && p.submitted === true,
+        ).length;
+        // Hiç oy yok → client'la aynı: beraberlik + tüm seçenekler tieItems.
+        if (voterCount === 0) {
+          tx.update(docSnap.ref, {
+            status: "tied",
+            tieItems: options,
+            closedBy: "server",
+            closedAt: Date.now(),
+          });
+          return;
+        }
+        // Sadece "submitted" katılımcıların oylarını topla (client mantığı birebir).
+        const totalsMap = {};
+        options.forEach((o) => (totalsMap[o] = 0));
+        Object.values(parts).forEach((p) => {
+          if (!p || p.submitted !== true || !p.votes) return;
+          Object.entries(p.votes).forEach(([o, s]) => {
+            totalsMap[o] = (totalsMap[o] || 0) + +(s || 0);
+          });
+        });
+        const sorted = Object.entries(totalsMap).sort((a, b) => b[1] - a[1]);
+        const topScore = sorted.length ? sorted[0][1] : 0;
+        const winners = sorted
+          .filter((x) => x[1] === topScore)
+          .map((x) => x[0]);
+        // Beraberlik → client normalde tiebreaker çarkı açar; host offline olduğu için
+        // SUNUCU adil RASTGELE bir kazanan seçip KESİN sonuç (status:"closed") yazar.
+        const winner = winners[Math.floor(Math.random() * winners.length)];
+        tx.update(docSnap.ref, {
+          status: "closed",
+          winner: winner,
+          winnerPoints: topScore,
+          winnerVoters: voterCount,
+          tieItems: [],
+          closedBy: "server",
+          closedAt: Date.now(),
+        });
+      });
+    }
+  } catch (e) {
+    console.error("autoCloseExpiredRooms:", e.message);
+  }
+}
+setInterval(autoCloseExpiredRooms, 60 * 1000);
+setTimeout(autoCloseExpiredRooms, 8000); // başlangıçta birikmiş süresi dolmuş odaları da kapat
+
 // Günlük Merci mesaj limitleri (kullanıcı başına). Abuse/maliyet tavanı.
 const FREE_DAILY_LIMIT = 60; // abuse tavanı (asıl ücretsiz kapı client'ta: 6/gün + reklam). Yüksek tutuldu ki reklam sonrası soru cevapsız kalmasın.
 const PRO_DAILY_LIMIT = 300;
