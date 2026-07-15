@@ -1256,6 +1256,31 @@
         transition: width 0.25s, background 0.25s, border-radius 0.25s;
       }
       .ob-dots i.on { width: 22px; border-radius: 5px; background: var(--ac); }
+      /* Onboarding tek-ekran özet (Alt.2 — Deploy #21) */
+      .obs-wrap{flex:1;display:flex;flex-direction:column;padding:40px 26px 26px;
+        background:linear-gradient(180deg,var(--ac-bg2) 0%,#fff 40%);}
+      .obs-hero{display:flex;flex-direction:column;align-items:center;text-align:center;margin-bottom:22px;}
+      .obs-hero-disc{width:150px;height:150px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+        background:radial-gradient(circle at 50% 38%,#fff 0%,var(--ac-bg) 72%,var(--ac-bg3) 100%);
+        box-shadow:0 16px 34px -12px rgba(124,58,237,.4);margin-bottom:14px;}
+      .obs-h1{font-family:"Fredoka","Nunito",sans-serif;font-weight:800;font-size:24px;color:var(--ac-dd);line-height:1.2;}
+      .obs-h2{font-size:14.5px;color:#6a6194;margin-top:7px;max-width:280px;line-height:1.5;}
+      .obs-list{flex:1;display:flex;flex-direction:column;gap:12px;margin:6px 0 20px;}
+      .obs-row{display:flex;align-items:center;gap:14px;background:#fff;border:1px solid var(--ac-bd);
+        border-radius:18px;padding:13px 15px;box-shadow:0 8px 20px -12px rgba(76,29,149,.25);
+        opacity:0;animation:obsPop .5s ease forwards;}
+      .obs-row:nth-child(1){animation-delay:.05s;}
+      .obs-row:nth-child(2){animation-delay:.16s;}
+      .obs-row:nth-child(3){animation-delay:.27s;}
+      .obs-row:nth-child(4){animation-delay:.38s;}
+      .obs-ico{flex:none;width:46px;height:46px;border-radius:14px;display:flex;align-items:center;justify-content:center;
+        font-size:23px;background:linear-gradient(135deg,var(--ac-bg) 0%,var(--ac-bg3) 100%);
+        box-shadow:inset 0 0 0 1px var(--ac-bd);}
+      .obs-ico-merci{padding:2px;}
+      .obs-ico-merci svg{display:block;}
+      .obs-tx b{display:block;font-family:"Fredoka","Nunito",sans-serif;font-size:15.5px;color:var(--ac-dd);}
+      .obs-tx span{display:block;font-size:12.8px;color:#77709c;line-height:1.4;margin-top:2px;}
+      @keyframes obsPop{from{opacity:0;transform:translateY(16px) scale(.96);}to{opacity:1;transform:none;}}
       .ob-auth-logo {
         margin-bottom: 16px;
         display: flex;
@@ -2647,7 +2672,7 @@
       }
       .m-wave-arm {
         transform-box: view-box;
-        transform-origin: 462px 250px;
+        transform-origin: 415px 286px;
         animation: mwave 1.4s ease-in-out infinite;
       }
       @keyframes mzzz {
@@ -4859,26 +4884,30 @@
     <div class="app">
       <!-- ONBOARDING 1 -->
       <div class="screen on" id="scr-ob1">
-        <div class="ob ob-carousel-wrap">
-          <button class="ob-skip" id="ob-skip">Atla →</button>
-          <div class="ob-carousel" id="ob-carousel">
-            <div class="ob-card">
-              <div class="ob-card-merci m-idle" id="obc-1"></div>
-              <div class="ob-title">🎡 Çarkla anında seç</div>
-              <div class="ob-sub">Seçenekleri gir, çevir — kader karar versin!</div>
+        <div class="ob obs-wrap">
+          <div class="obs-hero">
+            <div class="obs-hero-disc m-idle" id="ob-hero-merci"></div>
+            <div class="obs-h1">Merhaba, ben Merci!</div>
+            <div class="obs-h2">Kararsızlığı birlikte çözelim. İşte sana yardımcı olabileceğim yerler:</div>
+          </div>
+          <div class="obs-list">
+            <div class="obs-row">
+              <div class="obs-ico">🎡</div>
+              <div class="obs-tx"><b>Çarkı çevir</b><span>Seçenekleri yaz, çevir; kararı şansa bırak.</span></div>
             </div>
-            <div class="ob-card">
-              <div class="ob-card-merci m-idle" id="obc-2"></div>
-              <div class="ob-title">⭐ Grupça oyla</div>
-              <div class="ob-sub">Herkes yıldız versin, en çok oyu alan kazansın.</div>
+            <div class="obs-row">
+              <div class="obs-ico">🎟️</div>
+              <div class="obs-tx"><b>Çekiliş yap</b><span>Katılanlar arasından adil bir talihli seç.</span></div>
             </div>
-            <div class="ob-card">
-              <div class="ob-card-merci m-idle" id="obc-3"></div>
-              <div class="ob-title">🐙 Merci'ye danış</div>
-              <div class="ob-sub">Ne yesek, nereye gitsek? Merci öneri versin.</div>
+            <div class="obs-row">
+              <div class="obs-ico">⭐</div>
+              <div class="obs-tx"><b>Grupça oyla</b><span>Herkes puan versin, kazanan ortaya çıksın.</span></div>
+            </div>
+            <div class="obs-row">
+              <div class="obs-ico obs-ico-merci" id="ob-danis-ico"></div>
+              <div class="obs-tx"><b>Merci'ye danış</b><span>Ne yesek, nereye gitsek? Öneriyi ben vereyim.</span></div>
             </div>
           </div>
-          <div class="ob-dots" id="ob-dots"><i class="on"></i><i></i><i></i></div>
           <button class="ob-btn" id="go-ob2">Haydi başlayalım →</button>
         </div>
       </div>
@@ -8440,7 +8469,7 @@ function drawResultCard(opts) {
         var uid = "wv" + mc;
         var body = _merciBody(uid).replace(
           '<path class="m-arm r" d="M430 300Q490 270 515 215Q530 180 505 165Q480 175 475 205Q465 240 425 275Q408 290 412 305Z" fill="#7F77DD" stroke="#534AB7" stroke-width="1.5"/>\n  <circle cx="508" cy="172" r="26" fill="#AFA9EC" stroke="#534AB7" stroke-width="2"/>',
-          '<g class="m-wave-arm"><path d="M460 268Q515 218 532 163Q542 126 518 116Q498 128 502 160Q498 193 452 253Z" fill="#7F77DD" stroke="#534AB7" stroke-width="1.5"/><circle cx="528" cy="116" r="26" fill="#AFA9EC" stroke="#534AB7" stroke-width="2"/></g>',
+          '<g class="m-wave-arm"><path d="M418 296Q496 256 524 180Q540 138 514 124Q496 132 500 168Q486 234 406 288Z" fill="#7F77DD" stroke="#534AB7" stroke-width="1.5"/><circle cx="518" cy="120" r="26" fill="#AFA9EC" stroke="#534AB7" stroke-width="2"/></g>',
         );
         return _makeSVG(
           w,
@@ -9470,13 +9499,9 @@ function drawResultCard(opts) {
       }
       // D1 — onboarding carousel maskotları + kaydırma noktaları (Deploy #15)
       function renderOb1() {
-        setM("obc-1", 116, "wave");
-        setM("obc-2", 116, "happy");
-        setM("obc-3", 116, "glasses");
-        gentleFloat("obc-1");
-        gentleFloat("obc-2");
-        gentleFloat("obc-3");
-        initObDots();
+        setM("ob-hero-merci", 122, "wave");
+        setM("ob-danis-ico", 42, "glasses");
+        gentleFloat("ob-hero-merci");
       }
       function initObDots() {
         var car = document.getElementById("ob-carousel");
@@ -14456,7 +14481,6 @@ function drawResultCard(opts) {
         if (el) el.addEventListener("click", fn);
       }
       bind("go-ob2", () => showScreen("scr-ob2"));
-      bind("ob-skip", () => showScreen("scr-ob2"));
       bind("guest-continue-btn", () => setCount(0));
       bind("home-btn", () => {
         var hasActiveOnline = !!(
