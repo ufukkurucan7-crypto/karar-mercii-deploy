@@ -4896,6 +4896,35 @@
             </svg>
             Google ile Giriş Yap
           </button>
+          <button
+            class="apple-signin-btn"
+            onclick="signInWithApple()"
+            style="
+              display: none;
+              align-items: center;
+              justify-content: center;
+              gap: 8px;
+              width: 100%;
+              margin-top: 8px;
+              background: #000;
+              color: #fff;
+              border: none;
+              border-radius: 12px;
+              padding: 12px;
+              font-size: 15px;
+              font-weight: 700;
+              cursor: pointer;
+              font-family: -apple-system, 'Nunito', sans-serif;
+            "
+          >
+            <svg width="17" height="17" viewBox="0 0 384 512" aria-hidden="true">
+              <path
+                fill="#fff"
+                d="M318.7 268.7c-.2-36.7 16.4-64.4 50-84.8-18.8-26.9-47.2-41.7-84.7-44.6-35.5-2.8-74.3 20.7-88.5 20.7-15 0-49.4-19.7-76.4-19.7C63.3 141.2 4 184.8 4 273.5q0 39.3 14.4 81.2c12.8 36.7 59 126.7 107.2 125.2 25.2-.6 43-17.9 75.8-17.9 31.8 0 48.3 17.9 76.4 17.9 48.6-.7 90.4-82.5 102.6-119.3-65.2-30.7-61.7-90-61.7-91.9zm-56.6-164.2c27.3-32.4 24.8-61.9 24-72.5-24.1 1.4-52 16.4-67.9 34.9-17.5 19.8-27.8 44.3-25.6 71.9 26.1 2 49.9-11.4 69.5-34.3z"
+              />
+            </svg>
+            Apple ile Giriş Yap
+          </button>
           <button class="ob-guest-btn" id="guest-continue-btn">
             Şimdi değil, misafir olarak takılmak istiyorum →
           </button>
@@ -7084,6 +7113,79 @@ function drawResultCard(opts) {
       }
 
       window.signInWithGoogle = signInWithGoogle;
+
+      // ── Apple ile Giriş (App Store Kural 4.8: Google sunuluyorsa Apple da şart) ──
+      // Sadece iOS uygulamasında görünür/çalışır. Native Apple girişi → idToken+nonce
+      // → Firebase JS compat SDK'ya OAuthProvider('apple.com') credential olarak verilir
+      // (Google akışıyla aynı skipNativeAuth mantığı).
+      function signInWithApple() {
+        if (navigator.onLine === false) {
+          alert(
+            "İnternet bağlantısı yok 📡\nGiriş yapmak için internete bağlanıp tekrar dene.",
+          );
+          return;
+        }
+        var native =
+          window.Capacitor &&
+          window.Capacitor.isNativePlatform &&
+          window.Capacitor.isNativePlatform();
+        var FBAuth =
+          native &&
+          window.Capacitor.Plugins &&
+          window.Capacitor.Plugins.FirebaseAuthentication;
+        if (!FBAuth) {
+          alert("Apple ile giriş yalnızca iPhone uygulamasında kullanılabilir.");
+          return;
+        }
+        FBAuth.signInWithApple()
+          .then(function (result) {
+            var c = (result && result.credential) || {};
+            if (!c.idToken) throw new Error("Apple kimlik bilgisi alınamadı");
+            var provider = new firebase.auth.OAuthProvider("apple.com");
+            var opts = { idToken: c.idToken };
+            if (c.nonce) opts.rawNonce = c.nonce; // eklenti ham nonce döner
+            var cred = provider.credential(opts);
+            return auth.signInWithCredential(cred);
+          })
+          .then(function () {
+            document.getElementById("modal-auth").classList.remove("on");
+            if (document.getElementById("scr-ob2").classList.contains("on")) {
+              setCount(0);
+            }
+          })
+          .catch(function (err) {
+            var m =
+              (err && ((err.message || "") + " " + (err.code || ""))) || "";
+            if (/cancel|1001|1000|canceled/i.test(m)) return; // kullanıcı iptal etti
+            if (
+              navigator.onLine === false ||
+              /network|unavailable|timeout|host|connection|offline/i.test(m)
+            ) {
+              alert(
+                "İnternet bağlantısı yok ya da zayıf 📡\nBağlantını kontrol edip tekrar dene.",
+              );
+              return;
+            }
+            alert("Apple ile giriş yapılamadı 🍎\nBirazdan tekrar dener misin?");
+          });
+      }
+      window.signInWithApple = signInWithApple;
+
+      // Apple giriş butonlarını YALNIZCA iOS'ta göster (Android/web'de gizli kalır).
+      document.addEventListener("DOMContentLoaded", function () {
+        try {
+          var isIOS =
+            window.Capacitor &&
+            window.Capacitor.getPlatform &&
+            window.Capacitor.getPlatform() === "ios";
+          if (isIOS) {
+            var btns = document.querySelectorAll(".apple-signin-btn");
+            for (var i = 0; i < btns.length; i++)
+              btns[i].style.display = "flex";
+          }
+        } catch (e) {}
+      });
+
       window.signOut = signOut;
       window.openAuthModal = function () {
         document.getElementById("modal-auth").classList.add("on");
@@ -7515,12 +7617,36 @@ function drawResultCard(opts) {
         AD_TESTING: false,
         ready: false,
         IDS: {
-          rewardedReal: "ca-app-pub-2604503622179334/1618922749",
-          bannerReal: "ca-app-pub-2604503622179334/6815409104",
-          interstitialReal: "ca-app-pub-2604503622179334/9140927760",
+          // Android gerçek reklam birimleri
+          android: {
+            rewardedReal: "ca-app-pub-2604503622179334/1618922749",
+            bannerReal: "ca-app-pub-2604503622179334/6815409104",
+            interstitialReal: "ca-app-pub-2604503622179334/9140927760",
+          },
+          // iOS gerçek reklam birimleri (AdMob iOS uygulaması ~6641288324)
+          // NOT: iOS'ta ayrı interstitial birimi oluşturulmadı → null → geçiş reklamı iOS'ta atlanır.
+          ios: {
+            rewardedReal: "ca-app-pub-2604503622179334/6837297662",
+            bannerReal: "ca-app-pub-2604503622179334/1748054292",
+            interstitialReal: null,
+          },
           rewardedTest: "ca-app-pub-3940256099942544/5224354917",
           bannerTest: "ca-app-pub-3940256099942544/6300978111",
           interstitialTest: "ca-app-pub-3940256099942544/1033173712",
+        },
+        // Çalışılan native platform: 'ios' | 'android' | 'web'
+        platform: function () {
+          try {
+            return window.Capacitor && window.Capacitor.getPlatform
+              ? window.Capacitor.getPlatform()
+              : "web";
+          } catch (e) {
+            return "web";
+          }
+        },
+        // Platforma uygun gerçek reklam kimliği seti (varsayılan: android)
+        real: function () {
+          return this.platform() === "ios" ? this.IDS.ios : this.IDS.android;
         },
         inApp: function () {
           return !!(
@@ -7539,23 +7665,23 @@ function drawResultCard(opts) {
         rewardedId: function () {
           return this.AD_TESTING
             ? this.IDS.rewardedTest
-            : this.IDS.rewardedReal;
+            : this.real().rewardedReal;
         },
         bannerId: function () {
-          return this.AD_TESTING ? this.IDS.bannerTest : this.IDS.bannerReal;
+          return this.AD_TESTING ? this.IDS.bannerTest : this.real().bannerReal;
         },
         interstitialId: function () {
           return this.AD_TESTING
             ? this.IDS.interstitialTest
-            : this.IDS.interstitialReal;
+            : this.real().interstitialReal;
         },
         // Geçiş reklamı (oylama sonucu / 2. çark). PRO'da hiç gösterilmez.
         showInterstitial: function () {
           var self = this;
           return new Promise(function (resolve) {
             var AdMob = self.plugin();
-            if (!self.inApp() || !AdMob || isPremium) {
-              resolve(false);
+            if (!self.inApp() || !AdMob || isPremium || !self.interstitialId()) {
+              resolve(false); // iOS'ta interstitial birimi yok → sessizce atla
               return;
             }
             var done = false,
@@ -15954,6 +16080,35 @@ function drawResultCard(opts) {
             />
           </svg>
           Google ile Giriş Yap
+        </button>
+        <button
+          class="apple-signin-btn"
+          onclick="signInWithApple()"
+          style="
+            display: none;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            width: 100%;
+            margin-top: 10px;
+            background: #000;
+            color: #fff;
+            border: none;
+            border-radius: 12px;
+            padding: 12px;
+            font-size: 15px;
+            font-weight: 700;
+            cursor: pointer;
+            font-family: -apple-system, 'Nunito', sans-serif;
+          "
+        >
+          <svg width="17" height="17" viewBox="0 0 384 512" aria-hidden="true">
+            <path
+              fill="#fff"
+              d="M318.7 268.7c-.2-36.7 16.4-64.4 50-84.8-18.8-26.9-47.2-41.7-84.7-44.6-35.5-2.8-74.3 20.7-88.5 20.7-15 0-49.4-19.7-76.4-19.7C63.3 141.2 4 184.8 4 273.5q0 39.3 14.4 81.2c12.8 36.7 59 126.7 107.2 125.2 25.2-.6 43-17.9 75.8-17.9 31.8 0 48.3 17.9 76.4 17.9 48.6-.7 90.4-82.5 102.6-119.3-65.2-30.7-61.7-90-61.7-91.9zm-56.6-164.2c27.3-32.4 24.8-61.9 24-72.5-24.1 1.4-52 16.4-67.9 34.9-17.5 19.8-27.8 44.3-25.6 71.9 26.1 2 49.9-11.4 69.5-34.3z"
+            />
+          </svg>
+          Apple ile Giriş Yap
         </button>
         <span
           class="auth-skip"
