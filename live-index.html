@@ -4887,7 +4887,7 @@
       <div class="screen" id="scr-ob2">
         <div class="ob-auth">
           <div class="ob-auth-logo m-idle" id="ob2-merci"></div>
-          <div class="ob-auth-title">Karar Mercii'ye Hoş Geldin!</div>
+          <div class="ob-auth-title">Karar Mercii'ne Hoş Geldin!</div>
           <div class="ob-auth-sub">
             Grubunuzun resmi karar hakemi. İster tek tek, ister hep beraber;
             kararsızlıkları eğlenceye dönüştürün!
@@ -4947,7 +4947,7 @@
             Apple ile Giriş Yap
           </button>
           <button class="ob-guest-btn" id="guest-continue-btn">
-            Şimdi değil, misafir olarak takılmak istiyorum →
+            Şimdi değil, misafir olarak devam et →
           </button>
           <div class="ob-auth-terms">
             Devam ederek
@@ -5251,7 +5251,7 @@
                   <svg viewBox="0 0 24 24"><path d="M5 12.5a9 9 0 0 1 14 0"/><path d="M8 15.5a5 5 0 0 1 8 0"/><circle cx="12" cy="18.5" r="1.4" fill="currentColor" stroke="none"/></svg>
                 </div>
                 <div class="vmode-tx">
-                  <div class="vmode-t">Online</div>
+                  <div class="vmode-t">Çevrimiçi</div>
                   <div class="vmode-d">Herkes kendi telefonundan</div>
                 </div>
               </button>
@@ -5903,8 +5903,7 @@
           </div>
           <div id="hist-empty" class="hist-empty" style="display: none">
             <div class="hist-empty-merci m-idle" id="hist-empty-merci"></div>
-            <div class="hist-empty-txt">Henüz karar yok — ilk çarkını çevir! 🎡</div>
-            <button class="btn" onclick="sw('wheel')" style="max-width: 220px; margin: 12px auto 0">🎡 Çark'a Git</button>
+            <div class="hist-empty-txt">Henüz karar yok — ilk çarkını çevir, sonucun burada biriksin! 🎡</div>
           </div>
         </div>
       </div>
@@ -6449,7 +6448,7 @@
             };
             var _alertNoAcct = function () {
               alert(
-                "Google hesabı bulunamadı 📵\nTelefonunda Ayarlar → Hesaplar bölümünde ekli bir Google hesabı olmalı.\nHonor/Huawei cihazlarda Google Play Hizmetleri gerekir.",
+                "Google hesabı bulunamadı 📵\n\nAyarlar → Hesaplar → Hesap Ekle → Google'dan bir hesap ekleyip tekrar dene.\n\nCihazında Google hizmetleri yoksa misafir olarak devam edebilirsin.",
               );
             };
             // 1) Modern Credential Manager (one-tap). Hesap bulamazsa
@@ -6461,29 +6460,27 @@
                 var m =
                   (err && ((err.message || "") + " " + (err.code || ""))) || "";
                 if (_isCancel(m)) return;
-                if (_isCredMgrMiss(m)) {
-                  FBAuth.signInWithGoogle({ useCredentialManager: false })
-                    .then(_afterCred)
-                    .then(_onOk)
-                    .catch(function (e2) {
-                      var m2 =
-                        (e2 &&
-                          ((e2.message || "") + " " + (e2.code || ""))) ||
-                        "";
-                      if (_isCancel(m2)) return;
-                      if (_isNet(m2)) {
-                        _alertNet();
-                        return;
-                      }
-                      _alertNoAcct();
-                    });
-                  return;
-                }
                 if (_isNet(m)) {
                   _alertNet();
                   return;
                 }
-                alert("Giriş yapılamadı: " + m);
+                // İlk deneme (Credential Manager) başarısız → SEBEP NE OLURSA
+                // OLSUN legacy GMS hesap seçiciye düş. Honor/Huawei/özel ROM'larda
+                // Credential Manager standart-dışı hatalar veriyor; belirli hata
+                // metnine güvenmeden HER başarısızlıkta güvenilir seçiciye geçiyoruz.
+                FBAuth.signInWithGoogle({ useCredentialManager: false })
+                  .then(_afterCred)
+                  .then(_onOk)
+                  .catch(function (e2) {
+                    var m2 =
+                      (e2 && ((e2.message || "") + " " + (e2.code || ""))) || "";
+                    if (_isCancel(m2)) return;
+                    if (_isNet(m2)) {
+                      _alertNet();
+                      return;
+                    }
+                    _alertNoAcct();
+                  });
               });
             return;
           }
@@ -8877,7 +8874,7 @@ function drawResultCard(opts) {
             sel: "#vote-mode-select",
             pose: "default",
             title: "1️⃣ Nasıl oylayalım?",
-            body: "İki yol var: <b>Bu Cihazda</b> tek telefonu elden ele; <b>Online</b> herkes kendi telefonundan. Hadi 'Bu Cihazda'yı açıp gösterelim 👇",
+            body: "İki yol var: <b>Bu Cihazda</b> tek telefonu elden ele; <b>Çevrimiçi</b>'de herkes kendi telefonundan oy verir. Hadi 'Bu Cihazda'yı açıp gösterelim 👇",
           },
           {
             tab: "vote",
@@ -8957,8 +8954,8 @@ function drawResultCard(opts) {
             sel: "#online-role-row",
             settle: 360,
             pose: "default",
-            title: "🌐 Online oda",
-            body: "Online'da iki seçenek: <b>📡 Oda Oluştur</b> ya da <b>🔑 Odaya Katıl</b>. Önce oda kurmayı gösterelim 👇",
+            title: "🌐 Çevrimiçi oda",
+            body: "Çevrimiçi modda iki seçenek var: <b>📡 Oda Oluştur</b> ya da <b>🔑 Odaya Katıl</b>. Önce oda kurmayı gösterelim 👇",
             skipIf: function () {
               return tourVoteBusy();
             },
@@ -9389,7 +9386,7 @@ function drawResultCard(opts) {
           {
             icon: "⭐",
             title: "Oylama Nasıl Çalışır?",
-            body: "<b>Tek Kişi</b> modunda sadece sen oylar. <b>Masa Modu</b>'nda elden ele geçerek herkes sırayla yıldız verir, son kişi bitirdiğinde kazanan açıklanır. <b>Online</b> modda herkes kendi telefonundan bağlanır!",
+            body: "<b>Tek Kişi</b> modunda sadece sen oylarsın. <b>Masa Modu</b>'nda telefon elden ele geçer, herkes sırayla yıldız verir; son kişi bitirince kazanan açıklanır. <b>Çevrimiçi</b> modda ise herkes kendi telefonundan bağlanır!",
             color: "var(--ac-l)",
           },
           {
@@ -12846,7 +12843,7 @@ function drawResultCard(opts) {
         addHist(
           "🏆",
           w,
-          "Online Oylama",
+          "Çevrimiçi Oylama",
           say + " (" + pts + " puan, " + cnt + " kişi)",
         );
         winSound();
@@ -13263,7 +13260,7 @@ function drawResultCard(opts) {
           document.getElementById("room-title-display").textContent || ""
         ).replace(" — Oda açık", "");
         var msg =
-          "🗳️ Karar Mercii'de " +
+          "🗳️ Karar Mercii'nde " +
           (name ? '"' + name + '" ' : "") +
           "oylamasına davetlisin!\n\n" +
           "🔑 Oda kodu: " +
@@ -14755,7 +14752,7 @@ function drawResultCard(opts) {
             "font-family:Nunito,sans-serif;font-size:12.5px;font-weight:800;text-align:center;" +
             "padding:7px 12px;box-shadow:0 2px 10px rgba(0,0,0,.3)";
           bar.textContent =
-            "📡 Çevrimdışısın — Merci, online oda ve giriş için internet gerekli";
+            "📡 Çevrimdışısın — Merci, çevrimiçi oda ve giriş için internet gerekli";
           document.body.appendChild(bar);
         }
         function hideOff() {
@@ -14999,7 +14996,7 @@ function drawResultCard(opts) {
         function closeProWithConfirm() {
           showConfirm(
             "Pro'dan çıkıyorsun",
-            "Merci'ye sınırsız danış, reklamsız kullan haklarını kaybedeceksin. Emin misin?",
+            "Merci'ye sınırsız danışma, reklamsız kullanma haklarını kaybedeceksin. Emin misin?",
             function () {
               if (proModal) proModal.classList.remove("on");
             },
@@ -15505,11 +15502,11 @@ function drawResultCard(opts) {
           Seçenekleri ekle, çarkı çevir — Merci karar versin!
           <h3>⭐ Oylama</h3>
           Herkes yıldız verir; tek cihazdan veya herkes kendi telefonundan
-          online oylar.
+          çevrimiçi oylar.
           <h3>🧠 Merci'ye Danış</h3>
           AI destekli ahtapot asistanımız seçenek önerir, mekan araştırır ve
           geçmişi analiz eder.
-          <h3>📡 Online Oylama</h3>
+          <h3>📡 Çevrimiçi Oylama</h3>
           Link veya oda koduyla herkes bağlanır, sonuçlar anlık güncellenir.
           <br />
           <div
@@ -15547,8 +15544,8 @@ function drawResultCard(opts) {
           Uygulama, kullanıcı hesabı oluşturmaz ve kişisel kimlik bilgisi
           toplamaz. Karar geçmişiniz yalnızca cihazınızda (localStorage)
           saklanır.
-          <h3>Online Oylama</h3>
-          Online oylama özelliği kullanıldığında, oda kodları ve oy verileri
+          <h3>Çevrimiçi Oylama</h3>
+          Çevrimiçi oylama özelliği kullanıldığında, oda kodları ve oy verileri
           geçici olarak Firebase Firestore'da saklanır. Bu veriler kişisel bilgi
           içermez ve oylama kapandıktan sonra kullanılmaz.
           <h3>Yapay Zeka (Merci)</h3>
@@ -15622,7 +15619,7 @@ function drawResultCard(opts) {
           class="info-modal-body"
           style="text-align: center; margin-bottom: 0"
         >
-          Karar Mercii'ni beğeniyor musunuz? Görüşleriniz bizim için çok
+          Karar Mercii'ni beğeniyor musun? Görüşlerin bizim için çok
           değerli!
         </div>
         <div class="star-row" id="star-row">
@@ -15813,7 +15810,7 @@ function drawResultCard(opts) {
             margin-top: 8px;
           "
         >
-          Teşekkürler! Mesajınız iletildi 🐙
+          Teşekkürler! Mesajın iletildi 🐙
         </div>
         <p
           style="
@@ -15896,7 +15893,7 @@ function drawResultCard(opts) {
           </p>
           <p style="margin-bottom: 4px">• Cihaz kimliği (anonim)</p>
           <p style="margin-bottom: 4px">• Karar geçmişi</p>
-          <p style="margin-bottom: 4px">• Online oylama oda bilgileri</p>
+          <p style="margin-bottom: 4px">• Çevrimiçi oylama oda bilgileri</p>
           <p style="margin-bottom: 4px">
             • Geri bildirim formu (e-posta, mesaj)
           </p>
@@ -16158,7 +16155,7 @@ function drawResultCard(opts) {
         <span
           class="auth-skip"
           onclick="document.getElementById('modal-auth').classList.remove('on')"
-          >Belki sonra, anonim devam et →</span
+          >Belki sonra, misafir olarak devam et →</span
         >
       </div>
     </div>
