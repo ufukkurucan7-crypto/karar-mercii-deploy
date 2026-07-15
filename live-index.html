@@ -7740,6 +7740,21 @@ function drawResultCard(opts) {
           var AdMob = this.plugin();
           if (!AdMob) return;
           try {
+            // iOS: reklamdan ÖNCE App Tracking Transparency izni iste.
+            // İzin verilirse kişiselleştirilmiş reklam (daha yüksek gelir);
+            // reddedilse bile reklam gösterilir ama kişiselleştirilmez.
+            if (this.platform() === "ios" && AdMob.trackingAuthorizationStatus) {
+              try {
+                var t = await AdMob.trackingAuthorizationStatus();
+                if (
+                  t &&
+                  t.status === "notDetermined" &&
+                  AdMob.requestTrackingAuthorization
+                ) {
+                  await AdMob.requestTrackingAuthorization();
+                }
+              } catch (e) {}
+            }
             await AdMob.initialize({});
             this.ready = true;
             // PRO kullanıcı değilse alt banner'ı göster + popup'larda otomatik gizle
