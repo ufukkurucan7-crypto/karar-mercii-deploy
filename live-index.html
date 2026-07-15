@@ -12566,7 +12566,9 @@ function drawResultCard(opts) {
           snd("ding");
           logEv("room_create", { option_count: onlineOpts.length });
           if (roomTimeLimit > 0)
-            startTimer(roomTimeLimit * 60, "host-timer", () => closeVoting());
+            startTimer(roomTimeLimit * 60, "host-timer", () =>
+              deadlineClose(shareCode),
+            );
         } catch (e) {
           alert("Oda oluşturulamadı!");
         }
@@ -12637,8 +12639,9 @@ function drawResultCard(opts) {
           // Timer'ı closesAt'tan devam ettir (host cihazı kapalıyken geçen süre düşülür).
           if (data.closesAt) {
             var rem = Math.floor((data.closesAt - Date.now()) / 1000);
-            if (rem > 0) startTimer(rem, "host-timer", () => closeVoting());
-            else closeVoting();
+            if (rem > 0)
+              startTimer(rem, "host-timer", () => deadlineClose(shareCode));
+            else deadlineClose(shareCode);
           }
         } catch (e) {}
       }
@@ -12805,6 +12808,14 @@ function drawResultCard(opts) {
             } else if (data.status === "open") {
               checkAutoClose(data);
             }
+            // SÜRE-DOLUNCA KAPANIŞ: host açıksa süre dolan odayı onaysız kapat.
+            if (
+              data.status === "open" &&
+              data.closesAt &&
+              data.closesAt <= Date.now()
+            ) {
+              deadlineClose(code);
+            }
           });
       }
 
@@ -12886,7 +12897,7 @@ function drawResultCard(opts) {
 
       // Oyları say + Firestore'a kazanan/beraberlik yaz (closeVoting'den ayrıldı;
       // mantık birebir korundu — stilize onaydan SONRA çağrılır).
-      async function _finalizeClose(code, data) {
+      async function _finalizeClose(code, data, silent) {
         try {
           var parts = data.participants || {};
           var voterCount = Object.values(parts).filter(
@@ -12941,7 +12952,35 @@ function drawResultCard(opts) {
             } catch (e) {}
           }
         } catch (e) {
-          alert("Hata: " + e.message);
+          // silent: deadline yolundan (katılımcı dahil) gelen çağrılarda geçici ağ
+          // hatasında ham alert gösterme. Manuel closeVoting/checkAutoClose (silent
+          // yok) → host hatayı görür.
+          if (!silent) alert("Hata: " + e.message);
+        }
+      }
+
+      // SÜRE-DOLUNCA KAPANIŞ (client): Autoscale'de sunucu setInterval güvenilmez
+      // olduğu için açık olan client (host VEYA katılımcı) süre dolunca odayı kapatır.
+      // closeVoting'den farkı: ONAY DİYALOĞU YOK — süre bitti, olan oylar sayılır.
+      // Çift-çalışma guard'ı: _deadlineFiring[code] + status!=="open" erken-çıkış.
+      // Çift-YAZIM güvenliği: deadline sonrası oy kümesi sabit → tüm çağıranlar aynı
+      // kazanan/puanı hesaplar; last-write-wins idempotent-özdeş yazım (zarar yok).
+      var _deadlineFiring = {};
+      async function deadlineClose(code) {
+        if (!code) return;
+        if (_deadlineFiring[code]) return;
+        _deadlineFiring[code] = true;
+        try {
+          var doc = await db.collection("rooms").doc(code).get();
+          if (!doc.exists) return;
+          var data = doc.data();
+          if (data.status !== "open") return; // başkası/sunucu kapatmış
+          if (!data.closesAt || data.closesAt > Date.now()) return; // süre gerçekten dolmadı
+          // Süre doldu → onaysız + sessiz sonuçlandır (mevcut tally+write; beraberlikte tied yazar)
+          await _finalizeClose(code, data, true);
+        } catch (e) {
+        } finally {
+          delete _deadlineFiring[code];
         }
       }
 
@@ -13150,6 +13189,11 @@ function drawResultCard(opts) {
               voterCount: null,
               tieItems: null,
               roundNumber: firebase.firestore.FieldValue.increment(1),
+              // YENİ TUR closesAt'ı tazele: yoksa eski (geçmiş) closesAt yüzünden
+              // sunucu autoCloseExpiredRooms + client deadlineClose bu turu ANINDA
+              // kapatırdı. Süresiz oda = null = otomatik kapanmaz.
+              closesAt:
+                roomTimeLimit > 0 ? Date.now() + roomTimeLimit * 60000 : null,
             });
           currentRound++;
           tbAnimKey = "";
@@ -13160,7 +13204,9 @@ function drawResultCard(opts) {
           document.getElementById("tb-modal").classList.remove("on");
           renderHostVoteList();
           if (roomTimeLimit > 0)
-            startTimer(roomTimeLimit * 60, "host-timer", () => closeVoting());
+            startTimer(roomTimeLimit * 60, "host-timer", () =>
+              deadlineClose(shareCode),
+            );
           snd("ding");
         } catch (e) {
           alert("Hata: " + e.message);
@@ -13329,6 +13375,15 @@ function drawResultCard(opts) {
                 startTimer(data.timeLimit * 60, "p-timer-display", () =>
                   submitVote(),
                 );
+            }
+            // SÜRE-DOLUNCA KAPANIŞ: uygulama-içi "Katıl" ile giren katılımcı açıksa,
+            // host offline olsa bile süre dolan odayı onaysız kapat (code = bu odanın kodu).
+            if (
+              data.status === "open" &&
+              data.closesAt &&
+              data.closesAt <= Date.now()
+            ) {
+              deadlineClose(code);
             }
           });
       }
@@ -13817,6 +13872,15 @@ function drawResultCard(opts) {
                 startTimer(data.timeLimit * 60, "ro-timer", () =>
                   roSubmitVote(),
                 );
+            }
+            // SÜRE-DOLUNCA KAPANIŞ: katılımcı açıksa süre dolan odayı onaysız kapat
+            // (code === roCode). Host offline olsa bile oda kendi kapanır.
+            if (
+              data.status === "open" &&
+              data.closesAt &&
+              data.closesAt <= Date.now()
+            ) {
+              deadlineClose(code);
             }
           });
       }
