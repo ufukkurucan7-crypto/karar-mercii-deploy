@@ -94,8 +94,11 @@ const PRO_DAILY_LIMIT = 300;
 // IP başına dakikada max 15 istek
 const rateLimitMap = new Map();
 function rateLimit(req, res, next) {
+  // X-Forwarded-For: İLK değer client tarafından spoof edilebilir (her istekte
+  // farklı yazıp rate-limit'i atlar). Proxy'nin eklediği SON (en güvenilir) değeri al.
+  const xff = req.headers["x-forwarded-for"];
   const ip =
-    req.headers["x-forwarded-for"]?.split(",")[0] ||
+    (xff ? xff.split(",").pop().trim() : null) ||
     req.socket.remoteAddress ||
     "unknown";
   const now = Date.now();
@@ -295,6 +298,15 @@ Tanımıyorsan normal yorum yap. Espriyi kısa tut, 1 cümle.`
     // (Nominatim) yeni koordinatı client'a döner, client konumu günceller.
     const setLocHint = `\nKONUM DÜZELTME: Kullanıcı bulunduğu yeri YAZIYLA söyler ya da düzeltirse (örn. "ben Ümraniye'deyim", "yok Kadıköy'deyim", "konumum yanlış, Beşiktaş'tayım"), cevabının EN BAŞINA [[SETLOC:YerAdı]] işareti koy — köşeli parantez içine SADECE o semt/şehir adını yaz (tek yer, ilçe+şehir olabilir: "Ümraniye, İstanbul"). Böylece konum oraya güncellenir. Sonra normal cevabını ver; kullanıcı yakında yer de soruyorsa ayrıca uygun [[NEARBY:tür]] işaretini de ekle. DİKKAT: bu işaret SADECE kullanıcının KENDİ bulunduğu konum içindir; sohbette geçen rastgele/anı yer adı ("geçen yıl Bodrum'a gittik") bunu TETİKLEMEZ.`;
 
+    // ── ZAMAN FARKINDALIĞI (canlı bug: Merci "saati bilmiyorum" diyordu) ──
+    // Türkiye saati = UTC+3 (2016'dan beri yaz saati YOK, sabit). ICU/locale'e
+    // bağımlı olmasın diye gün/ay adlarını elle diziden veriyoruz.
+    const _trNow = new Date(Date.now() + 3 * 3600 * 1000);
+    const _gunler = ["Pazar", "Pazartesi", "Salı", "Çarşamba", "Perşembe", "Cuma", "Cumartesi"];
+    const _aylar = ["Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran", "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"];
+    const _saat = String(_trNow.getUTCHours()).padStart(2, "0") + ":" + String(_trNow.getUTCMinutes()).padStart(2, "0");
+    const timeContext = `\nŞU AN (Türkiye saati): ${_gunler[_trNow.getUTCDay()]}, ${_trNow.getUTCDate()} ${_aylar[_trNow.getUTCMonth()]} ${_trNow.getUTCFullYear()}, saat ${_saat}. Kullanıcı saat/gün/tarih sorarsa bunu söyle — "bilmiyorum" DEME. Önerilerini de saate göre ayarla (sabah kahvaltı/kahve, öğlen öğle yemeği, akşam yemek/aktivite, gece geç saate uygun). Ama her cevaba saat yazma — sadece konuyla ilgiliyse.`;
+
     const systemPrompt = `Sen Merci — mor, sevimli ama keskin zekâlı bir karar-ahtapotu. İnsanların kararsızlığını bitirmek senin işin ve bundan keyif alıyorsun. Uygulamanın yıldızı sensin, sıkıcı bir asistan değil.
 
 TARZIN:
@@ -312,7 +324,7 @@ NE YAPARSIN:
 - Alakasız soruda (genel bilgi, matematik, kod) nazikçe geçiştir: "Ben karar kollarımı onun için sallamıyorum 🐙 Ama bir ikilemin varsa anlat, çözeriz!"
 - Kullanıcı "bilmiyorum / fark etmez" derse çarka yönlendir: "Kaderine bırak — çevir bakalım! 🎡" Grup büyük ve oylama mantıklıysa: "Bunu kalabalık çözer, oylamaya alalım 📊"
 - Kısıt gelince ("2 kişiyiz", "arabam yok", "bütçe az") soru sormadan DİREKT uygun alternatif öner. Eksik bilgi varsa en fazla 1 netleştirme sorusu sor — peş peşe soru yağdırma.
-${historyContext}${locationContext}${setLocHint}${resultPrompt}${winnerEspriPrompt}
+${timeContext}${historyContext}${locationContext}${setLocHint}${resultPrompt}${winnerEspriPrompt}
 
 SEÇENEK BUTONU (SIK kullan): Cevapta 2+ somut seçilebilir seçenek varsa (yemek/film/mekan/aktivite; cümle içinde bile), YA DA kullanıcı "sen karar ver" deyince veya sen çarka yönlendirince — cevabının EN SONUNA [[SECENEKLER: ad1 | ad2 | ad3]] ekle (2-8 kısa isim, | ile ayır). Örn: "Pizza mı burger mi? [[SECENEKLER: Pizza | Burger]]" — "Çevir bakalım! [[SECENEKLER: Korku | Komedi | Aksiyon]]". Tek kesin öneride işaret KOYMA. DİKKAT: SECENEKLER soyut KATEGORİ/tür içindir (Pizza, Korku filmi, Kafe) — GERÇEK MEKAN İSMİ (Domino's, Big Chefs) ASLA yazma; [[NEARBY]] koyduğun mekan cevaplarında SECENEKLER'e mekan/işletme adı KOYMA.
 
