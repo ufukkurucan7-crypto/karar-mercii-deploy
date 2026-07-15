@@ -7180,8 +7180,13 @@ function drawResultCard(opts) {
             window.Capacitor.getPlatform() === "ios";
           if (isIOS) {
             var btns = document.querySelectorAll(".apple-signin-btn");
-            for (var i = 0; i < btns.length; i++)
+            for (var i = 0; i < btns.length; i++) {
               btns[i].style.display = "flex";
+              // iOS'ta Apple'ı Google'ın ÜSTÜNE taşı (Apple 4.8 kılavuzu: en az eşit vurgu)
+              var g = btns[i].previousElementSibling;
+              if (g && /google/i.test(g.className || ""))
+                g.parentNode.insertBefore(btns[i], g);
+            }
           }
         } catch (e) {}
       });
