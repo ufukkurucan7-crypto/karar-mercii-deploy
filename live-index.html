@@ -2672,6 +2672,8 @@
       @media (prefers-reduced-motion: reduce) {
         .m-idle,
         .m-idle *,
+        #wheel-center-merci svg,
+        #wheel-center-merci svg *,
         .m-wave-arm,
         .m-zzz,
         .m-magnify {
@@ -3305,6 +3307,25 @@
       #wheel-center-merci svg {
         width: 40px;
         height: auto;
+        transform-origin: center bottom;
+        animation:
+          mfloat 3.6s ease-in-out infinite,
+          mbreath 4.2s ease-in-out infinite;
+      }
+      /* Çark göbeği maskotu: idle animasyonu SADECE iç svg'ye (container
+         transform'u spin sırasında JS ile yazılıyor → ona dokunma). */
+      #wheel-center-merci .eye-white {
+        transform-box: fill-box;
+        transform-origin: center;
+        animation: mblink 5.2s ease-in-out infinite;
+      }
+      #wheel-center-merci .m-arm {
+        transform-box: view-box;
+        transform-origin: 340px 400px;
+        animation: marm 4s ease-in-out infinite;
+      }
+      #wheel-center-merci .m-arm.r {
+        animation: marm 4s ease-in-out infinite reverse;
       }
       /* Konum chip'leri + mekan kartları */
       .loc-chips {
@@ -4865,7 +4886,7 @@
       <!-- ONBOARDING 2 - AUTH -->
       <div class="screen" id="scr-ob2">
         <div class="ob-auth">
-          <div class="ob-auth-logo" id="ob2-merci"></div>
+          <div class="ob-auth-logo m-idle" id="ob2-merci"></div>
           <div class="ob-auth-title">Karar Mercii'ye Hoş Geldin!</div>
           <div class="ob-auth-sub">
             Grubunuzun resmi karar hakemi. İster tek tek, ister hep beraber;
@@ -4945,7 +4966,7 @@
       </div>
       <div class="screen" id="scr-main">
         <div class="hdr">
-          <div id="hdr-merci"></div>
+          <div id="hdr-merci" class="m-idle"></div>
           <div>
             <div class="hdr-title">Karar Mercii</div>
             <div class="hdr-sub">Nasıl karar verelim?</div>
@@ -5174,6 +5195,7 @@
             <div style="text-align: center; margin: 4px 0 16px">
               <div
                 id="vote-hero-merci"
+                class="m-idle"
                 style="display: flex; justify-content: center"
               ></div>
               <div
@@ -5656,7 +5678,7 @@
           <div id="ai-login-wall" style="display: none">
             <div class="ai-wall-new">
               <!-- Mascot -->
-              <div class="ai-wall-mascot" id="ai-wall-merci"></div>
+              <div class="ai-wall-mascot m-idle" id="ai-wall-merci"></div>
               <!-- Konuşma balonu -->
               <div class="ai-wall-bubble">
                 Psst! Karar vermekte zorlanıyor musun? Ben yardım edebilirim! 🤫
@@ -5730,7 +5752,7 @@
           <div id="ai-content">
             <!-- Hero banner -->
             <div class="merci-ai-hero">
-              <div class="merci-ai-hero-mascot" id="ai-hero-merci"></div>
+              <div class="merci-ai-hero-mascot m-idle" id="ai-hero-merci"></div>
               <div class="merci-ai-hero-txt">
                 <div class="merci-ai-hero-row">
                   <span class="merci-ai-hero-title">Merci</span>
@@ -8467,6 +8489,9 @@ function drawResultCard(opts) {
       function gentleFloat(id) {
         cancelAnimationFrame(bRAFs[id]);
         clearTimeout(bTMOs[id]);
+        // m-idle bağlıysa float'ı CSS yapıyor → JS rAF float'ı atla (çift hareket olmasın)
+        var _ge = document.getElementById(id);
+        if (_ge && _ge.classList.contains("m-idle")) return;
         var t = Math.random() * 6;
         (function f() {
           var el = document.getElementById(id);
@@ -16042,7 +16067,7 @@ function drawResultCard(opts) {
     <!-- ═══ AUTH MODAL ═══ -->
     <div class="auth-modal" id="modal-auth">
       <div class="auth-box">
-        <div class="auth-logo" id="modal-auth-merci"></div>
+        <div class="auth-logo m-idle" id="modal-auth-merci"></div>
         <div class="auth-title">Merci'ye Danışmak İçin</div>
         <div class="auth-sub">
           Google ile giriş yap — her gün 6 ücretsiz Merci mesajı senin! 🐙
@@ -16168,7 +16193,7 @@ function drawResultCard(opts) {
         </button>
         <div class="pro-hero">
           <div class="pro-badge">✨ KARAR MERCİİ PRO</div>
-          <div class="pro-hero-merci" id="pro-hero-merci"></div>
+          <div class="pro-hero-merci m-idle" id="pro-hero-merci"></div>
           <div class="pro-title">Sınırsız Karar Ver!</div>
           <div class="pro-sub">
             Merci'ye istediğin kadar danış, reklamsız kullan, tüm geçmişini sakla.
@@ -16249,6 +16274,7 @@ function drawResultCard(opts) {
         </button>
         <div
           id="pro-active-merci"
+          class="m-idle"
           style="display: flex; justify-content: center; margin: 8px 0 4px"
         ></div>
         <div class="pro-badge">✨ KARAR MERCİİ PRO</div>
