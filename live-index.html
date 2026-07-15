@@ -12509,11 +12509,24 @@ function drawResultCard(opts) {
               participants: { [deviceId]: { name: hName, votes: {} } },
               created: Date.now(),
               roundNumber: 1,
+              // KALICILIK/SUNUCU-KAPANIŞ: kesin bitiş zamanı. Süresiz oda = null =
+              // sunucu otomatik kapatmaz. Süreli oda dolduğunda host cihazı kapalı
+              // olsa bile live-server.js (autoCloseExpiredRooms) bunu kapatır.
+              closesAt:
+                roomTimeLimit > 0 ? Date.now() + roomTimeLimit * 60000 : null,
             });
           shareCode = code;
           currentRound = 1;
           amHost = true;
           tbAnimKey = "";
+          // KALICILIK: host oturumunu kaydet ki app kapanıp açılınca (veya host
+          // kendi ?room= linkine tıklayınca) odasına GERİ dönebilsin (rejoin).
+          try {
+            localStorage.setItem(
+              "kmHostRoom",
+              JSON.stringify({ code: code, name: name, ts: Date.now() }),
+            );
+          } catch (e) {}
           // TAZE ODA STATE'İ: önceki online tur / masa denemesi sonrası
           // showOnlineWinner host-vote-section'ı gizleyip winner/reset butonlarını
           // açık bırakıyordu → yeni odada host oy+kapat kontrolleri GÖZÜKMÜYORDU
@@ -12557,6 +12570,124 @@ function drawResultCard(opts) {
         } catch (e) {
           alert("Oda oluşturulamadı!");
         }
+      }
+
+      // KALICILIK: Firestore verisinden host oturumunu TAM restore et (createRoom'daki
+      // host-panel kurulumunun aynası, form yerine data'dan). App yeniden açıldığında
+      // veya host kendi linkine dönünce çağrılır. Hatalar try/catch ile yutulur —
+      // açılışta çökme OLMAMALI.
+      function reconnectAsHost(code, data) {
+        try {
+          if (!code || !data) return;
+          // Önce online mod bağlamını GÜVENLE kur (bu noktada shareCode/amHost henüz
+          // set edilmediği için setVoteMode confirm diyaloğu tetiklenmez; idle → erken
+          // dönmez). Sonra host state + panel gösterimi override edilir.
+          try {
+            sw("vote");
+          } catch (e) {}
+          try {
+            setVoteMode("online");
+          } catch (e) {}
+          shareCode = code;
+          amHost = true;
+          roomStatus = data.status;
+          roomMaxP = data.maxParticipants || roomMaxP;
+          roomTimeLimit = data.timeLimit != null ? data.timeLimit : roomTimeLimit;
+          currentRound = data.roundNumber || 1;
+          myHostName =
+            ((data.participants || {})[deviceId] || {}).name || myHostName;
+          onlineOpts = (data.options || []).slice();
+          // Host oy durumunu restore et (yeniden oy vermeyi tekrar açmasın)
+          hostVotes = {};
+          onlineOpts.forEach((o) => (hostVotes[o] = 0));
+          var me = (data.participants || {})[deviceId] || {};
+          if (me.votes)
+            Object.keys(me.votes).forEach((o) => {
+              hostVotes[o] = me.votes[o];
+            });
+          hostVotesSubmitted = me.submitted === true;
+          // Display toggles (createRoom 12525-12546 bloğunun aynası)
+          document.getElementById("online-setup").style.display = "none";
+          document.getElementById("online-role-row").style.display = "none";
+          var cwDone = document.getElementById("cats-vote-wrap");
+          if (cwDone) cwDone.style.display = "none";
+          document.getElementById("online-host").style.display = "";
+          var _hvs = document.getElementById("host-vote-section");
+          if (_hvs) _hvs.style.display = "";
+          var _cvb = document.getElementById("close-voting-btn");
+          if (_cvb) _cvb.style.display = "";
+          var _sbx = document.querySelector("#online-host .share-box");
+          if (_sbx) _sbx.style.display = "";
+          var _nrb = document.getElementById("new-round-btn");
+          if (_nrb) _nrb.style.display = "none";
+          var _nrd = document.getElementById("new-round-divider");
+          if (_nrd) _nrd.style.display = "none";
+          var _rob = document.getElementById("reset-online-btn");
+          if (_rob) _rob.style.display = "none";
+          var _nro = document.getElementById("new-round-opts");
+          if (_nro) _nro.style.display = "none";
+          var _vrCard = document.getElementById("vr");
+          if (_vrCard) _vrCard.style.display = "none";
+          document.getElementById("share-code").textContent = code;
+          document.getElementById("room-title-display").textContent =
+            (data.name || "Oylama") + " — Oda açık";
+          renderHostVoteList();
+          listenRoomAsHost(code);
+          setVoteStep(3);
+          // Timer'ı closesAt'tan devam ettir (host cihazı kapalıyken geçen süre düşülür).
+          if (data.closesAt) {
+            var rem = Math.floor((data.closesAt - Date.now()) / 1000);
+            if (rem > 0) startTimer(rem, "host-timer", () => closeVoting());
+            else closeVoting();
+          }
+        } catch (e) {}
+      }
+
+      // KALICILIK: app açılışında ?room= YOKSA, kaydedilmiş açık host odasını sessizce
+      // kurtar. Tüm hatalar yutulur; açılış akışını BOZMAZ.
+      async function tryRestoreHostRoom() {
+        try {
+          var raw = localStorage.getItem("kmHostRoom");
+          if (!raw) return;
+          var info;
+          try {
+            info = JSON.parse(raw);
+          } catch (e) {
+            try {
+              localStorage.removeItem("kmHostRoom");
+            } catch (e2) {}
+            return;
+          }
+          if (!info || !info.code) {
+            try {
+              localStorage.removeItem("kmHostRoom");
+            } catch (e) {}
+            return;
+          }
+          // 12 saatten eski oturumu at (bayat oda)
+          if (!info.ts || Date.now() - info.ts > 12 * 60 * 60 * 1000) {
+            try {
+              localStorage.removeItem("kmHostRoom");
+            } catch (e) {}
+            return;
+          }
+          await ensureRoomAuth();
+          var doc = await db.collection("rooms").doc(info.code).get();
+          var data = doc.exists ? doc.data() : null;
+          // Yoksa / bu cihaz host değil / açık değil → temizle (kapandıysa sunucu
+          // sonucu zaten yazdı, kullanıcı ?room= ile veya kodla tekrar bakabilir).
+          if (
+            !data ||
+            data.hostId !== deviceId ||
+            data.status !== "open"
+          ) {
+            try {
+              localStorage.removeItem("kmHostRoom");
+            } catch (e) {}
+            return;
+          }
+          reconnectAsHost(info.code, data);
+        } catch (e) {}
       }
 
       function renderHostVoteList() {
@@ -12804,6 +12935,10 @@ function drawResultCard(opts) {
               winnerVoters: voterCount,
               tieItems: [],
             });
+            // KALICILIK: oda kesin kapandı → host oturum kaydını temizle.
+            try {
+              localStorage.removeItem("kmHostRoom");
+            } catch (e) {}
           }
         } catch (e) {
           alert("Hata: " + e.message);
@@ -12905,6 +13040,10 @@ function drawResultCard(opts) {
       }
 
       function resetOnlineToRoleSelect() {
+        // KALICILIK: host odadan ayrılıyor → oturum kaydını temizle.
+        try {
+          localStorage.removeItem("kmHostRoom");
+        } catch (e) {}
         shareCode = "";
         amHost = false;
         hostVotesSubmitted = false;
@@ -13373,14 +13512,15 @@ function drawResultCard(opts) {
           // kaybediyor, oy verip bitiremiyordu. deviceId kalıcı (localStorage) →
           // hostId===deviceId ile güvenilir yakalanır (aynı-cihaz çakışması da kapanır).
           if (doc.data().hostId === deviceId) {
+            // KALICILIK: host kendi ?room= linkine tıkladı → katılımcı yapma,
+            // odasına GERİ bağla (rejoin). Eskiden sadece alert+return vardı;
+            // host odasını kaybediyordu.
             document.getElementById("room-overlay").style.display = "none";
             document
               .querySelectorAll(".tabs,.hdr")
               .forEach((el) => (el.style.display = ""));
             roCode = null;
-            alert(
-              "Bu odanın sahibi zaten sensin 🎉 Ana ekrandan odanı yönet; arkadaşların kodla katılsın.",
-            );
+            reconnectAsHost(doc.id, doc.data()); // doc.id === oda kodu
             return;
           }
           document.getElementById("ro-room-name").textContent =
@@ -13509,6 +13649,10 @@ function drawResultCard(opts) {
       }
       // Online oylamadan ayrılırken TÜM state + UI'ı temizle (zombi oda kalmasın)
       function resetOnlineUI() {
+        // KALICILIK: online oylamadan ayrılırken host oturum kaydını da temizle.
+        try {
+          localStorage.removeItem("kmHostRoom");
+        } catch (e) {}
         try {
           if (shareUnsub) shareUnsub();
         } catch (e) {}
@@ -14723,10 +14867,17 @@ function drawResultCard(opts) {
         });
       }
 
-      // URL'den oda kodunu yakala — katılımcı overlay göster
+      // URL'den oda kodunu yakala — katılımcı overlay göster.
+      // ?room= YOKSA: kaydedilmiş açık host odasını sessizce kurtar (KALICILIK).
       var urlParams = new URLSearchParams(window.location.search);
       if (urlParams.get("room")) {
         setTimeout(() => initRoomOverlay(urlParams.get("room")), 900);
+      } else {
+        setTimeout(() => {
+          try {
+            tryRestoreHostRoom();
+          } catch (e) {}
+        }, 900);
       }
       var wc = document.getElementById("wcanvas");
       wc.addEventListener("pointerdown", wDown);
