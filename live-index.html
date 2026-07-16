@@ -1205,81 +1205,53 @@
         min-height: 100dvh;
         gap: 0;
       }
-      /* D1 — onboarding değer carousel (Deploy #15, CSS scroll-snap) */
-      .ob-carousel-wrap {
-        position: relative;
-        width: 100%;
-        max-width: 420px;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-      }
-      .ob-skip {
-        position: absolute;
-        top: -8px;
-        right: 4px;
-        background: none;
-        border: none;
-        color: var(--ac-l2);
-        font-family: "Nunito", sans-serif;
-        font-weight: 800;
-        font-size: 13px;
-        cursor: pointer;
-        padding: 6px 8px;
-        z-index: 2;
-      }
-      .ob-carousel {
-        display: flex;
-        overflow-x: auto;
-        scroll-snap-type: x mandatory;
-        -webkit-overflow-scrolling: touch;
-        scrollbar-width: none;
-        width: 100%;
-      }
-      .ob-carousel::-webkit-scrollbar { display: none; }
-      .ob-card {
-        flex: 0 0 100%;
-        scroll-snap-align: center;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        text-align: center;
-        padding: 8px 22px;
-      }
-      .ob-card-merci { margin-bottom: 10px; }
-      .ob-dots { display: flex; gap: 8px; margin: 16px 0 18px; }
-      .ob-dots i {
-        width: 8px;
-        height: 8px;
-        border-radius: 50%;
-        background: var(--ac-ll);
-        transition: width 0.25s, background 0.25s, border-radius 0.25s;
-      }
-      .ob-dots i.on { width: 22px; border-radius: 5px; background: var(--ac); }
       /* Onboarding tek-ekran özet (Alt.2 — Deploy #21) */
-      .obs-wrap{flex:1;display:flex;flex-direction:column;padding:40px 26px 26px;
+      /* Tek ekrana SIĞMA kuralı: .ob'dan gelen min-height:100dvh TABAN'dır (içerik aşınca
+         container büyür, buton fold altına düşerdi). Burada height ile TAVANLA'nıyor; taşmayı
+         .obs-list emiyor. Yükseklik --ad-bottom kadar kısılıyor çünkü .app zaten o kadar
+         padding-bottom rezerve ediyor (çift rezervasyon = gereksiz sayfa kaydırması olurdu). */
+      .obs-wrap{flex:1;display:flex;flex-direction:column;justify-content:flex-start;overflow:hidden;
+        height:100vh;height:calc(100svh - var(--ad-bottom, 0px));
+        padding:clamp(16px,4vh,40px) 26px calc(clamp(14px,2.6vh,26px) + env(safe-area-inset-bottom, 0px));
         background:linear-gradient(180deg,var(--ac-bg2) 0%,#fff 40%);}
-      .obs-hero{display:flex;flex-direction:column;align-items:center;text-align:center;margin-bottom:22px;}
-      .obs-hero-disc{width:150px;height:150px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+      .obs-hero{flex:none;display:flex;flex-direction:column;align-items:center;text-align:center;
+        margin-bottom:clamp(10px,2.2vh,22px);}
+      .obs-hero-disc{flex:none;width:clamp(96px,17vh,150px);height:clamp(96px,17vh,150px);border-radius:50%;
+        display:flex;align-items:center;justify-content:center;
         background:radial-gradient(circle at 50% 38%,#fff 0%,var(--ac-bg) 72%,var(--ac-bg3) 100%);
-        box-shadow:0 16px 34px -12px rgba(124,58,237,.4);margin-bottom:14px;}
-      .obs-h1{font-family:"Nunito",sans-serif;font-weight:800;font-size:24px;color:var(--ac-dd);line-height:1.2;}
-      .obs-h2{font-family:"Nunito",sans-serif;font-size:14.5px;color:#6a6194;margin-top:7px;max-width:280px;line-height:1.5;}
-      .obs-list{flex:1;display:flex;flex-direction:column;gap:12px;margin:6px 0 20px;}
-      .obs-row{display:flex;align-items:center;gap:14px;background:#fff;border:1px solid var(--ac-bd);
-        border-radius:18px;padding:13px 15px;box-shadow:0 8px 20px -12px rgba(76,29,149,.25);
+        box-shadow:0 16px 34px -12px rgba(var(--ac-shadow),.4);margin-bottom:clamp(8px,1.4vh,14px);}
+      /* maskot SVG'si sabit px (setM(...,122)) geliyor; disc küçülünce taşmasın diye oranla ölçekle */
+      .obs-hero-disc svg{max-width:82%;height:auto;display:block;}
+      .obs-h1{font-family:"Nunito",sans-serif;font-weight:800;font-size:clamp(19px,2.9vh,24px);color:var(--ac-dd);line-height:1.2;}
+      .obs-h2{font-family:"Nunito",sans-serif;font-size:clamp(12.5px,2vh,14.5px);color:#6a6194;margin-top:7px;max-width:280px;line-height:1.45;}
+      .obs-list{flex:1 1 auto;min-height:0;width:100%;overflow-y:auto;overflow-x:hidden;
+        -webkit-overflow-scrolling:touch;scrollbar-width:none;
+        display:flex;flex-direction:column;gap:clamp(7px,1.4vh,12px);
+        margin:clamp(4px,1vh,6px) 0 clamp(10px,2.4vh,20px);}
+      .obs-list::-webkit-scrollbar{display:none;}
+      .obs-row{flex:none;display:flex;align-items:center;gap:14px;background:#fff;border:1px solid var(--ac-bd);
+        border-radius:18px;padding:clamp(9px,1.5vh,13px) 15px;box-shadow:0 8px 20px -12px rgba(76,29,149,.25);
         opacity:0;animation:obsPop .5s ease forwards;}
       .obs-row:nth-child(1){animation-delay:.05s;}
       .obs-row:nth-child(2){animation-delay:.16s;}
       .obs-row:nth-child(3){animation-delay:.27s;}
       .obs-row:nth-child(4){animation-delay:.38s;}
-      .obs-ico{flex:none;width:46px;height:46px;border-radius:14px;display:flex;align-items:center;justify-content:center;
-        font-size:23px;background:linear-gradient(135deg,var(--ac-bg) 0%,var(--ac-bg3) 100%);
+      .obs-ico{flex:none;width:clamp(38px,7vh,46px);height:clamp(38px,7vh,46px);border-radius:14px;
+        display:flex;align-items:center;justify-content:center;
+        font-size:clamp(19px,3.5vh,23px);background:linear-gradient(135deg,var(--ac-bg) 0%,var(--ac-bg3) 100%);
         box-shadow:inset 0 0 0 1px var(--ac-bd);}
       .obs-ico-merci{padding:2px;}
-      .obs-ico-merci svg{display:block;}
-      .obs-tx b{display:block;font-family:"Nunito",sans-serif;font-weight:800;font-size:15.5px;color:var(--ac-dd);}
+      .obs-ico-merci svg{display:block;max-width:100%;height:auto;}
+      .obs-tx b{display:block;font-family:"Nunito",sans-serif;font-weight:800;font-size:clamp(14px,2.4vh,15.5px);color:var(--ac-dd);}
       .obs-tx span{display:block;font-family:"Nunito",sans-serif;font-size:12.8px;color:#77709c;line-height:1.4;margin-top:2px;}
+      /* Buton .ob-btn'in global margin-top:30px'ini ezer; asla küçülmez/kaydırma gerektirmez.
+         Global .ob-btn kuralına DOKUNULMAZ (transition/:active kuralları paylaşımlı). */
+      #scr-ob1 .ob-btn{flex:none;margin-top:0;padding:clamp(13px,2.2vh,16px) 44px;font-size:clamp(15px,2.4vh,16px);}
+      /* Emniyet supabı: çok kısa ekranlarda ikincil metinleri gizle, kart+buton görünür kalsın */
+      @media (max-height:620px){
+        .obs-h2{display:none;}
+        .obs-tx span{display:none;}
+      }
       @keyframes obsPop{from{opacity:0;transform:translateY(16px) scale(.96);}to{opacity:1;transform:none;}}
       .ob-auth-logo {
         margin-bottom: 16px;
@@ -2079,6 +2051,34 @@
       }
       .irow input:focus {
         border-color: var(--ac);
+      }
+      /* Özel oda süresi: küçük saat + dakika kutuları (eski kocaman "dakika" kutusu yerine) */
+      .ct-box {
+        flex: 0 0 54px !important;
+        width: 54px;
+        text-align: center;
+        padding: 9px 4px !important;
+        -moz-appearance: textfield;
+        appearance: textfield;
+      }
+      .ct-box::-webkit-outer-spin-button,
+      .ct-box::-webkit-inner-spin-button {
+        -webkit-appearance: none;
+        margin: 0;
+      }
+      .ct-unit {
+        font-family: "Nunito", sans-serif;
+        font-size: 12px;
+        font-weight: 800;
+        color: var(--ac);
+        letter-spacing: 0.2px;
+      }
+      .ct-hint {
+        font-family: "Nunito", sans-serif;
+        font-size: 10px;
+        font-weight: 700;
+        color: var(--ac-l2);
+        margin-top: 5px;
       }
       .abtn {
         padding: 11px 16px;
@@ -6263,8 +6263,52 @@
       var premiumResolved = false;
       var _rcDone = false;
       var _fsDone = false;
+      // İki PRO kaynağı AYRI tutulur (eskiden tek isPremium'a OR'lanıyordu →
+      // hiçbir kaynak kendi 'false'unu yazamıyordu, yalnızca yükseltme olurdu).
+      // Her kaynak kendi verdictini yazar, isPremium = OR ile YENİDEN hesaplanır →
+      // abonelik bitince RC veya Firestore tek başına düşürebilir.
+      var _rcIsPro = false;
+      var _fsIsPro = false;
+      function recomputePremium() {
+        var next = _rcIsPro === true || _fsIsPro === true;
+        isPremium = next;
+        if (typeof updateAuthUI === "function") updateAuthUI();
+        try {
+          if (typeof KM_AD !== "undefined") {
+            if (next && KM_AD.hideBanner) KM_AD.hideBanner();
+            else if (!next && premiumResolved && KM_AD.showBanner)
+              KM_AD.showBanner();
+          }
+        } catch (e) {}
+        // PRO hakkı düştüyse temayı da geri al (premiumResolved değilse no-op)
+        try {
+          if (typeof window.kmEnforceThemeEntitlement === "function")
+            window.kmEnforceThemeEntitlement();
+        } catch (e) {}
+      }
       function _markResolved() {
-        if (_rcDone && _fsDone) premiumResolved = true;
+        if (_rcDone && _fsDone) {
+          premiumResolved = true;
+          // PRO artık KESİN. recomputePremium() önce isPremium'i iki kaynaktan
+          // birleştirir, SONRA tema hakkını doğrular → sıralama garanti (isPremium
+          // hesaplanmadan tema düşürülmez).
+          recomputePremium();
+        }
+      }
+      // Firestore users/{uid} → PRO mu? isPro + proExpiresAt çapraz kontrolü.
+      // proExpiresAt yoksa/null ise (eski kayıt, ömür boyu, veya webhook tarihi
+      // vermediyse) isPro'ya güvenilir → mevcut PRO'lar kilitlenmez.
+      function kmFsIsProValid(d) {
+        if (!d || d.isPro !== true) return false;
+        var exp = d.proExpiresAt;
+        if (!exp) return true;
+        try {
+          var ms = typeof exp.toMillis === "function" ? exp.toMillis() : +exp;
+          if (!isFinite(ms)) return true;
+          return ms > Date.now();
+        } catch (e) {
+          return true;
+        }
       }
       var selectedPlan = "yearly";
 
@@ -6290,6 +6334,8 @@
         premiumResolved = false;
         _rcDone = false;
         _fsDone = false;
+        _rcIsPro = false;
+        _fsIsPro = false;
 
         if (user) {
           // RevenueCat'i bu kullanıcıya bağla + PRO (entitlement) durumunu eşitle
@@ -6302,9 +6348,11 @@
             .get()
             .then(function (doc) {
               if (doc.exists) {
-                // Kullanıcı daha önce kayıt olmuş — isPro alanını oku
-                // (|| isPremium: RevenueCat entitlement zaten true yaptıysa düşürme)
-                isPremium = doc.data().isPro === true || isPremium;
+                // Kullanıcı daha önce kayıt olmuş — isPro alanını oku.
+                // ⚠️ isPro TEK BAŞINA yeterli değil: RC 'expiration' webhook'u bir kez
+                // kaçarsa isPro:true SONSUZA KADAR kalırdı. proExpiresAt ile çapraz
+                // doğrula (alan yoksa/null ise eski kayıt → isPro'ya güven).
+                _fsIsPro = kmFsIsProValid(doc.data());
               } else {
                 // İlk kez giriş yapıyor — Firestore'a kaydet
                 db.collection("users")
@@ -6315,8 +6363,10 @@
                     createdAt: firebase.firestore.FieldValue.serverTimestamp(),
                   })
                   .catch(function () {});
-                isPremium = false;
+                _fsIsPro = false;
               }
+              // isPremium'i iki kaynaktan YENİDEN hesapla (RC true yaptıysa korunur)
+              recomputePremium();
               // Firestore okuması bitti (PRO kaynaklarından biri) → çözülmeye katkı
               _fsDone = true;
               _markResolved();
@@ -6363,12 +6413,72 @@
           _fsDone = true;
           premiumResolved = true;
           updateAuthUI();
+          // PRO durumu KESİN ücretsiz → PRO teması kalmışsa mora dön
+          try {
+            if (typeof window.kmEnforceThemeEntitlement === "function")
+              window.kmEnforceThemeEntitlement();
+          } catch (e) {}
           if (typeof S !== "undefined") {
             S.history = [];
           }
           if (typeof renderHist === "function") renderHist();
         }
       });
+
+      // ── PRO DURUMUNU TAZELE (resume / sekme görünür olunca) ──
+      // Eskiden isPremium SADECE auth olayında okunuyordu: uygulama arka planda
+      // günlerce açık kalırsa abonelik bitse bile PRO kalıyordu. Artık uygulama
+      // öne gelince RC + Firestore yeniden okunur.
+      var _kmRefreshBusy = false;
+      var _kmRefreshLast = 0;
+      function kmRefreshEntitlement() {
+        // Misafir/çıkış yapmış → tazelenecek bir şey yok
+        if (!currentUser || currentUser.isAnonymous) return;
+        if (_kmRefreshBusy) return;
+        // Aşırı çağrıyı kıs (visibilitychange çok sık tetiklenebilir)
+        var now = Date.now();
+        if (now - _kmRefreshLast < 15000) return;
+        _kmRefreshLast = now;
+        _kmRefreshBusy = true;
+        var done = function () {
+          _kmRefreshBusy = false;
+        };
+        try {
+          if (typeof KM_RC !== "undefined" && KM_RC.syncEntitlement)
+            Promise.resolve(KM_RC.syncEntitlement()).catch(function () {});
+        } catch (e) {}
+        try {
+          db.collection("users")
+            .doc(currentUser.uid)
+            .get()
+            .then(function (doc) {
+              if (doc.exists) _fsIsPro = kmFsIsProValid(doc.data());
+              recomputePremium();
+              done();
+            })
+            .catch(done);
+        } catch (e) {
+          done();
+        }
+      }
+      // Web + PWA: sekme/uygulama tekrar görünür oldu
+      document.addEventListener("visibilitychange", function () {
+        if (document.visibilityState === "visible") kmRefreshEntitlement();
+      });
+      // Native (Capacitor): App plugin 'resume' — ⚠️ plugin guard'lı (web'de App yok)
+      try {
+        if (
+          window.Capacitor &&
+          typeof window.Capacitor.isPluginAvailable === "function" &&
+          window.Capacitor.isPluginAvailable("App") &&
+          window.Capacitor.Plugins &&
+          window.Capacitor.Plugins.App
+        ) {
+          window.Capacitor.Plugins.App.addListener("resume", function () {
+            kmRefreshEntitlement();
+          });
+        }
+      } catch (e) {}
 
       function updateAuthUI() {
         // E3 — header PRO rozeti (isPremium'dan beslenir; kota resolve sonrası da çağrılır)
@@ -7375,13 +7485,20 @@ function drawResultCard(opts) {
           return !!(active && active[this.ENTITLEMENT]);
         },
         applyPremium: function () {
-          isPremium = true;
-          if (typeof updateAuthUI === "function") updateAuthUI();
-          if (typeof KM_AD !== "undefined" && KM_AD.hideBanner)
-            KM_AD.hideBanner();
+          // RC kaynağının verdicti: PRO. isPremium'i doğrudan yazmaz →
+          // recomputePremium() iki kaynağı birleştirir.
+          _rcIsPro = true;
+          recomputePremium();
           // Açık bir paywall varsa kaldır
           var pw = document.getElementById("paywall-wrap");
           if (pw && pw.parentNode) pw.parentNode.removeChild(pw);
+        },
+        // applyPremium'un EKSİK olan karşılığı: RC "entitlement yok" dediğinde
+        // (restore da başarısızsa) bunu AÇIKÇA yaz. Firestore isPro:true diyorsa
+        // recomputePremium PRO'yu korur → yanlış düşürme olmaz.
+        applyFree: function () {
+          _rcIsPro = false;
+          recomputePremium();
         },
         syncEntitlement: function () {
           var P = this.plugin();
@@ -7399,6 +7516,7 @@ function drawResultCard(opts) {
               }
             })
             .catch(function (e) {
+              // Hata = "PRO değil" DEĞİL (ağ hatası olabilir) → verdicti değiştirme
               console.log("RC getCustomerInfo hata", e);
             });
         },
@@ -7410,8 +7528,11 @@ function drawResultCard(opts) {
             .then(function (res) {
               var info = res && res.customerInfo ? res.customerInfo : res;
               if (self.hasPremium(info)) self.applyPremium();
+              // restore da entitlement bulamadı → RC tarafı KESİN "PRO değil"
+              else self.applyFree();
             })
             .catch(function (e) {
+              // restore hatası ağ/Play kaynaklı olabilir → düşürme yapma
               console.log("RC restore hata", e);
             });
         },
@@ -9502,22 +9623,6 @@ function drawResultCard(opts) {
         setM("ob-hero-merci", 122, "wave");
         setM("ob-danis-ico", 42, "glasses");
         gentleFloat("ob-hero-merci");
-      }
-      function initObDots() {
-        var car = document.getElementById("ob-carousel");
-        var dots = document.getElementById("ob-dots");
-        if (!car || !dots || car._obBound) return;
-        car._obBound = true;
-        car.addEventListener(
-          "scroll",
-          function () {
-            var idx = Math.round(car.scrollLeft / (car.clientWidth || 1));
-            var ds = dots.querySelectorAll("i");
-            for (var k = 0; k < ds.length; k++)
-              ds[k].classList.toggle("on", k === idx);
-          },
-          { passive: true },
-        );
       }
       function setCount(n) {
         S.count = n;
@@ -11931,7 +12036,10 @@ function drawResultCard(opts) {
         onlineOpts = [],
         hostVotes = {},
         roomMaxP = 4,
-        roomTimeLimit = 0,
+        // KOTA/TTL: "süresiz oda" (0 → closesAt:null) KALDIRILDI. Süresiz odalar hiç
+        // kapanmadığı için sunucuda sonsuza kadar okunup Firestore günlük kotasını
+        // yakıyordu. Varsayılan artık 24 saat (1440 dk) — her odanın kesin bitişi var.
+        roomTimeLimit = 1440,
         timerInterval = null,
         myHostName = "",
         myParticipantName = "",
@@ -11956,22 +12064,47 @@ function drawResultCard(opts) {
             );
           });
       }
+      // Oda süresi sınırları: en az 1 dk, en çok 24 saat (1440 dk).
+      var ROOM_MIN_MIN = 1,
+        ROOM_MAX_MIN = 1440;
+      // "+Diğer" butonunun özgün içeriği (applyCustomTime metni ezdiği için geri koyarız)
+      var TIME_CUSTOM_HTML =
+        '<svg viewBox="0 0 24 24" style="width:12px;height:12px;fill:none;stroke:currentColor;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round;vertical-align:-1px;margin-right:1px"><path d="M12 5v14M5 12h14"/></svg>Diğer';
+      // Süreyi insanca yaz: 1440 → "24 saat", 90 → "1 saat 30 dk", 45 → "45 dk"
+      function fmtRoomDur(m) {
+        m = Math.round(+m || 0);
+        if (m < 60) return m + " dk";
+        var h = Math.floor(m / 60),
+          mm = m % 60;
+        return mm ? h + " saat " + mm + " dk" : h + " saat";
+      }
+      function clampRoomMin(m) {
+        m = Math.round(+m || 0);
+        if (!isFinite(m) || m < ROOM_MIN_MIN) m = ROOM_MIN_MIN;
+        if (m > ROOM_MAX_MIN) m = ROOM_MAX_MIN;
+        return m;
+      }
       function setTimeLimit(n) {
-        roomTimeLimit = n;
-        document.getElementById("custom-time-wrap").style.display = "none";
+        roomTimeLimit = clampRoomMin(n);
+        var wrap = document.getElementById("custom-time-wrap");
+        if (wrap) wrap.style.display = "none";
         document
           .querySelectorAll("#time-row .onl-sel-btn")
           .forEach((b) => b.classList.toggle("on", +b.dataset.tval === n));
-        // Özel butonun seçili görünmemesi
+        // Özel butonun seçili görünmemesi + etiketini "+Diğer"e geri al
         var cb = document.getElementById("time-custom-btn");
-        if (cb) cb.classList.remove("on");
+        if (cb) {
+          cb.classList.remove("on");
+          cb.innerHTML = TIME_CUSTOM_HTML;
+        }
       }
       function toggleCustomTime() {
         var wrap = document.getElementById("custom-time-wrap");
         var showing = wrap.style.display !== "none";
         wrap.style.display = showing ? "none" : "";
         if (!showing) {
-          document.getElementById("custom-time-inp").focus();
+          var hi = document.getElementById("custom-time-h");
+          if (hi) hi.focus();
           document
             .querySelectorAll("#time-row .onl-sel-btn")
             .forEach((b) => b.classList.remove("on"));
@@ -11979,12 +12112,22 @@ function drawResultCard(opts) {
         }
       }
       function applyCustomTime() {
-        var val = parseInt(document.getElementById("custom-time-inp").value);
-        if (!val || val < 1 || val > 480) {
-          alert("1 ile 480 arasında dakika girin!");
-          return;
-        }
-        roomTimeLimit = val;
+        var hEl = document.getElementById("custom-time-h"),
+          mEl = document.getElementById("custom-time-m");
+        var h = parseInt(hEl && hEl.value, 10) || 0;
+        var mi = parseInt(mEl && mEl.value, 10) || 0;
+        if (h < 0) h = 0;
+        if (mi < 0) mi = 0;
+        var total = h * 60 + mi;
+        // TAVAN: 24 saat üstü → 1440'a sabitle. TABAN: boş/0 → 1 dk (closesAt asla geçmiş olmasın)
+        var capped = total > ROOM_MAX_MIN;
+        var tooSmall = total < ROOM_MIN_MIN;
+        total = clampRoomMin(total);
+        if (capped) alert("En fazla 24 saat — süre 24 saate ayarlandı.");
+        else if (tooSmall) alert("En az 1 dakika — süre 1 dakikaya ayarlandı.");
+        roomTimeLimit = total;
+        if (hEl) hEl.value = Math.floor(total / 60) || "";
+        if (mEl) mEl.value = total % 60 || "";
         document.getElementById("custom-time-wrap").style.display = "none";
         // Özel butonu seçili göster, diğerlerini kapat
         document
@@ -11993,7 +12136,7 @@ function drawResultCard(opts) {
         var cb = document.getElementById("time-custom-btn");
         if (cb) {
           cb.classList.add("on");
-          cb.textContent = val + " dk";
+          cb.textContent = fmtRoomDur(total);
         }
       }
       var masaPeopleConfirmed = false;
@@ -12426,8 +12569,8 @@ function drawResultCard(opts) {
         if (chip) {
           document.getElementById("ctx-room-name").textContent = name;
           var metaTxt = roomMaxP + " kişi";
-          metaTxt +=
-            roomTimeLimit > 0 ? " · " + roomTimeLimit + " dk süre" : " · süresiz";
+          // Her oda artık süreli (süresiz seçeneği kaldırıldı) → insanca biçimle
+          metaTxt += " · " + fmtRoomDur(clampRoomMin(roomTimeLimit)) + " süre";
           document.getElementById("ctx-room-meta").textContent = metaTxt;
           chip.style.display = "flex";
         }
@@ -12495,6 +12638,11 @@ function drawResultCard(opts) {
         }
         var code = genCode();
         myHostName = hName;
+        // Süre GÜVENCESİ: 1..1440 dk arası. 0/bozuk değer (ör. eski "süresiz" bir odaya
+        // rejoin sonrası sızan timeLimit:0) gelse bile closesAt asla geçmiş/null olmaz —
+        // 0 ise 1 dk'ya değil, varsayılan 24 saate döner.
+        var _tl = roomTimeLimit > 0 ? clampRoomMin(roomTimeLimit) : ROOM_MAX_MIN;
+        roomTimeLimit = _tl;
         try {
           await db
             .collection("rooms")
@@ -12504,16 +12652,24 @@ function drawResultCard(opts) {
               options: onlineOpts,
               hostId: deviceId,
               maxParticipants: roomMaxP,
-              timeLimit: roomTimeLimit,
+              timeLimit: _tl,
               status: "open",
               participants: { [deviceId]: { name: hName, votes: {} } },
               created: Date.now(),
               roundNumber: 1,
-              // KALICILIK/SUNUCU-KAPANIŞ: kesin bitiş zamanı. Süresiz oda = null =
-              // sunucu otomatik kapatmaz. Süreli oda dolduğunda host cihazı kapalı
-              // olsa bile live-server.js (autoCloseExpiredRooms) bunu kapatır.
-              closesAt:
-                roomTimeLimit > 0 ? Date.now() + roomTimeLimit * 60000 : null,
+              // KALICILIK/SUNUCU-KAPANIŞ: kesin bitiş zamanı. Süresiz oda ARTIK YOK —
+              // closesAt her zaman yazılır (asla null), en geç 24 saat sonra. Host cihazı
+              // kapalı olsa bile live-server.js (autoCloseExpiredRooms) odayı kapatır.
+              closesAt: Date.now() + _tl * 60000,
+              // ODA TTL (30 gün): Firestore odayı KENDİ siler → kapalı odalar sonsuza
+              // kadar birikip günlük okuma kotasını yakmaz. Firestore TTL politikası
+              // rooms.ttlAt üzerinde Console'dan kurulur ve SADECE Timestamp tipini
+              // kabul eder (number değil) — bu yüzden closesAt (number) ayrı durur, ona
+              // dokunma. Karar geçmişi decisions/{uid}/history'de AYRI durur, oda
+              // silinince kaybolmaz.
+              ttlAt: firebase.firestore.Timestamp.fromMillis(
+                Date.now() + 30 * 24 * 60 * 60 * 1000,
+              ),
             });
           shareCode = code;
           currentRound = 1;
@@ -12565,10 +12721,7 @@ function drawResultCard(opts) {
           setVoteStep(3); // online oda açıldı → adım göstergesi "Oyla"ya geç
           snd("ding");
           logEv("room_create", { option_count: onlineOpts.length });
-          if (roomTimeLimit > 0)
-            startTimer(roomTimeLimit * 60, "host-timer", () =>
-              deadlineClose(shareCode),
-            );
+          startTimer(_tl * 60, "host-timer", () => deadlineClose(shareCode));
         } catch (e) {
           alert("Oda oluşturulamadı!");
         }
@@ -12594,7 +12747,17 @@ function drawResultCard(opts) {
           amHost = true;
           roomStatus = data.status;
           roomMaxP = data.maxParticipants || roomMaxP;
-          roomTimeLimit = data.timeLimit != null ? data.timeLimit : roomTimeLimit;
+          // ⚠️ ESKİ "SÜRESİZ" ODA TUZAĞI: 17 Tem öncesi kurulan odalar timeLimit:0
+          // taşıyor. 0'ı olduğu gibi alırsak setTimeLimit(0) → clampRoomMin(0) = 1
+          // yapıp değeri 1'e çeviriyor; aşağıdaki "0 ise 24 saat" korumaları 0'ı
+          // ARTIK göremediği için oda 24 saat yerine 1 DAKİKADA kapanıyordu. 0'ı
+          // burada, clamp'e girmeden 24 saate çeviriyoruz.
+          roomTimeLimit =
+            data.timeLimit > 0
+              ? data.timeLimit
+              : data.timeLimit === 0
+                ? ROOM_MAX_MIN
+                : roomTimeLimit;
           currentRound = data.roundNumber || 1;
           myHostName =
             ((data.participants || {})[deviceId] || {}).name || myHostName;
@@ -13165,6 +13328,10 @@ function drawResultCard(opts) {
         }
         if (!shareCode) return;
         clearTimerInterval();
+        // Süre GÜVENCESİ: eski "süresiz" odada (timeLimit:0) yeni tur açılırsa 24 saate
+        // döner — closesAt asla null/geçmiş yazılmaz.
+        var _tl = roomTimeLimit > 0 ? clampRoomMin(roomTimeLimit) : ROOM_MAX_MIN;
+        roomTimeLimit = _tl;
         try {
           var doc = await db.collection("rooms").doc(shareCode).get();
           if (!doc.exists) return;
@@ -13189,11 +13356,18 @@ function drawResultCard(opts) {
               voterCount: null,
               tieItems: null,
               roundNumber: firebase.firestore.FieldValue.increment(1),
+              timeLimit: _tl,
               // YENİ TUR closesAt'ı tazele: yoksa eski (geçmiş) closesAt yüzünden
               // sunucu autoCloseExpiredRooms + client deadlineClose bu turu ANINDA
-              // kapatırdı. Süresiz oda = null = otomatik kapanmaz.
-              closesAt:
-                roomTimeLimit > 0 ? Date.now() + roomTimeLimit * 60000 : null,
+              // kapatırdı. Süresiz oda artık yok → her zaman tarih yazılır.
+              closesAt: Date.now() + _tl * 60000,
+              // Oda HÂLÂ kullanımda → 30 günlük TTL'i de tazele ki Firestore TTL
+              // politikası aktif odayı silmesin. (Politika rooms.ttlAt üzerinde
+              // Console'dan kurulur; Timestamp tipi şart. Karar geçmişi
+              // decisions/{uid}/history'de AYRI durur, oda silinince kaybolmaz.)
+              ttlAt: firebase.firestore.Timestamp.fromMillis(
+                Date.now() + 30 * 24 * 60 * 60 * 1000,
+              ),
             });
           currentRound++;
           tbAnimKey = "";
@@ -13203,10 +13377,7 @@ function drawResultCard(opts) {
           document.getElementById("vr").style.display = "none";
           document.getElementById("tb-modal").classList.remove("on");
           renderHostVoteList();
-          if (roomTimeLimit > 0)
-            startTimer(roomTimeLimit * 60, "host-timer", () =>
-              deadlineClose(shareCode),
-            );
+          startTimer(_tl * 60, "host-timer", () => deadlineClose(shareCode));
           snd("ding");
         } catch (e) {
           alert("Hata: " + e.message);
@@ -14349,7 +14520,14 @@ function drawResultCard(opts) {
         } catch (e) {}
         var s = localStorage.getItem("kmH_" + currentUser.uid);
         if (s) {
-          S.history = JSON.parse(s);
+          // Bulgu 5: yerel fallback 'limit'i ATLIYORDU → PRO'su biten kullanıcı
+          // önbellekten 200 kayıt görmeye devam ediyordu. Aynı kapıyı burada da uygula.
+          try {
+            var _h = JSON.parse(s);
+            S.history = Array.isArray(_h) ? _h.slice(0, limit) : [];
+          } catch (e) {
+            S.history = [];
+          }
           renderHist();
         }
       }
@@ -15175,6 +15353,17 @@ function drawResultCard(opts) {
         }
         function applyAccent(a) {
           if (!THEME_NAMES[a]) a = "mor";
+          // ── PRO KAPISI ──
+          // Mor dışındaki her tema PRO'ya özel. SADECE PRO durumu KESİNLEŞMİŞSE
+          // (premiumResolved) ve PRO değilse mora düşür. premiumResolved false iken
+          // ASLA düşürme → PRO kullanıcının teması açılış yarışında mora atmaz.
+          if (
+            a !== "mor" &&
+            typeof premiumResolved !== "undefined" &&
+            premiumResolved &&
+            !(typeof isPremium !== "undefined" && isPremium)
+          )
+            a = "mor";
           if (a !== "mor")
             document.documentElement.setAttribute("data-theme", a);
           else document.documentElement.removeAttribute("data-theme");
@@ -15197,8 +15386,23 @@ function drawResultCard(opts) {
             );
           });
         }
+        // ── PRO HAKKI BİTİNCE TEMAYI GERİ AL ──
+        // Abonelik sona erdiğinde kmAccent'te kalan PRO teması açılışta geri
+        // uygulanıyordu (bedava PRO özelliği). PRO durumu KESİNLEŞTİĞİNDE çağrılır.
+        // premiumResolved false ise HİÇBİR ŞEY yapmaz (yarış koruması).
+        function enforceThemeEntitlement() {
+          if (!(typeof premiumResolved !== "undefined" && premiumResolved))
+            return;
+          if (typeof isPremium !== "undefined" && isPremium) return;
+          if (currentAccent() !== "mor") applyAccent("mor");
+        }
+        window.kmEnforceThemeEntitlement = enforceThemeEntitlement;
+
         // başlangıç durum etiketi
         (function () {
+          // PRO zaten çözülmüşse (auth bu 'load' handler'ından ÖNCE bittiyse)
+          // hemen uygula — çağrı o an window.kmEnforceThemeEntitlement'i bulamamıştı.
+          enforceThemeEntitlement();
           var ts = document.getElementById("theme-state");
           if (ts) ts.textContent = THEME_NAMES[currentAccent()];
           // vc32: app açılışında sistem çubuklarını mevcut temaya senkronla (guard'lı)
@@ -15207,8 +15411,15 @@ function drawResultCard(opts) {
         var themeBtn = document.getElementById("theme-btn");
         if (themeBtn)
           themeBtn.addEventListener("click", function () {
-            // Tüm temalar PRO'ya özel — PRO değilse satışa yönlendir
-            if (!(typeof isPremium !== "undefined" && isPremium)) {
+            // Tüm temalar PRO'ya özel — PRO değilse satışa yönlendir.
+            // premiumResolved şartı: PRO durumu KESİNLEŞMEDEN satış modalı GÖSTERME,
+            // yoksa gerçek PRO kullanıcı açılış yarışında tema seçici yerine satış
+            // modalı görüyordu. (applyAccent/swatch kapılarıyla aynı desen.)
+            if (
+              typeof premiumResolved !== "undefined" &&
+              premiumResolved &&
+              !(typeof isPremium !== "undefined" && isPremium)
+            ) {
               openProModal();
               return;
             }
@@ -15218,7 +15429,18 @@ function drawResultCard(opts) {
           });
         document.querySelectorAll(".theme-sw").forEach(function (b) {
           b.addEventListener("click", function () {
-            applyAccent(b.getAttribute("data-theme-val"));
+            // Swatch'lar kapısızdı → PRO olmayan modalı bir yolla açarsa tema seçebiliyordu.
+            var _val = b.getAttribute("data-theme-val");
+            if (
+              _val !== "mor" &&
+              typeof premiumResolved !== "undefined" &&
+              premiumResolved &&
+              !(typeof isPremium !== "undefined" && isPremium)
+            ) {
+              openProModal();
+              return;
+            }
+            applyAccent(_val);
             hImpact("LIGHT", 15);
           });
         });
@@ -16583,13 +16805,6 @@ function drawResultCard(opts) {
         </div>
         <p class="lbl" style="margin-top: 8px">Süre Limiti</p>
         <div class="onl-sel-row" id="time-row" style="margin-bottom: 4px">
-          <button
-            class="onl-sel-btn on"
-            data-tval="0"
-            onclick="setTimeLimit(0)"
-          >
-            Sınırsız
-          </button>
           <button class="onl-sel-btn" data-tval="5" onclick="setTimeLimit(5)">
             5 dk
           </button>
@@ -16602,6 +16817,15 @@ function drawResultCard(opts) {
           <button class="onl-sel-btn" data-tval="60" onclick="setTimeLimit(60)">
             1 saat
           </button>
+          <!-- "Sınırsız" KALDIRILDI → 24 saat (varsayılan). Süresiz odalar hiç kapanmayıp
+               Firestore okuma kotasını yakıyordu. -->
+          <button
+            class="onl-sel-btn on"
+            data-tval="1440"
+            onclick="setTimeLimit(1440)"
+          >
+            24 saat
+          </button>
           <button
             class="onl-sel-btn"
             data-tval="custom"
@@ -16612,23 +16836,37 @@ function drawResultCard(opts) {
           </button>
         </div>
         <div id="custom-time-wrap" style="display: none; margin-bottom: 8px">
-          <div class="irow" style="align-items: center">
+          <!-- İKİ KÜÇÜK KUTU: sol SAAT, sağ DAKİKA. Toplam = saat*60 + dk, tavan 24 saat. -->
+          <div class="irow" style="align-items: center; gap: 6px; margin-bottom: 0">
             <input
-              id="custom-time-inp"
+              id="custom-time-h"
+              class="ct-box"
               type="number"
-              min="1"
-              max="480"
-              placeholder="Dakika girin..."
-              style="width: 100%"
+              min="0"
+              max="24"
+              inputmode="numeric"
+              placeholder="0"
             />
+            <span class="ct-unit">saat</span>
+            <input
+              id="custom-time-m"
+              class="ct-box"
+              type="number"
+              min="0"
+              max="59"
+              inputmode="numeric"
+              placeholder="0"
+            />
+            <span class="ct-unit">dk</span>
             <button
               class="abtn"
               onclick="applyCustomTime()"
-              style="font-size: 13px; padding: 11px 14px"
+              style="font-size: 13px; padding: 9px 13px"
             >
               ✓
             </button>
           </div>
+          <div class="ct-hint">En fazla 24 saat</div>
         </div>
         <div style="display: flex; gap: 8px; margin-top: 16px">
           <button
