@@ -72,14 +72,50 @@ app.get("/app-ads.txt", (req, res) => {
 
 app.use(express.static(path.join(__dirname, "public")));
 
-const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+// ── ANTHROPIC İSTEMCİSİ + TIMEOUT ──
+// ⚠️ 17 Tem DERSİ: eskiden hiçbir anthropic.messages.create çağrısında timeout YOKTU.
+// Anthropic yanıt vermezse istek SONSUZA KADAR asılı kalıyordu → kullanıcı
+// "Merci düşünüyor..." ekranında donuyordu (canlıda yaşandı). Artık her çağrının
+// bir üst sınırı var.
+// SDK sözleşmesi (Node/TS SDK): constructor `timeout` MİLİSANİYE, `maxRetries`
+// varsayılan 2. TIMEOUT DA YENİDEN DENENİR → gerçek bekleme = timeout × (maxRetries+1).
+// Bu yüzden maxRetries'i 1'e düşürdük: 529/overload gibi geçici hatada tek bir
+// yeniden deneme kalsın ama kullanıcı 3 kat timeout boyunca beklemesin.
+const ANTHROPIC_TIMEOUT_MAIN = 30000; // /merci ana çağrı (max_tokens 700) → en kötü ~60sn
+const ANTHROPIC_TIMEOUT_SHORT = 15000; // kısa yardımcı çağrılar (seçenek/yorum) → en kötü ~30sn
+const anthropic = new Anthropic({
+  apiKey: process.env.ANTHROPIC_API_KEY,
+  timeout: ANTHROPIC_TIMEOUT_MAIN,
+  maxRetries: 1,
+});
+
+// Timeout hatasını diğer API hatalarından ayırt et (504 vs 500 için).
+// SDK sürümü Replit'te sabit değil → tek bir sınıf adına GÜVENME; sınıf varsa onu
+// kullan, yoksa isim/kod/mesaj sinyallerine düş.
+function isAnthropicTimeout(e) {
+  if (!e) return false;
+  const TimeoutCls = Anthropic.APIConnectionTimeoutError;
+  if (typeof TimeoutCls === "function" && e instanceof TimeoutCls) return true;
+  const name = String(e.name || "");
+  const msg = String(e.message || "");
+  return (
+    name === "AbortError" ||
+    e.code === "ETIMEDOUT" ||
+    e.code === "ECONNABORTED" ||
+    /timed?\s?out|timeout/i.test(name + " " + msg)
+  );
+}
 
 // ── FIREBASE ADMIN (kullanıcı doğrulama + sunucu taraflı kota) ──
 // Modüler API: firebase-admin v13+ (+ pnpm/Node 24 require-ESM) ile namespace
 // export (admin.credential) güvenilir değil; subpath import kullanıyoruz.
 const { initializeApp, cert } = require("firebase-admin/app");
 const { getAuth } = require("firebase-admin/auth");
-const { getFirestore, FieldValue } = require("firebase-admin/firestore");
+const {
+  getFirestore,
+  FieldValue,
+  Timestamp,
+} = require("firebase-admin/firestore");
 
 initializeApp({
   credential: cert(JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT)),
@@ -94,16 +130,23 @@ const adminDb = getFirestore();
 async function autoCloseExpiredRooms() {
   try {
     const now = Date.now();
-    // Tek-alan eşitlik filtresi (status=="open") → composite index GEREKTİRMEZ.
-    // closesAt'ı JS tarafında süzeriz (index'siz range+eşitlik karışımından kaçınmak için).
+    // ⚠️ KOTA DERSİ (17 Tem): burada eskiden SADECE status=="open" filtresi vardı ve
+    // closesAt JS'te süzülüyordu → süresi dolmamış VE closesAt'ı olmayan ("süresiz")
+    // odalar da her turda OKUNUYORDU. Odalar hiç silinmediği için süresiz odalar
+    // sonsuza kadar status:"open" kalıp her dakika tekrar okundu → 1440 tur/gün ×
+    // ~35 oda ≈ 50K okuma = Firebase Spark günlük tavanı doldu, Firestore komple
+    // durdu (giriş/geçmiş/AI/oda hepsi bozuldu). ASLA tüm koleksiyonu tarama.
+    // Artık kapanma vakti GELMİŞ odaları Firestore'un kendisi süzüyor:
+    // closesAt alanı OLMAYAN odalar bu sorguya hiç girmez (indekslenmez) → okunmaz.
+    // Boşta okuma maliyeti = 0. Composite index gerekir (firestore.indexes.json).
     const snap = await adminDb
       .collection("rooms")
       .where("status", "==", "open")
+      .where("closesAt", "<=", now)
+      .orderBy("closesAt")
+      .limit(50) // tur başına tavan; kalanları bir sonraki tur alır
       .get();
     for (const docSnap of snap.docs) {
-      const d0 = docSnap.data();
-      // closesAt yoksa (süresiz oda veya eski oda) ya da henüz dolmadıysa atla.
-      if (!d0.closesAt || d0.closesAt > now) continue;
       await adminDb.runTransaction(async (tx) => {
         const fresh = await tx.get(docSnap.ref);
         if (!fresh.exists) return;
@@ -155,15 +198,47 @@ async function autoCloseExpiredRooms() {
       });
     }
   } catch (e) {
+    // Index yoksa Firestore FAILED_PRECONDITION + oluşturma linki döner. Sorgu hiç
+    // çalışmadığı için OKUMA da yapmaz (güvenli başarısızlık: kota yanmaz).
+    if (String(e.code) === "9" || /FAILED_PRECONDITION|index/i.test(e.message)) {
+      console.error(
+        "autoCloseExpiredRooms: composite index EKSİK (rooms: status ASC, closesAt ASC).",
+        "Sunucu yedek kapanışı devre dışı — client deadlineClose çalışmaya devam ediyor.",
+        "Firebase'in verdiği link ile index'i oluştur:",
+        e.message,
+      );
+      return;
+    }
     console.error("autoCloseExpiredRooms:", e.message);
   }
 }
-setInterval(autoCloseExpiredRooms, 60 * 1000);
+// ⚠️ 5 DAKİKA (eskiden 60sn). Süre-dolunca-kapanışın ASIL çözümü client tarafındaki
+// deadlineClose (açık olan herhangi bir katılımcı kapatır); bu interval yalnız
+// KİMSE açık değilken devreye giren yedek katman → sık dönmesi gereksiz.
+setInterval(autoCloseExpiredRooms, 5 * 60 * 1000);
 setTimeout(autoCloseExpiredRooms, 8000); // başlangıçta birikmiş süresi dolmuş odaları da kapat
 
 // Günlük Merci mesaj limitleri (kullanıcı başına). Abuse/maliyet tavanı.
 const FREE_DAILY_LIMIT = 60; // abuse tavanı (asıl ücretsiz kapı client'ta: 6/gün + reklam). Yüksek tutuldu ki reklam sonrası soru cevapsız kalmasın.
 const PRO_DAILY_LIMIT = 300;
+
+// ── PRO GEÇERLİLİK ──
+// isPro:true TEK BAŞINA yeterli değil: RC 'EXPIRATION' webhook'u kaçarsa bayrak
+// sonsuza kadar true kalır. proExpiresAt ile çapraz doğrula.
+// Alan yoksa/null ise (webhook öncesi eski kayıtlar, ömür boyu/tek seferlik ürün)
+// isPro'ya güvenilir → mevcut PRO'lar bu değişiklikle kilitlenmez.
+function isProValid(d) {
+  if (!d || d.isPro !== true) return false;
+  const exp = d.proExpiresAt;
+  if (!exp) return true;
+  try {
+    const ms = typeof exp.toMillis === "function" ? exp.toMillis() : Number(exp);
+    if (!Number.isFinite(ms)) return true;
+    return ms > Date.now();
+  } catch (e) {
+    return true;
+  }
+}
 
 // ── RATE LIMITING ──
 // IP başına dakikada max 15 istek
@@ -215,7 +290,16 @@ setInterval(
 // ── KULLANICI DOĞRULAMA + GÜNLÜK KOTA ──
 // Her /merci isteğinde Firebase ID token ister, uid çıkarır, isPro'ya göre
 // günlük sayacı Firestore'da (transaction ile) artırır; limit aşılırsa 429 döner.
+// ⚠️ 17 Tem DERSİ — CATCH'İ AYRI TUT: eskiden tek bir try/catch hem verifyIdToken'ı
+// hem users get'ini hem aiUsage transaction'ını sarıyordu ve HER hatada
+// "Oturum doğrulanamadı, tekrar giriş yap." dönüyordu. Firebase Spark okuma kotası
+// dolunca (Firestore komple durdu) oturum TAMAMEN sağlamken kullanıcıya "tekrar giriş
+// yap" dedirtti; kullanıcı boşuna çıkış/giriş yaptı, sorun çözülmedi ve teşhis saatler
+// aldı. ARTIK: token hatası = 401 "giriş yap"; altyapı (Firestore) hatası = 503
+// "sonra tekrar dene" — giriş yapmak onu ÇÖZMEZ, o yüzden ÖNERME.
 async function authAndQuota(req, res, next) {
+  // ── 1) KİMLİK (yalnız gerçek token hatası buraya düşer) ──
+  let uid;
   try {
     const header = req.headers.authorization || "";
     const token = header.startsWith("Bearer ") ? header.slice(7) : null;
@@ -226,7 +310,7 @@ async function authAndQuota(req, res, next) {
     }
 
     const decoded = await getAuth().verifyIdToken(token);
-    const uid = decoded.uid;
+    uid = decoded.uid;
 
     // Anonim oturumlar AI uçlarını KULLANAMAZ: signInAnonymously sınırsız taze kimlik
     // üretir → her biri için yeni kota = maliyet/abuse. Anonim auth yalnız oda yazımı
@@ -236,15 +320,24 @@ async function authAndQuota(req, res, next) {
         .status(401)
         .json({ error: "Merci'ye danışmak için Google ile giriş yap." });
     }
+  } catch (e) {
+    console.error("AUTH FAIL (token geçersiz/süresi dolmuş):", e.message);
+    return res
+      .status(401)
+      .json({ error: "Oturum doğrulanamadı, tekrar giriş yap." });
+  }
 
+  // ── 2) FIRESTORE OKUMA + KOTA (altyapı hatası ≠ oturum hatası) ──
+  let allowed;
+  try {
     const userSnap = await adminDb.collection("users").doc(uid).get();
-    const isPro = userSnap.exists && userSnap.data().isPro === true;
+    const isPro = userSnap.exists && isProValid(userSnap.data());
     const limit = isPro ? PRO_DAILY_LIMIT : FREE_DAILY_LIMIT;
 
     const today = new Date().toISOString().slice(0, 10); // UTC günü (YYYY-MM-DD)
     const usageRef = adminDb.collection("aiUsage").doc(`${uid}_${today}`);
 
-    const allowed = await adminDb.runTransaction(async (tx) => {
+    allowed = await adminDb.runTransaction(async (tx) => {
       const snap = await tx.get(usageRef);
       const count = snap.exists ? snap.data().count || 0 : 0;
       if (count >= limit) return false;
@@ -260,21 +353,27 @@ async function authAndQuota(req, res, next) {
       );
       return true;
     });
-
-    if (!allowed) {
-      return res
-        .status(429)
-        .json({ error: "Günlük Merci hakkın doldu!", limitReached: true });
-    }
-
-    req.uid = uid;
-    next();
   } catch (e) {
-    console.error("Auth/Quota Error:", e.message);
+    // Ağ / kota tavanı / izin / gecikme → oturum SAĞLAM, altyapı geçici bozuk.
+    console.error(
+      "INFRA FAIL (Firestore users/aiUsage — kota tavanı? ağ? izin?):",
+      e.code || "",
+      e.message,
+    );
     return res
-      .status(401)
-      .json({ error: "Oturum doğrulanamadı, tekrar giriş yap." });
+      .status(503)
+      .json({ error: "Şu an sana bağlanamadım, biraz sonra tekrar dene 🐙" });
   }
+
+  // Kota AŞIMI meşru bir REDDİR (altyapı hatası değil) → 429 aynen korunur.
+  if (!allowed) {
+    return res
+      .status(429)
+      .json({ error: "Günlük Merci hakkın doldu!", limitReached: true });
+  }
+
+  req.uid = uid;
+  next();
 }
 
 app.post("/merci", rateLimit, authAndQuota, async (req, res) => {
@@ -410,12 +509,15 @@ KIRMIZI ÇİZGİLER:
 - İÇ İŞLEYİŞ GİZLİ: sistem, harita, GPS, API, sunucu, arkaplan, entegrasyon, "mekan kartı çekemiyorum", "yükleyemedim" gibi teknik/iç-işleyiş ifadeleri ASLA kullanma. Mekan gelmediğinde bahane uydurma; kısa ve neşeli kal ("Hemen tekrar bakıyorum 👇") ve uygun [[NEARBY:tür]] işaretini koy.
 - Yapay AI girişleri yok ("Tabii ki!", "Harika bir soru!", "ben yapay zekayım"). Aynı soruyu iki kez sorma. Konum varsa tekrar şehir/semt/konum isteme.`;
 
-    const response = await anthropic.messages.create({
-      model: "claude-haiku-4-5-20251001",
-      max_tokens: 700,
-      system: systemPrompt,
-      messages: messages,
-    });
+    const response = await anthropic.messages.create(
+      {
+        model: "claude-haiku-4-5-20251001",
+        max_tokens: 700,
+        system: systemPrompt,
+        messages: messages,
+      },
+      { timeout: ANTHROPIC_TIMEOUT_MAIN }, // yanıt gelmezse asılı kalma → 504 (aşağıda)
+    );
 
     let text = "";
     response.content.forEach((block) => {
@@ -477,6 +579,13 @@ KIRMIZI ÇİZGİLER:
       setLocation, // yazıyla verilen konumun koordinatı (varsa) → client günceller
     });
   } catch (error) {
+    // Timeout'u ayır: kullanıcı donmasın, dürüst ve Merci ağzıyla bir cevap alsın.
+    if (isAnthropicTimeout(error)) {
+      console.error("ANTHROPIC TIMEOUT (/merci):", error.message);
+      return res.status(504).json({
+        error: "Bu sefer düşünürken daldım 🐙 Bir daha sor, hemen toparlarım!",
+      });
+    }
     console.error("API Error:", error.message);
     res.status(500).json({ error: "Merci şu an müsait değil, tekrar dene!" });
   }
@@ -508,12 +617,15 @@ app.post("/options", rateLimit, authAndQuota, async (req, res) => {
       ? "Konu: " + theme
       : "Konu verilmedi — günlük, eğlenceli bir karar için rastgele ve çeşitli seçenekler üret (ne yenir, nereye gidilir, ne izlenir gibi).";
 
-    const resp = await anthropic.messages.create({
-      model: "claude-haiku-4-5-20251001",
-      max_tokens: 220,
-      system: sys,
-      messages: [{ role: "user", content: userMsg }],
-    });
+    const resp = await anthropic.messages.create(
+      {
+        model: "claude-haiku-4-5-20251001",
+        max_tokens: 220,
+        system: sys,
+        messages: [{ role: "user", content: userMsg }],
+      },
+      { timeout: ANTHROPIC_TIMEOUT_SHORT }, // kısa çağrı → kısa sabır
+    );
 
     let text = "";
     resp.content.forEach((b) => {
@@ -548,6 +660,12 @@ app.post("/options", rateLimit, authAndQuota, async (req, res) => {
     }
     res.json({ options: opts });
   } catch (e) {
+    if (isAnthropicTimeout(e)) {
+      console.error("ANTHROPIC TIMEOUT (/options):", e.message);
+      return res.status(504).json({
+        error: "Seçenekleri düşünürken daldım 🐙 Bir daha dene, hemen çıkarırım!",
+      });
+    }
     console.error("Options Error:", e.message);
     res.status(500).json({ error: "Merci şu an seçenek üretemiyor, tekrar dene!" });
   }
@@ -708,6 +826,7 @@ app.post("/nearby", rateLimit, async (req, res) => {
       return res.status(401).json({ error: "Konum önerisi için giriş yap." });
     let uid,
       isPro = false;
+    // KİMLİK: yalnız gerçek token hatası → 401.
     try {
       const decoded = await getAuth().verifyIdToken(token);
       uid = decoded.uid;
@@ -716,10 +835,20 @@ app.post("/nearby", rateLimit, async (req, res) => {
           .status(401)
           .json({ error: "Konum önerisi için Google ile giriş yap." });
       }
-      const us = await adminDb.collection("users").doc(uid).get();
-      isPro = us.exists && us.data().isPro === true;
     } catch (e) {
+      console.error("AUTH FAIL (/nearby, token geçersiz):", e.message);
       return res.status(401).json({ error: "Oturum doğrulanamadı." });
+    }
+    // FIRESTORE: /merci ile aynı ayrım — altyapı hatası "giriş yap" DEMEZ (503).
+    try {
+      const us = await adminDb.collection("users").doc(uid).get();
+      // /merci ile aynı çapraz kontrol: süresi geçmiş isPro:true PRO sayılmaz
+      isPro = us.exists && isProValid(us.data());
+    } catch (e) {
+      console.error("INFRA FAIL (/nearby, Firestore users):", e.code || "", e.message);
+      return res
+        .status(503)
+        .json({ error: "Şu an sana bağlanamadım, biraz sonra tekrar dene 🐙" });
     }
 
     // Girdi
@@ -779,8 +908,18 @@ app.post("/nearby", rateLimit, async (req, res) => {
     const today = new Date().toISOString().slice(0, 10);
     const limit = isPro ? LOC_PRO_LIMIT : LOC_FREE_LIMIT;
     const ref = adminDb.collection("locUsage").doc(`${uid}_${today}`);
-    const preSnap = await ref.get();
-    const usedCount = preSnap.exists ? preSnap.data().count || 0 : 0;
+    let usedCount = 0;
+    try {
+      const preSnap = await ref.get();
+      usedCount = preSnap.exists ? preSnap.data().count || 0 : 0;
+    } catch (e) {
+      // Firestore okunamıyor (kota/ağ) → dürüst 503. "Giriş yap" DEME.
+      console.error("INFRA FAIL (/nearby, Firestore locUsage):", e.code || "", e.message);
+      return res
+        .status(503)
+        .json({ error: "Şu an sana bağlanamadım, biraz sonra tekrar dene 🐙" });
+    }
+    // Kota AŞIMI meşru ret → 429 aynen korunur.
     if (usedCount >= limit)
       return res
         .status(429)
@@ -1039,7 +1178,8 @@ app.post("/nearby", rateLimit, async (req, res) => {
           .slice(0, 6)
           .map((p) => `${p.name} (${p.dist}m)`)
           .join(", ");
-        const cr = await anthropic.messages.create({
+        const cr = await anthropic.messages.create(
+          {
           model: "claude-haiku-4-5-20251001",
           max_tokens: 160,
           system:
@@ -1059,7 +1199,9 @@ app.post("/nearby", rateLimit, async (req, res) => {
                 "\nEn yakın gerçek mekanlar (isim + mesafe): " + top,
             },
           ],
-        });
+          },
+          { timeout: ANTHROPIC_TIMEOUT_SHORT }, // yorum gecikirse kartlar yine de gitsin
+        );
         cr.content.forEach((b) => {
           if (b.type === "text") merciComment += b.text;
         });
@@ -1076,7 +1218,16 @@ app.post("/nearby", rateLimit, async (req, res) => {
           `Bu civarda ${rule ? '"' + rule.label + '"' : typeLabel} pek çıkmadı 🐙 Başka bir tür dene — kafe, yemek ya da aktivite gibi — ya da çarkı çevir, ne çıkarsa o!`;
       }
     } catch (e) {
-      console.error("Nearby Merci comment error:", e.message);
+      // Yorum ÜRETİLEMESE BİLE mekan kartları gider (asıl değer onlar) → 5xx DÖNME.
+      // Timeout'ta sessiz kalma: kısa, uydurmasız bir cümleyle kartlara yönlendir.
+      if (isAnthropicTimeout(e)) {
+        console.error("ANTHROPIC TIMEOUT (/nearby yorum):", e.message);
+      } else {
+        console.error("Nearby Merci comment error:", e.message);
+      }
+      if (!merciComment && places.length) {
+        merciComment = "En yakınları çıkardım, aşağıdan bak 👇";
+      }
     }
 
     res.json({
@@ -1130,16 +1281,37 @@ app.post("/rc-webhook", async (req, res) => {
     else if (REVOKE.includes(type)) isPro = false;
     else return res.status(200).json({ ok: true, ignored: type });
 
-    await adminDb.collection("users").doc(uid).set(
-      {
-        isPro,
-        proUpdatedAt: FieldValue.serverTimestamp(),
-        proSource: "revenuecat",
-        proLastEvent: type,
-      },
-      { merge: true },
-    );
-    return res.status(200).json({ ok: true, uid, isPro });
+    // ⚠️ SIZINTI KAPATMA: isPro tek başına webhook'a bağımlıydı → EXPIRATION
+    // event'i bir kez kaçarsa (RC retry tükenir, sunucu down, 500) isPro:true
+    // SONSUZA KADAR kalıyordu. proExpiresAt = bağımsız son-kullanma tarihi:
+    // webhook hiç gelmese bile okuyucular tarihe bakıp PRO'yu kendiliğinden düşürür.
+    const expMs = Number(event.expiration_at_ms);
+    const proExpiresAt =
+      isPro && Number.isFinite(expMs) && expMs > 0
+        ? Timestamp.fromMillis(expMs)
+        : null;
+
+    await adminDb
+      .collection("users")
+      .doc(uid)
+      .set(
+        {
+          isPro,
+          // REVOKE'ta null → "tarih bilinmiyor" değil, isPro:false zaten kesin.
+          // GRANT'ta tarih yoksa (ömür boyu / tek seferlik ürün) null → süresiz.
+          proExpiresAt,
+          proUpdatedAt: FieldValue.serverTimestamp(),
+          proSource: "revenuecat",
+          proLastEvent: type,
+        },
+        { merge: true },
+      );
+    return res.status(200).json({
+      ok: true,
+      uid,
+      isPro,
+      proExpiresAt: proExpiresAt ? proExpiresAt.toMillis() : null,
+    });
   } catch (e) {
     console.error("RC Webhook Error:", e.message);
     return res.status(500).json({ error: "webhook error" });
