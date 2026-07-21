@@ -7924,7 +7924,10 @@ function drawResultCard(opts) {
                 }
               } catch (e) {}
             }
-            await AdMob.initialize({});
+            // İÇERİK FİLTRESİ: yalnız "General" (genel izleyici / aile-dostu) reklamlar.
+            // +18 / olgun / teen içerikli reklamları engeller (Teen/MatureAudience elenir).
+            // Remote JS'te olduğu için AAB rebuild gerektirmez; her ad isteğine uygulanır.
+            await AdMob.initialize({ maxAdContentRating: "General" });
             this.ready = true;
             // PRO kullanıcı değilse alt banner'ı göster + popup'larda otomatik gizle
             if (!isPremium) {
