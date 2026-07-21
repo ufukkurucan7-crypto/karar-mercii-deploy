@@ -10179,7 +10179,7 @@ function drawResultCard(opts) {
 
       // Ters yönde bırakınca: kısa süre serbestçe yavaşla, durmadan dur
       function freeCoast(initVel) {
-        if (spinning) return;
+        if (spinning || window._wheelResultPending) return;
         var v = initVel, // negatif (ters yön)
           t0 = performance.now(),
           li = -1;
@@ -10203,7 +10203,7 @@ function drawResultCard(opts) {
       }
 
       function launch(sp) {
-        if (spinning || window._adPending) return;
+        if (spinning || window._adPending || window._wheelResultPending) return;
         spinning = true;
         document.body.classList.add("wheel-spinning");
         // Dönmeye başladığı an belirgin kickoff haptiği (önemli buton basışı)
@@ -10233,9 +10233,9 @@ function drawResultCard(opts) {
         target = avoidEdge(target, n);
         var wi = wfA(target, n);
 
-        // Süre: min 6s, max 11s (kısa ve sürükleyici)
-        var T = Math.max(6000, initSpeed * 200000);
-        T = Math.min(T, 11000);
+        // Süre: min 5.2s, max 10s (biraz kısaltıldı — sonucu çok az daha erken verir)
+        var T = Math.max(5200, initSpeed * 175000);
+        T = Math.min(T, 10000);
 
         var t0 = performance.now();
         var tickEvery = 0.25;
@@ -10285,7 +10285,7 @@ function drawResultCard(opts) {
       }
 
       function spinButtonClick() {
-        if (spinning || window._adPending) return;
+        if (spinning || window._adPending || window._wheelResultPending) return;
         if (S.wheel.length < 2) {
           var we = document.getElementById("we");
           if (we) {
@@ -10389,13 +10389,12 @@ function drawResultCard(opts) {
         wheelHi = wi;
         drawW("wcanvas", S.wheel, wAngle, wi);
         wheelSpotlight(S.wheel.length, wi, wAngle);
-        // Kazanan belli olunca döndür butonunu geri getir (önceden DEĞİL)
+        // SONUÇ GÖRÜNENE KADAR yeniden çevirme KİLİTLİ: kullanıcı sonucu görmeden
+        // tekrar çeviremesin. Döndür butonu, sonuç kartına kaydırıldıktan SONRA
+        // (aşağıdaki setTimeout içinde) geri gelir. Buton launch()'ta zaten gizlendi.
+        window._wheelResultPending = true;
         var _sb = document.getElementById("wspin-btn");
-        if (_sb) {
-          _sb.classList.remove("spinning");
-          _sb.style.opacity = "1";
-          _sb.style.pointerEvents = "";
-        }
+        if (_sb) _sb.classList.remove("spinning");
         var _wst = document.querySelector("#s-wheel .wstage");
         if (_wst) {
           _wst.classList.remove("win-pop");
@@ -10476,7 +10475,15 @@ function drawResultCard(opts) {
         setTimeout(() => {
           burstAt(card);
           card.scrollIntoView({ behavior: "smooth", block: "center" });
-        }, 1850);
+          // Sonuç ekrana geldi → artık yeniden çevrilebilir; döndür butonunu geri getir
+          window._wheelResultPending = false;
+          var _sb2 = document.getElementById("wspin-btn");
+          if (_sb2) {
+            _sb2.classList.remove("spinning");
+            _sb2.style.opacity = "1";
+            _sb2.style.pointerEvents = "";
+          }
+        }, 1500);
       }
 
       // ═══════════════════ VOTE ═══════════════════
