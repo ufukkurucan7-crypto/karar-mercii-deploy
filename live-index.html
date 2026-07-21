@@ -241,7 +241,7 @@
         min-height: 100vh;
         min-height: 100dvh;
         position: relative;
-        padding-bottom: calc(30px + 8vh + var(--ad-bottom, 0px)); /* içeriği hafif yukarı çeker → "Haydi başlayalım" butonu daha rahat, dipte çirkin boşluk yok */
+        padding-bottom: calc(30px + var(--ad-bottom, 0px));
       }
       .ob-back {
         position: absolute;
@@ -1212,7 +1212,9 @@
          padding-bottom rezerve ediyor (çift rezervasyon = gereksiz sayfa kaydırması olurdu). */
       .obs-wrap{flex:1;display:flex;flex-direction:column;justify-content:flex-start;overflow:hidden;
         height:100vh;height:calc(100svh - var(--ad-bottom, 0px));
-        padding:clamp(16px,4vh,40px) 26px calc(clamp(14px,2.6vh,26px) + env(safe-area-inset-bottom, 0px));
+        /* Alt boşluğa +30px güvenlik: banner boyut event'i gelmese bile "Haydi başlayalım"
+           butonu banner'ın ARKASINDA kalmasın (bu ekran tek-ekran, overflow:hidden). */
+        padding:clamp(16px,4vh,40px) 26px calc(clamp(14px,2.6vh,26px) + env(safe-area-inset-bottom, 0px) + 30px);
         background:linear-gradient(180deg,var(--ac-bg2) 0%,#fff 40%);}
       .obs-hero{flex:none;display:flex;flex-direction:column;align-items:center;text-align:center;
         margin-bottom:clamp(10px,2.2vh,22px);}
@@ -7951,7 +7953,9 @@ function drawResultCard(opts) {
           // varsayılan boşluk rezerve et (event gelirse gerçek yükseklik bunu ezer).
           var _curAd = document.documentElement.style.getPropertyValue("--ad-bottom");
           if (!_curAd || _curAd === "0px") {
-            document.documentElement.style.setProperty("--ad-bottom", "60px");
+            // Boyut event'i bu AdMob sürümünde gelmeyebilir → varsayılan rezerv 60→75px
+            // (adaptive banner çoğu telefonda ~50-60dp; 75 güvenli, buton banner arkasında kalmasın).
+            document.documentElement.style.setProperty("--ad-bottom", "75px");
           }
           // Banner yüksekliğini öğrenip içeriğe o kadar alt boşluk bırak
           // (banner alttaki seçenek/butonların üstüne binmesin).
@@ -9806,7 +9810,7 @@ function drawResultCard(opts) {
         var L = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
         return L > 0.62 ? "#3b1556" : "#fff";
       }
-      function drawW(cid, items, angle, hi) {
+      function drawW(cid, items, angle, hi, period) {
         if (hi === undefined) hi = -1;
         var c = document.getElementById(cid);
         if (!c) return;
@@ -9843,6 +9847,9 @@ function drawResultCard(opts) {
         }
         var n = items.length,
           sl = (Math.PI * 2) / n;
+        // Renk periyodu: tekrarlı dilimde (x-y-x-y…) aynı ŞIK aynı rengi alsın diye
+        // dilim sırasına değil, orijinal seçenek indeksine (i % kCol) göre renklendir.
+        var kCol = period || n;
         // — Taban dairesi (gölge artık #wcanvas CSS box-shadow'unda; canvas
         // içinde shadowBlur çizmek her frame pahalıydı — P0-1) —
         ctx.beginPath();
@@ -9857,7 +9864,7 @@ function drawResultCard(opts) {
           ctx.arc(cx, cy, r, a, a + sl);
           ctx.closePath();
           ctx.globalAlpha = hi >= 0 && i !== hi ? 0.38 : 1;
-          ctx.fillStyle = COLS[i % COLS.length];
+          ctx.fillStyle = COLS[(i % kCol) % COLS.length];
           ctx.fill();
           ctx.globalAlpha = 1;
           ctx.strokeStyle = "rgba(255,255,255,.9)";
@@ -9907,7 +9914,7 @@ function drawResultCard(opts) {
           ctx.rotate(mid);
           // Yazılar çarkla birlikte sabit yönde döner (flip yok = yön değiştirmez)
           ctx.globalAlpha = hi >= 0 && j !== hi ? 0.38 : 1;
-          ctx.fillStyle = _textOn(COLS[j % COLS.length]);
+          ctx.fillStyle = _textOn(COLS[(j % kCol) % COLS.length]);
           var fs = Math.max(10, Math.round(r * (n > 8 ? 0.085 : 0.105)));
           // Emoji fallback: seçenekte emoji varsa canvas'ta tofu/boşluk yerine
           // sistem emoji fontuyla çizilsin (Android WebView + Windows).
@@ -9939,6 +9946,23 @@ function drawResultCard(opts) {
         ctx.fill();
         ctx.restore();
       }
+      // ── Çark dilim dizisi: az seçenekte tekrarlı dilimle doldur (x-y-x-y…) ──
+      // Amaç: 2-3 seçenekte dev dilimler yerine dolu, dengeli, "çark hissi" veren
+      // görünüm. Adalet bozulmaz: her seçenek EŞİT sayıda (m kez) → olasılık eşit.
+      // Kazanan dilim → orijinal seçeneğe S.wheelSlices[wi] etiketiyle eşlenir.
+      // n=2→6×(12 dilim), 3→4×(12), 4→3×(12), 5→2×(10), 6→2×(12); n≥7 dokunma (dolu).
+      function buildWheelSlices() {
+        var opts = S.wheel || [];
+        var k = opts.length;
+        var m = 1;
+        if (k >= 2 && k <= 6) m = Math.round(12 / k);
+        if (m < 1) m = 1;
+        var out = [];
+        for (var r = 0; r < m; r++)
+          for (var i = 0; i < k; i++) out.push(opts[i]);
+        S.wheelSlices = out;
+        S.wheelPeriod = k; // renk/period: aynı şık aynı renk
+      }
       function updW() {
         // Çark 2'den az seçenekle pasif → canvas üstünden sayfa kaydırılabilsin
         var _cv = document.getElementById("wcanvas");
@@ -9956,7 +9980,8 @@ function drawResultCard(opts) {
           // Boşken de güzel görünsün: placeholder dilimler çiz
           drawWEmpty("wcanvas");
         } else {
-          drawW("wcanvas", S.wheel, wAngle, wheelHi);
+          buildWheelSlices();
+          drawW("wcanvas", S.wheelSlices, wAngle, wheelHi, S.wheelPeriod);
         }
         // Günlük öneri çipleri (boşken) + tümünü temizle butonu (doluyken)
         if (typeof renderDailySuggestions === "function") renderDailySuggestions();
@@ -10102,7 +10127,8 @@ function drawResultCard(opts) {
         // Drag başlarken idle salınımı durdur (P1-6) — merkez sabitlensin,
         // SONRA merkezi bir kez ölç (P1-5)
         document.body.classList.add("wheel-dragging");
-        drawW("wcanvas", S.wheel, wAngle, -1);
+        buildWheelSlices();
+        drawW("wcanvas", S.wheelSlices, wAngle, -1, S.wheelPeriod);
         var _wcr = document.getElementById("wcanvas").getBoundingClientRect();
         _wCenter = { x: _wcr.left + _wcr.width / 2, y: _wcr.top + _wcr.height / 2 };
         dragging = true;
@@ -10131,10 +10157,10 @@ function drawResultCard(opts) {
         lastT = now;
 
         // Tıkır sesi — her yönde
-        var newIdx = wfA(wAngle, S.wheel.length);
+        var newIdx = wfA(wAngle, (S.wheelSlices || S.wheel).length);
         if (newIdx !== _lastDragTick) {
           _lastDragTick = newIdx;
-          if (S.wheel.length >= 2) casinoTick();
+          if ((S.wheelSlices || S.wheel).length >= 2) casinoTick();
         }
 
         // pointermove frame'den sık gelebilir (120Hz+): çizimi rAF'ta birleştir,
@@ -10193,8 +10219,8 @@ function drawResultCard(opts) {
           v *= Math.pow(0.88, dt * 60);
           wAngle += v * dt * 60;
 
-          var idx = wfA(wAngle, S.wheel.length);
-          if (idx !== li && S.wheel.length >= 2) {
+          var idx = wfA(wAngle, (S.wheelSlices || S.wheel).length);
+          if (idx !== li && (S.wheelSlices || S.wheel).length >= 2) {
             li = idx;
             casinoTick();
           }
@@ -10223,7 +10249,7 @@ function drawResultCard(opts) {
           spinBtn.style.opacity = "0";
           spinBtn.style.pointerEvents = "none";
         }
-        var n = S.wheel.length,
+        var n = (S.wheelSlices || S.wheel).length,
           base = wAngle;
 
         // Max hız sınırla (önceki 4800 yerine 2400 — daha yavaş)
@@ -10303,7 +10329,8 @@ function drawResultCard(opts) {
         hideHint();
         document.getElementById("wr").style.display = "none";
         wheelHi = -1;
-        drawW("wcanvas", S.wheel, wAngle, -1);
+        buildWheelSlices();
+        drawW("wcanvas", S.wheelSlices, wAngle, -1, S.wheelPeriod);
         launch(0.035); // Sabit orta hız
       }
 
@@ -10311,7 +10338,7 @@ function drawResultCard(opts) {
         // Gerçekçi yerine oturma: kenara yakınsa ÇOK küçük, yavaş, TEK yumuşak
         // nudge (fırlatma/zıplama yok). Eskiden sin(2.2π) iki tam salınım yapıp
         // sert atıyordu. Genlik slice genişliğine oranlı → her seçenek sayısında dengeli.
-        var n = S.wheel.length;
+        var n = (S.wheelSlices || S.wheel).length;
         var sl = (Math.PI * 2) / n;
         var edgeDist = edgeClose(target, n);
         var doWobble = edgeDist < 0.18;
@@ -10390,8 +10417,8 @@ function drawResultCard(opts) {
       }
       function finishW(wi) {
         wheelHi = wi;
-        drawW("wcanvas", S.wheel, wAngle, wi);
-        wheelSpotlight(S.wheel.length, wi, wAngle);
+        drawW("wcanvas", S.wheelSlices, wAngle, wi, S.wheelPeriod);
+        wheelSpotlight(S.wheelSlices.length, wi, wAngle);
         // SONUÇ GÖRÜNENE KADAR yeniden çevirme KİLİTLİ: kullanıcı sonucu görmeden
         // tekrar çeviremesin. Döndür butonu, sonuç kartına kaydırıldıktan SONRA
         // (aşağıdaki setTimeout içinde) geri gelir. Buton launch()'ta zaten gizlendi.
@@ -10407,7 +10434,7 @@ function drawResultCard(opts) {
             _wst.classList.remove("win-pop");
           }, 600);
         }
-        if (edgeClose(wAngle, S.wheel.length) < 0.16) {
+        if (edgeClose(wAngle, S.wheelSlices.length) < 0.16) {
           var ptr = document.querySelector("#s-wheel .wptr");
           if (ptr) {
             ptr.classList.remove("tick");
@@ -10415,7 +10442,7 @@ function drawResultCard(opts) {
             ptr.classList.add("tick");
           }
         }
-        var win = S.wheel[wi],
+        var win = (S.wheelSlices || S.wheel)[wi],
           say = getSaying(win);
         document.getElementById("wwin").textContent = win;
         document.getElementById("w-say").textContent = say;
@@ -15161,8 +15188,10 @@ function drawResultCard(opts) {
         if (size > 260) size = 260;
         cv.width = size;
         cv.height = size;
-        if (S.wheel.length > 0) drawW("wcanvas", S.wheel, wAngle, wheelHi);
-        else drawWEmpty("wcanvas");
+        if (S.wheel.length > 0) {
+          buildWheelSlices();
+          drawW("wcanvas", S.wheelSlices, wAngle, wheelHi, S.wheelPeriod);
+        } else drawWEmpty("wcanvas");
       }
       window.addEventListener("resize", resizeWheel);
       // ── ÇEVRİMDIŞI BANDI ── İnternet yokken kullanıcıyı bilgilendir (engellemeden;
