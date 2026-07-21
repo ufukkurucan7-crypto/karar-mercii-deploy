@@ -16086,12 +16086,17 @@ function drawResultCard(opts) {
           geçici olarak Firebase Firestore'da saklanır. Bu veriler kişisel bilgi
           içermez ve oylama kapandıktan sonra kullanılmaz.
           <h3>Yapay Zeka (Merci)</h3>
-          Merci'ye gönderilen mesajlar Anthropic API aracılığıyla işlenir. Bu
-          mesajlar sunucumuzda saklanmaz; yalnızca oturum süresi boyunca geçici
-          olarak kullanılır.
+          Merci'ye gönderilen mesajlar Anthropic API aracılığıyla işlenir ve
+          sohbet içerikleri sunucumuzda kalıcı olarak saklanmaz. Yalnızca bir
+          yanıta 👍/👎 geri bildirimi verdiğinizde, o mesajın kısa bir bölümü ve
+          Merci'nin yanıtı; hizmet kalitesini iyileştirmek ve kötüye kullanımı
+          önlemek amacıyla, adınıza değil rastgele bir kimliğe bağlı olarak
+          saklanır. Kötüye kullanım tespit edilirse ilgili hesabın Merci erişimi
+          kısıtlanabilir.
           <h3>Geri Bildirim</h3>
-          "Bizi Puanla" aracılığıyla gönderilen geri bildirimler, Firebase'de
-          anonim olarak saklanır.
+          "Bizi Puanla" ve "Bize Ulaşın" aracılığıyla gönderdiğiniz mesaj ile
+          (isteğe bağlı olarak verdiyseniz) e-posta adresiniz, Firebase'de
+          saklanır ve yalnızca geri bildirimi değerlendirmek için kullanılır.
           <h3>Çerezler</h3>
           Uygulama, tercihlerinizi (ses ayarı, karar geçmişi) saklamak için
           yalnızca yerel depolama (localStorage) kullanır; izleme çerezi
