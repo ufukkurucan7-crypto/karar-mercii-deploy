@@ -3484,21 +3484,6 @@
           transform: translateX(-50%) rotate(0);
         }
       }
-      /* Hızlı tek çırpma: dilim çizgisi (peg) ibreye çarptıkça tık sesiyle senkron */
-      .wptr.flick {
-        animation: ptrflick 0.12s ease-out;
-      }
-      @keyframes ptrflick {
-        0% {
-          transform: translateX(-50%) rotate(0);
-        }
-        40% {
-          transform: translateX(-50%) rotate(-13deg);
-        }
-        100% {
-          transform: translateX(-50%) rotate(0);
-        }
-      }
       .wdot {
         position: absolute;
         top: 50%;
@@ -9980,18 +9965,6 @@ function drawResultCard(opts) {
         S.wheelSlices = out;
         S.wheelPeriod = k; // renk/period: aynı şık aynı renk
       }
-      // İbre "peg"e çarpma çırpması — hızlı, tık sesiyle senkron. Class'ı kaldırıp
-      // reflow ile yeniden ekleyerek her tıkta yeniden tetikler.
-      var _ptrEl = null;
-      function ptrFlick() {
-        try {
-          if (!_ptrEl) _ptrEl = document.querySelector("#s-wheel .wptr");
-          if (!_ptrEl) return;
-          _ptrEl.classList.remove("flick");
-          void _ptrEl.offsetWidth;
-          _ptrEl.classList.add("flick");
-        } catch (e) {}
-      }
       function updW() {
         // Çark 2'den az seçenekle pasif → canvas üstünden sayfa kaydırılabilsin
         var _cv = document.getElementById("wcanvas");
@@ -10189,10 +10162,7 @@ function drawResultCard(opts) {
         var newIdx = wfA(wAngle, (S.wheelSlices || S.wheel).length);
         if (newIdx !== _lastDragTick) {
           _lastDragTick = newIdx;
-          if ((S.wheelSlices || S.wheel).length >= 2) {
-            casinoTick();
-            ptrFlick();
-          }
+          if ((S.wheelSlices || S.wheel).length >= 2) casinoTick();
         }
 
         // pointermove frame'den sık gelebilir (120Hz+): çizimi rAF'ta birleştir,
@@ -10255,7 +10225,6 @@ function drawResultCard(opts) {
           if (idx !== li && (S.wheelSlices || S.wheel).length >= 2) {
             li = idx;
             casinoTick();
-            ptrFlick();
           }
 
           wRotateTo(wAngle);
@@ -10324,7 +10293,6 @@ function drawResultCard(opts) {
             // Tık sesi min 55ms aralıklı — spin başında her frame çalmasın (P2-8)
             if (now - lastSnd > 55) {
               casinoTickGain(0.3 + speedRatio * 0.5);
-              ptrFlick(); // ibre "peg"e çarpmış gibi çırpsın — sesle senkron
               lastSnd = now;
             }
             // Spin boyunca (baştan itibaren) tıkır titreşim — ~18/sn ile sınırlı
@@ -10474,7 +10442,6 @@ function drawResultCard(opts) {
           var ptr = document.querySelector("#s-wheel .wptr");
           if (ptr) {
             ptr.classList.remove("tick");
-            ptr.classList.remove("flick");
             void ptr.offsetWidth;
             ptr.classList.add("tick");
           }
