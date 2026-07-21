@@ -330,6 +330,19 @@ async function authAndQuota(req, res, next) {
   // ── 2) FIRESTORE OKUMA + KOTA (altyapı hatası ≠ oturum hatası) ──
   let allowed;
   try {
+    // ── BAN: kötüye kullanan hesap AI uçlarını KULLANAMAZ ──
+    // Kota/isPro'dan ÖNCE bakılır → PREMIUM/ÖDEME FARK ETMEZ, banlı hesap geçemez.
+    // Yönetim paneli bans/{uid} yazınca burada 403 döner. (Ban kaldırınca doc silinir.)
+    const banSnap = await adminDb.collection("bans").doc(uid).get();
+    if (banSnap.exists) {
+      const b = banSnap.data() || {};
+      return res.status(403).json({
+        error: b.reason
+          ? "Merci erişimin kısıtlandı: " + b.reason
+          : "Bu hesabın Merci erişimi kısıtlandı.",
+      });
+    }
+
     const userSnap = await adminDb.collection("users").doc(uid).get();
     const isPro = userSnap.exists && isProValid(userSnap.data());
     const limit = isPro ? PRO_DAILY_LIMIT : FREE_DAILY_LIMIT;
