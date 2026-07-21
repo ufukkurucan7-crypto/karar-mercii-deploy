@@ -126,6 +126,25 @@
            diye banner yüksekliği kadar boşluk rezerve edilir (JS --ad-bottom ayarlar). */
         padding-bottom: var(--ad-bottom, 0px);
       }
+      /* Masaüstü/geniş ekran: telefon-genişliği kolon (.app 420px) beyaz boşlukta
+         yüzmesin — arka plana yumuşak zemin + kolona gölge/çerçeve (telefon hissi).
+         Mobilde (<480px) hiç devreye girmez; iki tema da desteklenir. */
+      @media (min-width: 480px) {
+        body {
+          background: radial-gradient(120% 80% at 50% 0%, #efeafc 0%, #e4def7 100%);
+        }
+        html.dark body {
+          background: radial-gradient(120% 80% at 50% 0%, #0c0918 0%, #060410 100%);
+        }
+        .app {
+          box-shadow: 0 0 0 1px rgba(124, 58, 237, 0.06),
+            0 24px 70px -24px rgba(76, 29, 149, 0.4);
+        }
+        html.dark .app {
+          box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.05),
+            0 24px 70px -24px rgba(0, 0, 0, 0.7);
+        }
+      }
       .screen {
         display: none;
       }
