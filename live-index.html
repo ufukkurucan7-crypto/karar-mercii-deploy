@@ -3484,6 +3484,21 @@
           transform: translateX(-50%) rotate(0);
         }
       }
+      /* Hızlı tek çırpma: dilim çizgisi (peg) ibreye çarptıkça tık sesiyle senkron */
+      .wptr.flick {
+        animation: ptrflick 0.12s ease-out;
+      }
+      @keyframes ptrflick {
+        0% {
+          transform: translateX(-50%) rotate(0);
+        }
+        40% {
+          transform: translateX(-50%) rotate(-13deg);
+        }
+        100% {
+          transform: translateX(-50%) rotate(0);
+        }
+      }
       .wdot {
         position: absolute;
         top: 50%;
@@ -9965,6 +9980,18 @@ function drawResultCard(opts) {
         S.wheelSlices = out;
         S.wheelPeriod = k; // renk/period: aynı şık aynı renk
       }
+      // İbre "peg"e çarpma çırpması — hızlı, tık sesiyle senkron. Class'ı kaldırıp
+      // reflow ile yeniden ekleyerek her tıkta yeniden tetikler.
+      var _ptrEl = null;
+      function ptrFlick() {
+        try {
+          if (!_ptrEl) _ptrEl = document.querySelector("#s-wheel .wptr");
+          if (!_ptrEl) return;
+          _ptrEl.classList.remove("flick");
+          void _ptrEl.offsetWidth;
+          _ptrEl.classList.add("flick");
+        } catch (e) {}
+      }
       function updW() {
         // Çark 2'den az seçenekle pasif → canvas üstünden sayfa kaydırılabilsin
         var _cv = document.getElementById("wcanvas");
@@ -10162,7 +10189,10 @@ function drawResultCard(opts) {
         var newIdx = wfA(wAngle, (S.wheelSlices || S.wheel).length);
         if (newIdx !== _lastDragTick) {
           _lastDragTick = newIdx;
-          if ((S.wheelSlices || S.wheel).length >= 2) casinoTick();
+          if ((S.wheelSlices || S.wheel).length >= 2) {
+            casinoTick();
+            ptrFlick();
+          }
         }
 
         // pointermove frame'den sık gelebilir (120Hz+): çizimi rAF'ta birleştir,
@@ -10190,7 +10220,7 @@ function drawResultCard(opts) {
         // Her iki yönde de fırlatma çarkı başlatır (soldan-sağa da çevrilebilsin)
         if (Math.abs(dragAccum) > 0.08 && Math.abs(v) > 0.001) {
           hideHint();
-          launch(Math.abs(v));
+          launch(Math.abs(v), v < 0 ? -1 : 1); // ← fırlattığın YÖNDE dönsün
         } else {
           showHint();
         }
@@ -10202,7 +10232,7 @@ function drawResultCard(opts) {
         _wCenter = null;
         if (Math.abs(dragAccum) > 0.08) {
           hideHint();
-          launch(Math.abs(vel) || 0);
+          launch(Math.abs(vel) || 0, vel < 0 ? -1 : 1); // ← fırlattığın YÖNDE dönsün
         } else {
           showHint();
         }
@@ -10225,6 +10255,7 @@ function drawResultCard(opts) {
           if (idx !== li && (S.wheelSlices || S.wheel).length >= 2) {
             li = idx;
             casinoTick();
+            ptrFlick();
           }
 
           wRotateTo(wAngle);
@@ -10233,8 +10264,9 @@ function drawResultCard(opts) {
         })(t0);
       }
 
-      function launch(sp) {
+      function launch(sp, dir) {
         if (spinning || window._adPending || window._wheelResultPending) return;
+        dir = dir < 0 ? -1 : 1; // sürükleme yönü: -1 = sola (CCW), +1 = sağa (CW)
         spinning = true;
         document.body.classList.add("wheel-spinning");
         // Dönmeye başladığı an belirgin kickoff haptiği (önemli buton basışı)
@@ -10258,7 +10290,8 @@ function drawResultCard(opts) {
         var initSpeed = Math.min(Math.max(sp, 0.012), 0.06);
         var extraRad = initSpeed * 2400;
         var minRad = (6 + Math.random() * 4) * Math.PI * 2;
-        var totalRad = Math.max(extraRad, minRad) + Math.random() * Math.PI * 2;
+        var totalRad =
+          (Math.max(extraRad, minRad) + Math.random() * Math.PI * 2) * dir;
 
         var target = base + totalRad;
         target = avoidEdge(target, n);
@@ -10284,13 +10317,14 @@ function drawResultCard(opts) {
           var p = Math.min(elapsed / T, 1);
           wAngle = base + totalRad * easeOutCubic(p);
 
-          var angleDiff = wAngle - lastTickAngle;
+          var angleDiff = Math.abs(wAngle - lastTickAngle);
           if (angleDiff >= tickEvery) {
-            lastTickAngle += tickEvery * Math.floor(angleDiff / tickEvery);
+            lastTickAngle += dir * tickEvery * Math.floor(angleDiff / tickEvery);
             var speedRatio = 1 - p;
             // Tık sesi min 55ms aralıklı — spin başında her frame çalmasın (P2-8)
             if (now - lastSnd > 55) {
               casinoTickGain(0.3 + speedRatio * 0.5);
+              ptrFlick(); // ibre "peg"e çarpmış gibi çırpsın — sesle senkron
               lastSnd = now;
             }
             // Spin boyunca (baştan itibaren) tıkır titreşim — ~18/sn ile sınırlı
@@ -10440,6 +10474,7 @@ function drawResultCard(opts) {
           var ptr = document.querySelector("#s-wheel .wptr");
           if (ptr) {
             ptr.classList.remove("tick");
+            ptr.classList.remove("flick");
             void ptr.offsetWidth;
             ptr.classList.add("tick");
           }
