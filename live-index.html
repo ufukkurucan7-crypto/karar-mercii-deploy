@@ -1226,10 +1226,12 @@
       .obs-hero-disc svg{max-width:82%;height:auto;display:block;}
       .obs-h1{font-family:"Nunito",sans-serif;font-weight:800;font-size:clamp(19px,2.9vh,24px);color:var(--ac-dd);line-height:1.2;}
       .obs-h2{font-family:"Nunito",sans-serif;font-size:clamp(12.5px,2vh,14.5px);color:#6a6194;margin-top:7px;max-width:280px;line-height:1.45;}
-      .obs-list{flex:1 1 auto;min-height:0;width:100%;overflow-y:auto;overflow-x:hidden;
+      /* flex:0 → liste kartlar bitince BÜYÜMEZ; buton "Merci'ye danış"ın hemen altına
+         gelir (küçük boşlukla). Kısa ekranda flex-shrink + overflow-y ile kaydırılır. */
+      .obs-list{flex:0 1 auto;min-height:0;width:100%;overflow-y:auto;overflow-x:hidden;
         -webkit-overflow-scrolling:touch;scrollbar-width:none;
         display:flex;flex-direction:column;gap:clamp(7px,1.4vh,12px);
-        margin:clamp(4px,1vh,6px) 0 clamp(10px,2.4vh,20px);}
+        margin:clamp(4px,1vh,6px) 0 clamp(14px,2.4vh,20px);}
       .obs-list::-webkit-scrollbar{display:none;}
       .obs-row{flex:none;display:flex;align-items:center;gap:14px;background:#fff;border:1px solid var(--ac-bd);
         border-radius:18px;padding:clamp(9px,1.5vh,13px) 15px;box-shadow:0 8px 20px -12px rgba(76,29,149,.25);
