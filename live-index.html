@@ -5845,7 +5845,7 @@
                     "
                   ></div>
                   <div class="chat-bubble">
-                    Merhaba! Ne konuda yardım edeyim? 🐙
+                    Selam! Neye karar veriyoruz? 🐙
                   </div>
                 </div>
               </div>
@@ -6115,7 +6115,7 @@
           <div class="chat-messages" id="ro-chat-messages">
             <div class="msg-merci">
               <div class="chat-av-merci" id="ro-chat-init-av"></div>
-              <div class="chat-bubble">Merhaba! Ne konuda yardım edeyim?</div>
+              <div class="chat-bubble">Selam! Neye karar veriyoruz?</div>
             </div>
           </div>
           <div class="thinking-inline" id="ro-ath" style="display: none">
@@ -7189,7 +7189,7 @@ function drawResultCard(opts) {
           msgs.innerHTML =
             '<div class="msg-merci"><div class="chat-av-merci">' +
             merciSVGChat(28) +
-            '</div><div class="chat-bubble">Yeni konu! Ne konuda yardım edeyim? 🐙</div></div>';
+            '</div><div class="chat-bubble">Yeni karar! Ne seçiyoruz? 🐙</div></div>';
         updateChipsVisibility();
         var ctx = document.getElementById("ai-ctx");
         if (ctx) {
@@ -7411,10 +7411,34 @@ function drawResultCard(opts) {
       };
       // ═══════════════ REVENUECAT (PRO abonelik) ═══════════════
       var KM_RC = {
-        API_KEY: "goog_PBWwciuubvPHAShpGIlLqPHSgGI",
+        // RevenueCat platforma göre AYRI public API anahtarı ister:
+        // Android → goog_..., iOS → appl_... (RevenueCat panosu → Project → API Keys).
+        API_KEYS: {
+          android: "goog_PBWwciuubvPHAShpGIlLqPHSgGI",
+          // ⚠️ iOS anahtarını RevenueCat panosunda iOS app'i (bundle app.kararmercii.com)
+          // ekleyince al, buraya yapıştır (appl_ ile başlar). Placeholder kaldıkça iOS'ta
+          // RC atlanır → PRO yalnız Firestore'dan gelir, çökme/yanlış-anahtar olmaz.
+          ios: "appl_PLACEHOLDER_REPLACE_ME",
+        },
         ENTITLEMENT: "premium",
         configured: false,
         pkgs: { monthly: null, yearly: null },
+        // Çalışılan native platform: 'ios' | 'android' | 'web'
+        platform: function () {
+          try {
+            return window.Capacitor && window.Capacitor.getPlatform
+              ? window.Capacitor.getPlatform()
+              : "web";
+          } catch (e) {
+            return "web";
+          }
+        },
+        // Platforma uygun RevenueCat public anahtarı (varsayılan: android)
+        apiKey: function () {
+          return this.platform() === "ios"
+            ? this.API_KEYS.ios
+            : this.API_KEYS.android;
+        },
         inApp: function () {
           return !!(
             window.Capacitor &&
@@ -7447,7 +7471,15 @@ function drawResultCard(opts) {
           var self = this;
           var start;
           if (!this.configured) {
-            var opts = { apiKey: this.API_KEY };
+            var key = this.apiKey();
+            if (!key || key.indexOf("PLACEHOLDER") !== -1) {
+              // iOS anahtarı henüz RevenueCat'ten alınıp girilmedi → RC'yi atla.
+              // PRO yalnız Firestore'dan gelir; iOS'ta çökme/yanlış anahtar olmaz.
+              _rcDone = true;
+              _markResolved();
+              return;
+            }
+            var opts = { apiKey: key };
             if (uid) opts.appUserID = uid;
             start = P.configure(opts);
           } else if (uid) {
@@ -7748,10 +7780,11 @@ function drawResultCard(opts) {
         topicCompleted = false; // konu tamamlandı mı
 
       // ── KONU BAZLI LİMİT ──
-      // Ücretsiz kota MESAJ bazlı: günde N mesaj. "Yeni Konu" ekstra hak yemez,
-      // hepsi aynı günlük bütçeden gider. Reklam başına +AD_MSG_BONUS mesaj.
-      var FREE_MSG_PER_DAY = 6;
-      var AD_MSG_BONUS = 6;
+      // Merci AI para modeli (22 Tem): Pro OLMAYAN için ÜCRETSİZ GÜNLÜK HAK YOK →
+      // Merci'yi kullanmak için ödüllü reklam izlenir, reklam başına AD_MSG_BONUS mesaj.
+      // Pro: yüksek sabit kota (sunucuda enforce; UI'da "günde 50 mesaj" olarak sunulur).
+      var FREE_MSG_PER_DAY = 0; // ücretsiz günlük hak KALDIRILDI (reklam-kapılı)
+      var AD_MSG_BONUS = 4; // ödüllü reklam başına kazanılan mesaj
       function getTopicUsage() {
         var today = new Date().toDateString();
         var usage = JSON.parse(localStorage.getItem("kmTopicUsage") || "{}");
@@ -7787,11 +7820,11 @@ function drawResultCard(opts) {
         wrap.className = "paywall-box";
         wrap.innerHTML =
           '<div class="paywall-emoji">🐙</div>' +
-          '<div class="paywall-title">Bugünkü ücretsiz mesajların bitti!</div>' +
-          "<div class=\"paywall-sub\">Reklam izle, +6 mesaj kazan — ya da PRO ile sınırsız ve reklamsız konuş.</div>" +
-          '<button class="paywall-btn-primary" onclick="openProModal(\'quota\')">⭐ Pro\'ya Geç — Sınırsız Kullan</button>' +
-          '<button class="paywall-btn-ad" onclick="watchAdForTopic()">📺 Reklam İzle (+6 mesaj)</button>' +
-          '<div class="paywall-counter">Yarın 6 yeni mesaj hakkın yenilenir 🌙</div>';
+          '<div class="paywall-title">Merci seni bekliyor 🐙</div>' +
+          "<div class=\"paywall-sub\">Kısa bir reklam izle, +4 mesaj kazan — ya da PRO ile günde 50 mesaj, reklamsız konuş.</div>" +
+          '<button class="paywall-btn-primary" onclick="openProModal(\'quota\')">⭐ Pro\'ya Geç — Günde 50 Mesaj</button>' +
+          '<button class="paywall-btn-ad" onclick="watchAdForTopic()">📺 Reklam İzle (+4 mesaj)</button>' +
+          '<div class="paywall-counter">Her reklam +4 mesaj • Pro\'da günde 50 🌙</div>';
         var chatWrap = document.querySelector(".chat-wrap");
         chatWrap.parentNode.insertBefore(wrap, chatWrap.nextSibling);
         document.getElementById("ask-merci").disabled = true;
@@ -8157,17 +8190,17 @@ function drawResultCard(opts) {
           window._pendingQ = null;
           if (pq) {
             // Reklam öncesi cevapsız kalan soruyu OTOMATİK gönder → cevabı gelsin
-            appendMsg("merci", "Teşekkürler! +6 mesaj 🐙 Sorunu yanıtlıyorum...", false);
+            appendMsg("merci", "Teşekkürler! +4 mesaj 🐙 Sorunu yanıtlıyorum...", false);
             setTimeout(function () {
               sendAI(pq);
             }, 300);
           } else {
-            appendMsg("merci", "Teşekkürler! +6 mesaj kazandın, devam edelim 🐙");
+            appendMsg("merci", "Teşekkürler! +4 mesaj kazandın, devam edelim 🐙");
           }
         }
         function fail() {
           if (btn) {
-            btn.textContent = "📺 Reklam İzle (+6 mesaj)";
+            btn.textContent = "📺 Reklam İzle (+4 mesaj)";
             btn.disabled = false;
           }
           appendMsg(
@@ -9208,11 +9241,11 @@ function drawResultCard(opts) {
               if (!currentUser) {
                 this.sel = "#ai-login-wall";
                 this.body =
-                  "Merci'ye danışmak için <b>Google ile giriş</b> yeterli — her gün <b>6 ücretsiz mesaj</b> senin! (PRO'da sınırsız.) Girince 'ne yesem, nereye gitsem' diye sorabilir, yakındaki mekan önerisi alabilirsin.";
+                  "Merci'ye danışmak için <b>Google ile giriş</b> yeterli — <b>kısa bir reklam izle, 4 mesaj</b> kazan! (PRO'da günde 50 mesaj, reklamsız.) Girince 'ne yesem, nereye gitsem' diye sorabilir, yakındaki mekan önerisi alabilirsin.";
               } else {
                 this.sel = ".merci-ai-hero";
                 this.body =
-                  "Ne yesek, nereye gitsek, ne izlesek… durumunu anlat, sana en iyi seçenekleri öneririm. Her gün <b>6 ücretsiz mesaj</b> (PRO'da sınırsız). Kararsız kalırsan senin için seçerim 🐙";
+                  "Ne yesek, nereye gitsek, ne izlesek… durumunu anlat, sana en iyi seçenekleri öneririm. <b>Reklam başına 4 mesaj</b> (PRO'da günde 50, reklamsız). Kararsız kalırsan senin için seçerim 🐙";
               }
             },
           },
@@ -9570,7 +9603,7 @@ function drawResultCard(opts) {
           {
             icon: "🧠",
             title: "Merci'ye Danış!",
-            body: "Ne yesek, nereye gidelim gibi sorularını Merci'ye sor! Yapay zeka asistanımız grubunun geçmişine bakarak öneri yapar. Günde <b>6 ücretsiz mesaj</b>, sınırsız için Pro ol! 🐙",
+            body: "Ne yesek, nereye gidelim gibi sorularını Merci'ye sor! Yapay zeka asistanımız grubunun geçmişine bakarak öneri yapar. <b>Reklam başına 4 mesaj</b>, günde 50 mesaj için Pro ol! 🐙",
             color: "var(--ac-d2)",
           },
         ];
@@ -10283,6 +10316,12 @@ function drawResultCard(opts) {
 
         var target = base + totalRad;
         target = avoidEdge(target, n);
+        // ⚠️ KRİTİK: avoidEdge hedefi kenardan kaçırmak için ±%12-20 dilim kaydırır.
+        // Bu kaymayı totalRad'a DA işle — yoksa yumuşak spin eski (kenardaki) hedefe
+        // sıfır hızla varıp p=1'de avoidEdge hedefine TEK KAREDE atlar = "bir anda,
+        // aşırı güçle fırlatma" (özellikle 2 seçenekte dilim=π → ~36° sıçrama).
+        // Yeniden hesapla → yavaşlama baştan sona kesintisiz o merkeze organik iner.
+        totalRad = target - base;
         var wi = wfA(target, n);
 
         // Süre: min 5.2s, max 10s (biraz kısaltıldı — sonucu çok az daha erken verir)
@@ -11364,7 +11403,7 @@ function drawResultCard(opts) {
         document.getElementById("chat-messages").innerHTML =
           '<div class="msg-merci"><div class="chat-av-merci">' +
           merciSVG(28) +
-          '</div><div class="chat-bubble">Merhaba! Ne konuda yardım edeyim?</div></div>';
+          '</div><div class="chat-bubble">Selam! Neye karar veriyoruz?</div></div>';
         sendAI(q);
       }
       function appendMsg(role, text, addFeedback) {
@@ -11826,7 +11865,7 @@ function drawResultCard(opts) {
           if (r.status === 429) {
             appendMsg(
               "merci",
-              (data.error || "Günlük hakkın doldu.") + " PRO ile sınırsız! ✨",
+              (data.error || "Mesaj hakkın doldu.") + " PRO ile günde 50 mesaj! ✨",
               false,
             );
             return;
@@ -14510,6 +14549,15 @@ function drawResultCard(opts) {
           setTimeout(maybeAskLocation, 400);
           // Taslaklar sadece boş sohbette görünsün
           updateChipsVisibility();
+          // MERCİ = Pro/reklam-kapılı: Pro değilse ve mesaj hakkı yoksa, sekmeye
+          // girer girmez ÖNCE reklama yönlendir (kullanıcı kararı 22 Tem). Hakkı
+          // varsa (reklam izlemiş) sormaz; Pro ise hiç sormaz.
+          if (!isPremium && getRemainingTopics() <= 0) {
+            setTimeout(function () {
+              if (document.getElementById("s-ai").classList.contains("on"))
+                showPaywall("merci_tab");
+            }, 350);
+          }
         }
         if (m === "vote") {
           var vh = document.getElementById("vote-hero-merci");
@@ -15519,7 +15567,7 @@ function drawResultCard(opts) {
         function closeProWithConfirm() {
           showConfirm(
             "Pro'dan çıkıyorsun",
-            "Merci'ye sınırsız danışma, reklamsız kullanma haklarını kaybedeceksin. Emin misin?",
+            "Merci mesaj hakkını, reklamsız kullanmayı kaybedeceksin. Emin misin?",
             function () {
               if (proModal) proModal.classList.remove("on");
             },
@@ -16602,7 +16650,7 @@ function drawResultCard(opts) {
         <div class="auth-logo m-idle" id="modal-auth-merci"></div>
         <div class="auth-title">Merci'ye Danışmak İçin</div>
         <div class="auth-sub">
-          Google ile giriş yap — her gün 6 ücretsiz Merci mesajı senin! 🐙
+          Google ile giriş yap, Merci ile karar ver! 🐙
         </div>
         <div class="auth-perks">
           <div class="auth-perk">
@@ -16611,12 +16659,12 @@ function drawResultCard(opts) {
           </div>
           <div class="auth-perk">
             <span class="auth-perk-icon">🎁</span>
-            <span>Her gün 6 ücretsiz Merci mesajı</span>
+            <span>Reklamla Merci mesajı • Pro'da günde 50</span>
           </div>
           <div class="auth-perk">
             <span class="auth-perk-icon">⭐</span>
             <span
-              >Sınırsız soru + reklamsız
+              >Günde 50 soru + reklamsız
               <span
                 style="
                   background: linear-gradient(135deg, var(--ac), var(--ac-l));
@@ -16726,7 +16774,7 @@ function drawResultCard(opts) {
         <div class="pro-hero">
           <div class="pro-badge">✨ KARAR MERCİİ PRO</div>
           <div class="pro-hero-merci m-idle" id="pro-hero-merci"></div>
-          <div class="pro-title">Sınırsız Karar Ver!</div>
+          <div class="pro-title">Özgürce Karar Ver!</div>
           <div class="pro-sub">
             Merci'ye istediğin kadar danış, reklamsız kullan, tüm geçmişini sakla.
           </div>
@@ -16734,9 +16782,9 @@ function drawResultCard(opts) {
         <div class="pro-hero-body">
         <div class="pro-perks pro-compare">
           <div class="pcmp-head"><span></span><span class="pcmp-free">Ücretsiz</span><span class="pcmp-pro">⭐ PRO</span></div>
-          <div class="pcmp-row"><span class="pcmp-feat">🐙 Merci mesajı</span><span class="pcmp-x">6/gün</span><span class="pcmp-c">Sınırsız</span></div>
+          <div class="pcmp-row"><span class="pcmp-feat">🐙 Merci mesajı</span><span class="pcmp-x">Reklamla 4</span><span class="pcmp-c">50/gün</span></div>
           <div class="pcmp-row"><span class="pcmp-feat">🚫 Reklamsız</span><span class="pcmp-x">✕</span><span class="pcmp-c">✓</span></div>
-          <div class="pcmp-row"><span class="pcmp-feat">📊 Karar geçmişi</span><span class="pcmp-x">Son 5</span><span class="pcmp-c">Sınırsız</span></div>
+          <div class="pcmp-row"><span class="pcmp-feat">📊 Karar geçmişi</span><span class="pcmp-x">Son 5</span><span class="pcmp-c">Tümü</span></div>
         </div>
         <div class="pro-plans">
           <div class="pro-plan" id="plan-yearly" onclick="selectPlan('yearly')">
@@ -16812,7 +16860,7 @@ function drawResultCard(opts) {
         <div class="pro-badge">✨ KARAR MERCİİ PRO</div>
         <div class="pro-title">Zaten Pro üyesin! 🎉</div>
         <div class="pro-sub">
-          Merci'ye sınırsız danış, reklamsız kullan — keyfini çıkar.
+          Merci ile günde 50 mesaj, reklamsız kullan — keyfini çıkar.
         </div>
         <button
           class="pro-btn"
