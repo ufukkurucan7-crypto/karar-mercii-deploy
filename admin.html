@@ -278,6 +278,7 @@
         <button class="tab on" data-tab="ulasin">📮 Bize Ulaşın<span class="cnt" id="cnt-ulasin">·</span></button>
         <button class="tab" data-tab="puan">⭐ Puanlama<span class="cnt" id="cnt-puan">·</span></button>
         <button class="tab" data-tab="merci">🤖 Merci AI<span class="cnt" id="cnt-merci">·</span></button>
+        <button class="tab" data-tab="kota">📊 AI Kota<span class="cnt" id="cnt-kota">·</span></button>
         <button class="tab" data-tab="oda">🚪 Odalar<span class="cnt" id="cnt-oda">·</span></button>
       </div>
       <div class="wrap">
@@ -370,7 +371,7 @@
         } else {
           $("toolbar").innerHTML = "";
         }
-        switchTab(currentTab);
+        refreshBans().then(function () { switchTab(currentTab); });
       });
 
       // ── Sekmeler ──
@@ -391,7 +392,74 @@
         if (tab === "ulasin") loadFeedback("contact");
         else if (tab === "puan") loadFeedback("rating");
         else if (tab === "merci") loadMerci();
+        else if (tab === "kota") loadUsage();
         else if (tab === "oda") loadRooms();
+      }
+
+      // ── Ban altyapısı (bans/{uid}) ──
+      var bansCache = {}; // uid -> ban dokümanı
+      function refreshBans() {
+        return db.collection("bans").limit(500).get().then(function (snap) {
+          bansCache = {};
+          snap.forEach(function (d) { bansCache[d.id] = d.data() || {}; });
+        }).catch(function () { /* ban okunamazsa boş kabul et */ });
+      }
+      function banBtn(uid) {
+        if (!uid) return "";
+        if (bansCache[uid]) {
+          return '<button class="btn ghost sm" style="border-color:var(--red);color:var(--red)" onclick="unbanUser(\'' +
+            uid + '\')">✅ Banı Kaldır</button>';
+        }
+        return '<button class="btn danger sm" onclick="banUser(\'' + uid + '\')">🚫 Banla</button>';
+      }
+      window.banUser = function (uid) {
+        if (!uid) { alert("Bu kaydın uid'i yok (anonim) — banlanamaz."); return; }
+        var reason = prompt("Ban sebebi (opsiyonel, kullanıcıya gösterilir):", "kötüye kullanım");
+        if (reason === null) return;
+        db.collection("bans").doc(uid).set({
+          reason: reason || "",
+          at: firebase.firestore.FieldValue.serverTimestamp(),
+          by: (auth.currentUser && auth.currentUser.email) || "admin",
+        }).then(refreshBans).then(function () { switchTab(currentTab); })
+          .catch(function (e) { alert("Ban başarısız: " + e.message); });
+      };
+      window.unbanUser = function (uid) {
+        if (!confirm(uid + "\niçin ban kaldırılsın mı?")) return;
+        db.collection("bans").doc(uid).delete()
+          .then(refreshBans).then(function () { switchTab(currentTab); })
+          .catch(function (e) { alert("Ban kaldırılamadı: " + e.message); });
+      };
+
+      // ── AI Kota (aiUsage: uid başına toplam istek) ──
+      function loadUsage() {
+        db.collection("aiUsage").limit(1000).get().then(function (snap) {
+          var byUid = {};
+          snap.forEach(function (d) {
+            var x = d.data(); var u = x.uid || "?";
+            if (!byUid[u]) byUid[u] = { uid: u, total: 0, days: 0, last: "" };
+            byUid[u].total += x.count || 0;
+            byUid[u].days += 1;
+            if ((x.date || "") > byUid[u].last) byUid[u].last = x.date || "";
+          });
+          var arr = Object.keys(byUid).map(function (k) { return byUid[k]; });
+          arr.sort(function (a, b) { return b.total - a.total; });
+          $("cnt-kota").textContent = arr.length;
+          if (!arr.length) { $("list").innerHTML = '<div class="empty">Kayıt yok.</div>'; return; }
+          $("list").innerHTML = arr.map(function (u) {
+            var banned = !!bansCache[u.uid];
+            var lvl = u.total >= 50 ? "red" : u.total >= 20 ? "amber" : "gray";
+            return '<div class="card"><div class="meta">' +
+              '<span class="pill ' + lvl + '">' + u.total + ' istek</span>' +
+              "<span>" + u.days + " gün</span>" +
+              "<span>· son: " + esc(u.last || "—") + "</span>" +
+              (banned ? '<span class="pill red">🚫 BANLI</span>' : "") +
+              "</div>" +
+              '<div class="body" style="font-family:monospace;font-size:12px;color:var(--mut);word-break:break-all">' +
+              esc(u.uid) + "</div>" +
+              '<div class="row" style="margin-top:10px;margin-bottom:0">' + banBtn(u.uid) + "</div>" +
+              "</div>";
+          }).join("");
+        }).catch(renderErr);
       }
 
       function renderErr(e) {
@@ -468,11 +536,20 @@
             var v = x.vote === "like"
               ? '<span class="pill green">👍 Beğendi</span>'
               : '<span class="pill red">👎 Beğenmedi</span>';
+            var uid = x.uid || null;
+            var banned = uid && bansCache[uid];
             return (
               '<div class="card"><div class="meta">' + v +
-              "<span>" + fmtTs(x.ts) + "</span></div>" +
+              "<span>" + fmtTs(x.ts) + "</span>" +
+              (uid
+                ? '<span class="pill gray">' + esc(uid.slice(0, 8)) + "…</span>"
+                : '<span class="pill gray">anonim</span>') +
+              (banned ? '<span class="pill red">🚫 BANLI</span>' : "") +
+              "</div>" +
               (x.userMsg ? '<div class="body">Kullanıcı: ' + esc(x.userMsg) + "</div>" : "") +
-              '<div class="quote">Merci: ' + esc(x.reply || "") + "</div></div>"
+              '<div class="quote">Merci: ' + esc(x.reply || "") + "</div>" +
+              (uid ? '<div class="row" style="margin-top:10px;margin-bottom:0">' + banBtn(uid) + "</div>" : "") +
+              "</div>"
             );
           }).join("");
           $("list").innerHTML = head + html;
