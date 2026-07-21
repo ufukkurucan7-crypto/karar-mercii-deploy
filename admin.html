@@ -574,7 +574,12 @@
             $("list").innerHTML = '<div class="empty">Oda yok.</div>';
             return;
           }
-          $("list").innerHTML = arr.map(function (x) {
+          var head = open.length
+            ? '<div class="row" style="margin-bottom:14px"><span class="pill green">' +
+              open.length +
+              ' açık oda</span><button class="btn danger sm" onclick="closeAllRooms()">🧹 Tüm Açık Odaları Kapat</button></div>'
+            : "";
+          $("list").innerHTML = head + arr.map(function (x) {
             var st = x.status === "open"
               ? '<span class="pill green">AÇIK</span>'
               : x.status === "closed"
@@ -606,6 +611,31 @@
         db.collection("rooms").doc(id).update({ status: "closed" })
           .then(function () { loadRooms(); })
           .catch(function (e) { alert("Kapatılamadı: " + e.message); });
+      };
+
+      // Tüm açık odaları toplu kapat (eski/closesAt'sız olanlar dahil).
+      window.closeAllRooms = function () {
+        db.collection("rooms").where("status", "==", "open").limit(500).get()
+          .then(function (snap) {
+            if (snap.empty) { alert("Açık oda yok."); return; }
+            if (!confirm(snap.size + " açık oda kapatılsın mı? (Geri alınamaz)")) return;
+            var batch = db.batch();
+            snap.forEach(function (d) {
+              // tieItems: options → izleyen bir client kalırsa çökmesin
+              var o = d.data() || {};
+              batch.update(d.ref, {
+                status: "closed",
+                tieItems: o.options || [],
+                closedBy: "admin",
+                closedAt: Date.now(),
+              });
+            });
+            return batch.commit().then(function () {
+              alert(snap.size + " oda kapatıldı.");
+              loadRooms();
+            });
+          })
+          .catch(function (e) { alert("Hata: " + e.message); });
       };
     </script>
   </body>
