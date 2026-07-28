@@ -1,6 +1,8 @@
 const express = require("express");
 const path = require("path");
-const fs = require("fs"); // yalnız index.html okumak için (OG meta enjeksiyonu)
+const fs = require("fs"); // index.html disk yedeği (GitHub çekilemezse)
+const https = require("https"); // index.html'i GitHub raw'dan çekmek için
+const crypto = require("crypto"); // refresh token sabit-zamanlı karşılaştırma
 const Anthropic = require("@anthropic-ai/sdk");
 
 const app = express();
@@ -31,16 +33,114 @@ app.get("/.well-known/assetlinks.json", (req, res) => {
 // query'li URL'yi fetch eder ama JS ÇALIŞTIRMAZ → davete özel başlık/açıklama
 // sunucudan basılmak zorunda. express.static'ten ÖNCE olmalı ("/" isteğini
 // static'in index.html kısayolu yutmasın).
-let _idxCache = null;
+// ── index.html KAYNAĞI: GitHub raw (TTL'li, arka planda tazelenir) ──
+// AMAÇ: Deploy zinciri "GitHub'a it → Replit'te bash → Redeploy" idi. Redeploy'un
+// tek sebebi aşağıdaki önbellekti (dosya bir kez okunup sonsuza kadar tutuluyordu).
+// Artık kaynak doğrudan GitHub raw; index değişikliği için Redeploy GEREKMEZ.
+// ⚠️ live-server.js'in KENDİSİ değişirse yine Redeploy gerekir (bu dosya çalışan kod).
+//
+// GÜVENLİK NOTU (bkz. aşağıdaki kaldırılmış /dev-upload notu): burada dışarıdan
+// İÇERİK veya URL KABUL EDİLMEZ. Kaynak adres kodda SABİT (kendi deploy repomuz).
+// Yenileme ucu token'la korunsa da, sızsa dahi yapılabilecek tek şey aynı meşru
+// dosyayı yeniden çektirmek = önbellek tazeleme. İçerik enjeksiyonu mümkün değil.
+const IDX_RAW_URL =
+  "https://raw.githubusercontent.com/ufukkurucan7-crypto/karar-mercii-deploy/main/live-index.html";
+const IDX_TTL_MS = 5 * 60 * 1000; // 5 dk
+const IDX_FETCH_TIMEOUT = 10000;
+// ⚠️ raw 404 gövdesi 14 baytlık "404: Not Found" metnidir ve eskiden dosyayı EZİYORDU.
+// Boyut + imza kontrolü bu tuzağı kapatır: doğrulamayı geçmeyen içerik ASLA kabul edilmez.
+const IDX_MIN_BYTES = 100000;
+// ⚠️ doctype BÜYÜK/küçük harfe duyarlı aranmamalı: dosya Prettier ile
+// "<!doctype html>" (küçük) yazılıyor. Büyük harfle arayınca doğrulama HİÇ
+// geçmiyor → sunucu sessizce hep disk yedeğine düşüyordu (test yakaladı).
+const IDX_MARKER_TEXT = "Karar Mercii";
+
+let _idxCache = null; // son GEÇERLİ içerik (asla doğrulanmamış veriyle ezilmez)
+let _idxAt = 0; // en son başarılı tazeleme zamanı
+let _idxSource = "yok"; // "disk" | "github"
+let _idxInFlight = null; // eşzamanlı çoklu çekimi engelle
+
+function readIndexFromDisk() {
+  try {
+    return fs.readFileSync(path.join(__dirname, "public", "index.html"), "utf8");
+  } catch (e) {
+    return null;
+  }
+}
+
+function idxValid(html) {
+  if (!html || html.length < IDX_MIN_BYTES) return false;
+  if (html.slice(0, 200).toLowerCase().indexOf("<!doctype html") === -1)
+    return false;
+  return html.indexOf(IDX_MARKER_TEXT) !== -1;
+}
+
+function fetchIndexRaw() {
+  return new Promise((resolve, reject) => {
+    // Cache-buster: raw.githubusercontent Fastly'de ~5dk cache'ler; onsuz eski sürüm gelir.
+    const url = IDX_RAW_URL + "?cb=" + Date.now();
+    const req = https.get(url, { timeout: IDX_FETCH_TIMEOUT }, (res) => {
+      if (res.statusCode !== 200) {
+        res.resume();
+        return reject(new Error("HTTP " + res.statusCode));
+      }
+      let data = "";
+      res.setEncoding("utf8");
+      res.on("data", (c) => (data += c));
+      res.on("end", () => resolve(data));
+    });
+    req.on("timeout", () => req.destroy(new Error("timeout")));
+    req.on("error", reject);
+  });
+}
+
+// force=true → TTL'e bakma, hemen çek. Her koşulda: doğrulama geçmezse ESKİ içerik korunur.
+function refreshIndex(force) {
+  if (!force && Date.now() - _idxAt < IDX_TTL_MS) {
+    return Promise.resolve({ ok: true, skipped: true });
+  }
+  if (_idxInFlight) return _idxInFlight;
+  _idxInFlight = fetchIndexRaw()
+    .then((html) => {
+      if (!idxValid(html)) {
+        console.error(
+          "INDEX REFRESH REDDEDİLDİ: doğrulama başarısız (" +
+            (html ? html.length : 0) +
+            " bayt) — eski sürüm korunuyor",
+        );
+        return { ok: false, error: "dogrulama-basarisiz" };
+      }
+      _idxCache = html;
+      _idxAt = Date.now();
+      _idxSource = "github";
+      console.log("INDEX REFRESH OK: " + html.length + " bayt (github)");
+      return { ok: true, bytes: html.length };
+    })
+    .catch((e) => {
+      console.error("INDEX REFRESH HATA: " + e.message + " — eski sürüm korunuyor");
+      return { ok: false, error: e.message };
+    })
+    .then((r) => {
+      _idxInFlight = null;
+      return r;
+    });
+  return _idxInFlight;
+}
+
+// İstek yolunu ASLA bloklamaz: elde olanı hemen döndür, bayatsa arka planda tazele.
 function readIndex() {
   if (_idxCache === null) {
-    _idxCache = fs.readFileSync(
-      path.join(__dirname, "public", "index.html"),
-      "utf8",
-    );
+    _idxCache = readIndexFromDisk();
+    _idxSource = "disk";
   }
+  if (Date.now() - _idxAt >= IDX_TTL_MS) refreshIndex(false);
   return _idxCache;
 }
+
+// Açılışta disk yedeğini yükle, sonra arka planda GitHub'dan tazele.
+_idxCache = readIndexFromDisk();
+_idxSource = "disk";
+refreshIndex(true);
 app.get("/", (req, res, next) => {
   try {
     let html = readIndex();
@@ -618,6 +718,34 @@ KIRMIZI ÇİZGİLER:
 // herkes sunulan index.html'i ezebiliyordu (uygulama ele geçirme riski). Deploy
 // artık GitHub köprüsü + curl ile yapılıyor (replit-deploy-github-bridge), bu uca
 // gerek yok. Geri EKLENMEMELİ; gerekirse güçlü env-token + rateLimit + dev-only ile.
+
+// ── /admin/refresh-index (index önbelleğini ANINDA tazele) ──
+// Yukarıdaki uyarının şartlarına birebir uyar: env-token + rateLimit.
+// ⚠️ /dev-upload'dan KRİTİK FARK: bu uç dışarıdan İÇERİK veya URL ALMAZ. Kaynak
+// adres kodda sabit (IDX_RAW_URL). Token sızsa bile yapılabilecek tek şey aynı
+// meşru dosyayı yeniden çektirmektir → ele geçirme değil, önbellek tazeleme.
+// KM_REFRESH_TOKEN tanımlı değilse uç tamamen KAPALIDIR (varsayılan güvenli).
+app.post("/admin/refresh-index", rateLimit, async (req, res) => {
+  const want = process.env.KM_REFRESH_TOKEN;
+  if (!want) {
+    return res.status(503).json({ ok: false, error: "uc-kapali" });
+  }
+  const got = String(req.get("x-km-token") || "");
+  const a = Buffer.from(got);
+  const b = Buffer.from(want);
+  if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) {
+    console.warn("REFRESH REDDEDİLDİ: gecersiz token");
+    return res.status(403).json({ ok: false, error: "gecersiz-token" });
+  }
+  const r = await refreshIndex(true);
+  return res.status(r.ok ? 200 : 502).json({
+    ok: r.ok,
+    bytes: _idxCache ? _idxCache.length : 0,
+    source: _idxSource,
+    fetchedAt: _idxAt ? new Date(_idxAt).toISOString() : null,
+    error: r.error || null,
+  });
+});
 
 // ── MERCİ SEÇENEK ÜRETİCİSİ (çark/oylama için hızlı + ucuz: Haiku, web_search yok) ──
 app.post("/options", rateLimit, authAndQuota, async (req, res) => {
