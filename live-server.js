@@ -45,7 +45,12 @@ app.get("/.well-known/assetlinks.json", (req, res) => {
 // dosyayı yeniden çektirmek = önbellek tazeleme. İçerik enjeksiyonu mümkün değil.
 const IDX_RAW_URL =
   "https://raw.githubusercontent.com/ufukkurucan7-crypto/karar-mercii-deploy/main/live-index.html";
-const IDX_TTL_MS = 5 * 60 * 1000; // 5 dk
+// TTL = yalnızca EMNİYET AĞI, asıl yenileme mekanizması DEĞİL.
+// Asıl yol: yayından hemen sonra POST /admin/refresh-index (anında tazeler).
+// TTL uzun tutuluyor ki boşuna trafik olmasın; çekim zamanlayıcıyla DEĞİL, istek
+// geldiğinde ve önbellek bayatsa tetiklenir (ziyaretçi yoksa hiç çekim olmaz).
+// 6 saat → en kötü ihtimalle günde ~4 arka plan çekimi.
+const IDX_TTL_MS = 6 * 60 * 60 * 1000; // 6 saat
 const IDX_FETCH_TIMEOUT = 10000;
 // ⚠️ raw 404 gövdesi 14 baytlık "404: Not Found" metnidir ve eskiden dosyayı EZİYORDU.
 // Boyut + imza kontrolü bu tuzağı kapatır: doğrulamayı geçmeyen içerik ASLA kabul edilmez.
