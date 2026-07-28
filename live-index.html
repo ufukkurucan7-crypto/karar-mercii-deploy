@@ -4493,6 +4493,66 @@
         color: #ece8f7 !important;
         border-color: #3a2f55 !important;
       }
+      /* ── WEB→APP İNDİRME ÇAĞRISI (_kmInstallCta üretir; SADECE tarayıcıda) ──
+         Açık + koyu tema kuralları bilerek BİRLİKTE burada duruyor.
+         ⚠️ Kart neden inline stille değil SINIFLA boyanıyor: yukarıdaki toplu
+         `html.dark [style*="var(--ac-bg)"]` kuralı yalnızca KUTUYU koyuya çevirir,
+         içindeki var(--text) başlık/metin koyu zeminde okunmaz kalırdı. */
+      .km-cta {
+        position: relative;
+        margin-top: 14px;
+        padding: 18px 16px 16px;
+        border: 2px solid var(--ac);
+        border-radius: var(--radius);
+        background: var(--ac-bg);
+        box-shadow: var(--shadow-md);
+        text-align: center;
+      }
+      .km-cta-h {
+        font-family: "Fredoka", sans-serif;
+        font-weight: 800;
+        font-size: 16px;
+        color: var(--ac);
+        margin-top: 6px;
+      }
+      .km-cta-s {
+        font-size: 13px;
+        font-weight: 700;
+        color: var(--text);
+        opacity: 0.85;
+        margin-top: 6px;
+        line-height: 1.45;
+      }
+      .km-cta-x {
+        position: absolute;
+        top: 6px;
+        right: 8px;
+        border: none;
+        background: none;
+        font-size: 18px;
+        line-height: 1;
+        color: var(--ac);
+        opacity: 0.55;
+        cursor: pointer;
+        padding: 4px;
+      }
+      /* .btn <a> üzerinde: width:100% + padding'in düzgün çalışması için */
+      .km-cta .btn {
+        display: block;
+        box-sizing: border-box;
+        text-decoration: none;
+      }
+      html.dark .km-cta {
+        background: #271d3f;
+        border-color: #3a2f55;
+      }
+      html.dark .km-cta-h,
+      html.dark .km-cta-x {
+        color: var(--ac-ll);
+      }
+      html.dark .km-cta-s {
+        color: #ece8f7;
+      }
       html.dark .fb-btn {
         background: #271d3f;
         color: #ece8f7;
@@ -13319,6 +13379,9 @@ function drawResultCard(opts) {
           burstAt(card);
           card.scrollIntoView({ behavior: "smooth", block: "center" });
         }, 120);
+        // "Oy iletildi" kartını kaldır, kazanan kartının altına güçlü çağrıyı koy.
+        _kmRemoveInstallCta();
+        _kmInstallCta(vr, "winner");
       }
 
       function newRound() {
@@ -13640,6 +13703,8 @@ function drawResultCard(opts) {
               document.getElementById("submit-vote-btn").style.display = "";
               document.getElementById("waiting-msg").style.display = "none";
               document.getElementById("vr").style.display = "none";
+              // Yeni tur: eski indirme kartları ekranda asılı kalmasın.
+              _kmRemoveInstallCta();
               renderParticipant(data.options);
               if (data.timeLimit > 0)
                 startTimer(data.timeLimit * 60, "p-timer-display", () =>
@@ -13706,6 +13771,8 @@ function drawResultCard(opts) {
           document.getElementById("submit-vote-btn").style.display = "none";
           document.getElementById("waiting-msg").style.display = "";
           snd("ding");
+          // Tarayıcıdan gelen misafir: oy verdi, işi bitti → indirme çağrısı.
+          _kmInstallCta(document.getElementById("waiting-msg"), "voted");
         } catch (e) {
           alert("Gönderme hatası!");
         }
@@ -13782,6 +13849,90 @@ function drawResultCard(opts) {
         var b = document.getElementById("copy-link-btn");
         b.textContent = "Kopyalandı!";
         setTimeout(() => (b.textContent = "🔗 Linki Kopyala"), 2000);
+      }
+
+      // ── WEB→APP İNDİRME ÇAĞRISI ────────────────────────────────────────────
+      // SORUN: Oda daveti linki (kararmercii.com/?room=KOD) tarayıcıda açılıyor;
+      // misafir oy verip çıkıyor, uygulamayı indirmek için hiçbir sebep görmüyor.
+      // Böylece her davet, potansiyel bir indirmeyi gelir getirmeyen web
+      // kullanıcısına çeviriyordu (Play linki paylaşım mesajının 2. satırında
+      // duruyor, kimse basmıyor).
+      // ÇÖZÜM: SADECE tarayıcıda, oy iletildikten sonra ve kazanan ekranında
+      // indirme kartı göster.
+      // ⚠️ REGRESYON GÜVENCESİ: _capNative() true ise fonksiyon HEMEN döner →
+      // uygulama içinde (Android/iOS native) hiçbir görsel/davranış değişikliği YOK.
+      var KM_PLAY_URL =
+        "https://play.google.com/store/apps/details?id=app.kararmercii.com";
+
+      // iOS tarayıcı: App Store sürümü henüz yayında değil → Play linki göstermek
+      // anlamsız. Yayına çıkınca burası App Store linkiyle güncellenecek.
+      function _kmIsIOSWeb() {
+        try {
+          var ua = navigator.userAgent || "";
+          return (
+            /iPad|iPhone|iPod/.test(ua) ||
+            (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1)
+          );
+        } catch (e) {
+          return false;
+        }
+      }
+
+      function _kmRemoveInstallCta() {
+        ["km-install-cta-voted", "km-install-cta-winner"].forEach(function (i) {
+          var e = document.getElementById(i);
+          if (e && e.parentNode) e.parentNode.removeChild(e);
+        });
+      }
+
+      // anchorEl: kart bu elemanın HEMEN ARDINA eklenir.
+      // variant: "voted" (oy iletildi) | "winner" (kazanan açıklandı)
+      function _kmInstallCta(anchorEl, variant) {
+        if (_capNative()) return; // uygulama içinde ASLA gösterme
+        if (_kmIsIOSWeb()) return;
+        if (!anchorEl || !anchorEl.parentNode) return;
+        var id = "km-install-cta-" + variant;
+        if (document.getElementById(id)) return; // çift ekleme koruması
+        try {
+          if (sessionStorage.getItem("kmCtaClosed") === "1") return;
+        } catch (e) {}
+
+        var head =
+          variant === "winner" ? "Karar verildi 🏆" : "Oyun sayıldı ✅";
+        var sub =
+          variant === "winner"
+            ? "Sıradaki kararı sen yönet: kendi odanı kur, arkadaşlarını çağır, çarkı çevir."
+            : "Kendi odanı kurmak, çark çevirmek ve Merci'ye danışmak için uygulamayı indir.";
+
+        var box = document.createElement("div");
+        box.id = id;
+        box.className = "km-cta";
+        box.innerHTML =
+          '<button type="button" class="km-cta-x" aria-label="Kapat">×</button>' +
+          '<div style="font-size:30px;line-height:1">🐙</div>' +
+          '<div class="km-cta-h">' +
+          head +
+          "</div>" +
+          '<div class="km-cta-s">' +
+          sub +
+          "</div>" +
+          '<a class="btn" href="' +
+          KM_PLAY_URL +
+          '" target="_blank" rel="noopener" style="margin-top:12px">📲 Uygulamayı İndir</a>';
+
+        box.querySelector("button").addEventListener("click", function () {
+          try {
+            sessionStorage.setItem("kmCtaClosed", "1");
+          } catch (e) {}
+          _kmRemoveInstallCta();
+          logEv("web_install_cta_close", { variant: variant });
+        });
+        box.querySelector("a").addEventListener("click", function () {
+          logEv("web_install_cta_click", { variant: variant });
+        });
+
+        anchorEl.parentNode.insertBefore(box, anchorEl.nextSibling);
+        logEv("web_install_cta_shown", { variant: variant });
       }
 
       // Misafir oda katılımı için Firestore yazma izni garanti et.
