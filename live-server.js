@@ -56,6 +56,12 @@ app.get("/", (req, res, next) => {
           "$1Karar Mercii'nde oylama var — dokun, oyunu ver, kararı birlikte verin.$2",
         );
     }
+    // ⚠️ 2 AĞU: burada hiç Cache-Control YOKTU → tarayıcı/WebView sezgisel
+    // önbellekleme uyguluyor, çevrimdışıyken (ve bazen çevrimiçiyken) sitenin
+    // ESKİ kopyasını basıyordu. no-cache = "önbelleğe al ama KULLANMADAN ÖNCE
+    // sunucuya sor" → ETag ile 304 dönerse bant genişliği yine harcanmaz,
+    // ama kullanıcı asla bayat sürüm görmez.
+    res.set("Cache-Control", "no-cache");
     res.type("html").send(html);
   } catch (e) {
     next(); // index okunamazsa static devralsın
@@ -68,6 +74,68 @@ app.get("/", (req, res, next) => {
 app.get("/app-ads.txt", (req, res) => {
   res.type("text/plain");
   res.send("google.com, pub-2604503622179334, DIRECT, f08c47fec0942fa0\n");
+});
+
+// ── SERVICE WORKER (2 AĞU) ────────────────────────────────────────────────
+// SORUN: index.html yıllardır `/sw.js` kaydetmeye çalışıyordu ama BÖYLE BİR DOSYA
+// YOKTU → kayıt sessizce başarısız oluyordu (.catch(function(){}) yutuyor).
+// Service worker olmayınca çevrimdışıyken devreye Android WebView'ın kendi HTTP
+// disk cache'i giriyor ve sitenin ESKİ bir kopyasını basıyordu — kullanıcının
+// "internet kapalıyken eski sürüm geliyor" şikayeti tam olarak buydu.
+//
+// NEDEN AYRI DOSYA DEĞİL DE ROUTE: km-deploy.sh yalnız index + server çeker;
+// public/ altına yeni dosya koymak admin.html/privacy.html gibi AYRI bir curl
+// adımı gerektirirdi. Route olarak sunulunca sunucuyla birlikte deploy olur.
+//
+// ⚠️ STRATEJİ: NETWORK-FIRST, HTML HİÇ ÖNBELLEĞE ALINMAZ. Cache-first ya da
+// "son iyi kopyayı sakla" yazsaydık aynı şikayeti (eski sürüm) geri getirirdik.
+// Ağ varsa DAİMA taze; ağ yoksa bayat uygulama yerine NET bir çevrimdışı ekranı.
+const SW_SOURCE = `// Karar Mercii service worker — network-first, HTML önbelleğe ALINMAZ.
+const OFFLINE_HTML = \`<!doctype html><html lang="tr"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Çevrimdışısın — Karar Mercii</title><style>
+html,body{margin:0;height:100%;font-family:system-ui,-apple-system,"Segoe UI",sans-serif}
+body{background:linear-gradient(160deg,#4c1d95,#6d28d9);color:#fff;display:flex;
+align-items:center;justify-content:center;text-align:center;padding:24px}
+.b{max-width:320px}.e{font-size:60px;margin-bottom:14px}
+h1{font-size:20px;margin:0 0 10px;font-weight:800}
+p{font-size:14px;line-height:1.55;opacity:.85;margin:0 0 22px}
+button{background:#fff;color:#5b21b6;border:none;padding:13px 26px;border-radius:14px;
+font-size:15px;font-weight:800;cursor:pointer}</style></head><body><div class="b">
+<div class="e">🐙</div><h1>İnternet yok</h1>
+<p>Karar Mercii çalışmak için internete ihtiyaç duyuyor. Bağlantını kontrol edip
+tekrar dene.</p><button onclick="location.reload()">Tekrar Dene</button>
+</div></body></html>\`;
+
+self.addEventListener("install", (e) => self.skipWaiting());
+self.addEventListener("activate", (e) => {
+  // Eski sürümlerden kalmış TÜM önbellekleri sil — bayat kopya ihtimalini bitir.
+  e.waitUntil(
+    caches.keys().then((ks) => Promise.all(ks.map((k) => caches.delete(k))))
+      .then(() => self.clients.claim()),
+  );
+});
+self.addEventListener("fetch", (e) => {
+  const r = e.request;
+  // Yalnız sayfa gezinmelerine karışıyoruz. API/POST/diğer istekler doğrudan ağa
+  // gider — araya girip bozmayalım (özellikle /merci, /nearby POST'ları).
+  if (r.method !== "GET" || r.mode !== "navigate") return;
+  e.respondWith(
+    fetch(r).catch(
+      () =>
+        new Response(OFFLINE_HTML, {
+          status: 503,
+          headers: { "Content-Type": "text/html; charset=utf-8" },
+        }),
+    ),
+  );
+});
+`;
+app.get("/sw.js", (req, res) => {
+  res.type("application/javascript");
+  // SW dosyasının kendisi asla önbelleğe alınmasın, yoksa strateji güncellemesi ulaşmaz.
+  res.set("Cache-Control", "no-cache, no-store, must-revalidate");
+  res.send(SW_SOURCE);
 });
 
 app.use(express.static(path.join(__dirname, "public")));
@@ -88,6 +156,88 @@ const anthropic = new Anthropic({
   timeout: ANTHROPIC_TIMEOUT_MAIN,
   maxRetries: 1,
 });
+
+// ── MEKAN ARAMA: TOOL USE (2 AĞU) ──────────────────────────────────────────
+// ESKİ TASARIM VE NEDEN BOZUKTU: model cevabının içine `[[NEARBY:food]]` diye gizli
+// bir işaret yazıyor, client bunu regex'le yakalayıp /nearby'yi ayrıca çağırıyordu.
+// İki yapısal arıza üretiyordu:
+//   1) Model işareti KOYMAYI UNUTABİLİYOR → "en yakın simitçileri çıkarıyorum 👇"
+//      yazıp hiçbir şey yapmıyor, sessizce başarısız oluyordu (canlı bug, 2 Ağu).
+//   2) Model mekanları HİÇ GÖRMEDEN cevabını yazıyordu → kullanıcı "simit" sordu,
+//      liste çiğ köfteci döndü, model bunu bilmediği için coşkuyla önerdi.
+// YENİ TASARIM: gerçek araç çağrısı. Model `mekan_ara`yı çağırır, sunucu aramayı
+// yapar, SONUÇ MODELE GERİ DÖNER, model listeyi GÖREREK cevabını yazar. Böylece
+// hem çağrı garanti (API sözleşmesi), hem cevap gerçek veriye dayalı olur.
+//
+// MALİYET: Anthropic çağrı sayısı DEĞİŞMİYOR. Eskiden de 2 çağrı vardı
+// (/merci + /nearby'nin ayrı yorum çağrısı); şimdi de 2 (/merci tur-1 araç kararı +
+// tur-2 nihai cevap). İkinci tur, /nearby'nin yorum çağrısının YERİNE geçiyor
+// (skipComment ile o çağrı atlanıyor). Model aynı: claude-haiku-4-5.
+//
+// ⚠️ ACİL GERİ DÖNÜŞ: Replit secrets'a KM_TOOL_USE=0 ekle → eski [[NEARBY]] işaret
+// yoluna anında döner. DEPLOY GEREKMEZ, sadece yeniden başlatma yeter.
+const KM_TOOL_USE = process.env.KM_TOOL_USE !== "0";
+
+// Açılışta üretilen, süreçten HİÇ çıkmayan rastgele token. Yalnızca sunucunun
+// kendi kendine yaptığı /nearby çağrısını IP rate-limit'inden muaf tutmak için
+// (bkz. rateLimit içindeki muafiyet bloğu).
+const KM_INTERNAL_TOKEN = require("crypto").randomBytes(24).toString("hex");
+
+// `mekan_ara` aracının gövdesi: kendi /nearby ucumuzu çağırır. /nearby'yi REFACTOR
+// ETMİYORUZ — auth, günlük kota, exclude akışı, cuisine daraltması, çiğköfte filtresi
+// gibi 450 satırlık birikmiş mantık olduğu gibi korunuyor; sadece skipComment ile
+// ikinci Haiku yorumu atlanıyor (nihai cevabı asıl model yazacak).
+async function callNearbyInternal({ lat, lng, type, query, auth }) {
+  const r = await fetch(`http://127.0.0.1:${PORT}/nearby`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: auth || "",
+      "x-km-internal": KM_INTERNAL_TOKEN,
+    },
+    body: JSON.stringify({ lat, lng, type, query, skipComment: true }),
+  });
+  const body = await r.json().catch(() => ({}));
+  if (!r.ok) {
+    // 401/429 (kota) gibi anlamlı retleri mesajıyla yukarı taşı ki model
+    // kullanıcıya doğru şeyi söyleyebilsin.
+    throw new Error(body.error || `nearby ${r.status}`);
+  }
+  return body;
+}
+
+const MEKAN_ARA_TOOL = {
+  name: "mekan_ara",
+  description:
+    "Kullanıcının yakınındaki GERÇEK mekanları arar (OpenStreetMap). Kullanıcı yakında " +
+    "bir yer sorduğunda ('nereye gidelim', 'ne yesek', 'yakında simitçi var mı', " +
+    "'kahve içelim', 'bar önerir misin') ya da önerilenleri beğenmeyip başkasını " +
+    "istediğinde BU ARACI ÇAĞIR. Sonuç olarak gerçek mekan isimleri ve mesafeleri " +
+    "döner; kullanıcıya kart olarak da gösterilir. Mekan ismi veya mesafe ASLA " +
+    "uydurma — yalnız bu aracın döndürdüklerini kullan. Sadece sohbet/yorum " +
+    "yapıyorsan çağırma.",
+  input_schema: {
+    type: "object",
+    properties: {
+      tur: {
+        type: "string",
+        enum: ["food", "cafe", "dessert", "bar", "activity"],
+        description:
+          "Mekan kategorisi. food = yemek (restoran/fast food; MEYHANE, RAKI, BALIK da " +
+          "food'dur), cafe = kahve/kafe, dessert = tatlı/pastane/dondurma, " +
+          "bar = YALNIZ bira/kokteyl/gece kulübü, activity = park/sinema/bowling gibi aktivite.",
+      },
+      arama: {
+        type: "string",
+        description:
+          "Kullanıcının istediği ŞEY, kendi kelimeleriyle ve Türkçe: 'simit', 'kebap', " +
+          "'çiğ köfte', 'suşi', 'rakı balık', 'kahvaltı'. Kullanıcı belirli bir şey " +
+          "söylemediyse boş bırak. Bu metin arama daraltmasında kullanılır.",
+      },
+    },
+    required: ["tur"],
+  },
+};
 
 // Timeout hatasını diğer API hatalarından ayırt et (504 vs 500 için).
 // SDK sürümü Replit'te sabit değil → tek bir sınıf adına GÜVENME; sınıf varsa onu
@@ -248,6 +398,21 @@ function isProValid(d) {
 // IP başına dakikada max 15 istek
 const rateLimitMap = new Map();
 function rateLimit(req, res, next) {
+  // ── SUNUCU-İÇİ ÇAĞRI MUAFİYETİ (2 AĞU, tool use ile geldi) ──
+  // /merci'nin `mekan_ara` aracı kendi sunucusundaki /nearby'yi çağırıyor. Bu
+  // çağrılar 127.0.0.1'den geldiği için HEPSİ TEK IP kovasını paylaşırdı → dakikada
+  // 15 mekan aramasından sonra TÜM kullanıcılar için iç çağrılar 429 yemeye başlardı.
+  // Muafiyet, açılışta üretilen rastgele bir token'a bağlı: token süreçten hiç
+  // çıkmadığı için dışarıdan tahmin edilip gönderilemez (düz bir "internal: 1"
+  // başlığı olsaydı herkes rate-limit'i atlayabilirdi).
+  // ⚠️ Bu YALNIZ IP rate-limit'ini atlar. /nearby'nin kendi Bearer doğrulaması ve
+  // günlük locUsage kotası AYNEN çalışmaya devam eder.
+  if (
+    KM_INTERNAL_TOKEN &&
+    req.headers["x-km-internal"] === KM_INTERNAL_TOKEN
+  ) {
+    return next();
+  }
   // X-Forwarded-For: İLK değer client tarafından spoof edilebilir (her istekte
   // farklı yazıp rate-limit'i atlar). Proxy'nin eklediği SON (en güvenilir) değeri al.
   const xff = req.headers["x-forwarded-for"];
@@ -396,6 +561,13 @@ async function authAndQuota(req, res, next) {
 app.post("/merci", rateLimit, authAndQuota, async (req, res) => {
   try {
     const { messages, groupCount, history, location, resultContext } = req.body;
+    // Tool use için koordinat gerekir: eski tasarımda konum SADECE client'tan
+    // /nearby'ye gidiyordu, /merci yalnız yer ADINI ("Kadıköy") biliyordu. Artık
+    // arama sunucu içinde yapıldığı için client lat/lng'yi buraya da gönderiyor.
+    // Yoksa (eski client / konum kapalı) araç devre dışı kalır, eski işaret yolu çalışır.
+    const _lat = parseFloat(req.body && req.body.lat);
+    const _lng = parseFloat(req.body && req.body.lng);
+    const hasGeo = isFinite(_lat) && isFinite(_lng);
 
     // ── GİRDİ DOĞRULAMA (maliyet/abuse koruması) ──
     if (!Array.isArray(messages) || messages.length === 0) {
@@ -530,16 +702,82 @@ KIRMIZI ÇİZGİLER:
 - ALKOL/KUMAR — TEŞVİK YOK: Kumar/bahis'e yönlendirme KESİNLİKLE yasak (uygulama konsepti dışı). Alkol: mekan önerebilirsin ama İÇME kararını SEN verme/özendirme. "Bira mı rakı mı içeyim", "kaç kadeh atayım" gibi içki-tüketim sorularında taraf tutma; nazikçe geç: "İçkini sana bırakıyorum 🐙 — ama nereye gidelim / ne yiyelim dersen hemen yardımcıyım." Kullanıcının yaşını doğrulayamadığımız için kimseyi alkole/kumara/tütüne teşvik etme; sarhoş olmayı veya aşırı içmeyi ASLA önerme.
 - Yapay AI girişleri yok ("Tabii ki!", "Harika bir soru!", "ben yapay zekayım"). Aynı soruyu iki kez sorma. Konum varsa tekrar şehir/semt/konum isteme.`;
 
-    const response = await anthropic.messages.create(
-      {
-        model: "claude-haiku-4-5-20251001",
-        max_tokens: 700,
-        temperature: 0.5, // karar-asistanı → tutarlılık öncelik; persona sıcaklığı korunur (renk azalırsa 0.6)
-        system: systemPrompt,
-        messages: messages,
-      },
-      { timeout: ANTHROPIC_TIMEOUT_MAIN }, // yanıt gelmezse asılı kalma → 504 (aşağıda)
-    );
+    // Araç YALNIZ bayrak açıkken VE koordinat varken verilir. Koordinat yoksa
+    // (konum kapalı / eski client) araç listesi hiç gönderilmez → model eski
+    // [[NEED_LOCATION]] işaret yolunu kullanır, davranış bugünküyle birebir aynı kalır.
+    const useTools = KM_TOOL_USE && hasGeo;
+    const baseReq = {
+      model: "claude-haiku-4-5-20251001",
+      max_tokens: 700,
+      temperature: 0.5, // karar-asistanı → tutarlılık öncelik; persona sıcaklığı korunur (renk azalırsa 0.6)
+      system: systemPrompt,
+      messages: messages,
+    };
+    if (useTools) baseReq.tools = [MEKAN_ARA_TOOL];
+
+    let response = await anthropic.messages.create(baseReq, {
+      timeout: ANTHROPIC_TIMEOUT_MAIN, // yanıt gelmezse asılı kalma → 504 (aşağıda)
+    });
+
+    // ── ARAÇ TURU ── model mekan_ara'yı çağırdıysa: aramayı yap, SONUCU MODELE
+    // GERİ VER, ikinci turda nihai cevabı yazsın. Bu ikinci tur, /nearby'nin eski
+    // ayrı yorum çağrısının yerine geçer (skipComment) → toplam çağrı sayısı aynı.
+    let toolPlaces = null;
+    if (useTools && response.stop_reason === "tool_use") {
+      const toolResults = [];
+      for (const block of response.content) {
+        if (block.type !== "tool_use" || block.name !== "mekan_ara") continue;
+        let payload;
+        try {
+          const found = await callNearbyInternal({
+            lat: _lat,
+            lng: _lng,
+            type: (block.input && block.input.tur) || "food",
+            query: (block.input && block.input.arama) || "",
+            auth: req.headers.authorization || "",
+          });
+          toolPlaces = Array.isArray(found.places) ? found.places : [];
+          payload = toolPlaces.length
+            ? "Bulunan GERÇEK mekanlar (bu kartlar kullanıcıya da gösterilecek):\n" +
+              toolPlaces
+                .slice(0, 6)
+                .map((p) => `- ${p.name} | ${p.dist} m`)
+                .join("\n") +
+              (found.broadened
+                ? "\n\nUYARI: Tam olarak istenen tür bulunamadı; bunlar en yakın " +
+                  "ALTERNATİFLER. Kullanıcıya bunu dürüstçe söyle, istediği şeymiş gibi sunma."
+                : "") +
+              "\n\nBu listedekiler DIŞINDA mekan/semt/mesafe uydurma. Menü, fiyat, içki " +
+              "bilgisi sende YOK — bir mekânda belirli bir şeyin olduğunu garanti etme."
+            : "Hiç mekan bulunamadı. UYDURMA. Kullanıcıya kısaca bulamadığını söyle ve " +
+              "başka bir tür denemeyi ya da çarkı çevirmeyi öner.";
+        } catch (e) {
+          // Arama patlarsa sohbet ÖLMESİN: modele durumu bildir, kullanıcıya
+          // teknik detay sızdırmadan neşeli bir cümle yazsın.
+          console.error("mekan_ara araç hatası:", e.message);
+          payload =
+            "Arama şu an yapılamadı. Kullanıcıya kısa ve neşeli bir dille birazdan " +
+            "tekrar denemesini söyle; sistem/teknik detay verme.";
+        }
+        toolResults.push({
+          type: "tool_result",
+          tool_use_id: block.id,
+          content: payload,
+        });
+      }
+      if (toolResults.length) {
+        response = await anthropic.messages.create(
+          {
+            ...baseReq,
+            messages: messages.concat([
+              { role: "assistant", content: response.content },
+              { role: "user", content: toolResults },
+            ]),
+          },
+          { timeout: ANTHROPIC_TIMEOUT_MAIN },
+        );
+      }
+    }
 
     let text = "";
     response.content.forEach((block) => {
@@ -596,9 +834,53 @@ KIRMIZI ÇİZGİLER:
       },
     );
 
+    // ── VAAT VAR AMA İŞARET YOK → EMNİYET AĞI (2 AĞU) ──
+    // CANLI BUG: model "Kadıköy'de en yakın simit satıcılarını çıkarıyorum 👇" yazdı
+    // ama [[NEARBY:food]] işaretini KOYMADI → client hiçbir şey tetiklemedi → ekranda
+    // sessizlik. Kullanıcı aynı soruyu TEKRAR sorunca bu sefer işareti koydu ve çalıştı.
+    // Yani modelin SÖZ VERMESİ ile sistemin İŞ YAPMASI birbirinden kopuk; model işareti
+    // unutabiliyor ve bu sessizce başarısız oluyor. Burada metni tarayıp "mekan
+    // listeleyeceğim" vaadi varken işaret yoksa işareti BİZ ekliyoruz.
+    //
+    // NEDEN NEED_LOCATION (NEARBY değil): client NEED_LOCATION'da önce konum önbelleğine
+    // bakar — konum VARSA doğrudan merciNearby() çağırır (NEARBY ile aynı sonuç), YOKSA
+    // izin ister. Yani her iki durumda da doğru davranır; NEARBY ise konum yoksa boşa düşer.
+    // ⚠️ toolPlaces !== null ise ARAÇ ZATEN ÇALIŞTI (mekan bulmuş ya da bulamamış
+    // olabilir; her iki durumda da model cevabını buna göre yazdı). Emniyet ağı
+    // burada işaret enjekte ederse client İKİNCİ bir /nearby araması tetikler →
+    // çift kart, çift kota tüketimi. Bu yüzden araç turu olduysa ağ devre dışı.
+    if (toolPlaces === null && !/\[\[\s*(NEED_LOCATION|NEARBY)\s*:/i.test(text)) {
+      const promisesLookup =
+        /(bak[ıi]yorum|ç[ıi]kar[ıi]yorum|s[ıi]ral[ıi]yorum|listeliyorum|getiriyorum|buluyorum|tar[ıi]yorum)/i.test(
+          text,
+        );
+      const aboutPlaces =
+        /👇|yak[ıi]n|civar|etraf|mekan|mekân|yerler|sat[ıi]c[ıi]|restoran|lokanta|kafe/i.test(
+          text,
+        );
+      if (promisesLookup && aboutPlaces) {
+        // Tür tahmini: yalnız OSM bucket'ını seçer, yanlış tahmin sonucu bozmaz.
+        let guess = "food";
+        if (/kafe|cafe|kahve iç/i.test(text)) guess = "cafe";
+        if (/tatl[ıi]|dondurma|pastane/i.test(text)) guess = "dessert";
+        if (/\bbar\b|\bpub\b|bira|kokteyl/i.test(text)) guess = "bar";
+        if (/aktivite|gezilecek|yap[ıi]lacak yer|park\b|sinema/i.test(text))
+          guess = "activity";
+        text += ` [[NEED_LOCATION:${guess}]]`;
+        console.warn(
+          "EMNİYET AĞI: model mekan vaat etti ama işaret koymadı → eklendi:",
+          guess,
+        );
+      }
+    }
+
     res.json({
       text: text || "Bir şeyler ters gitti, tekrar dene!",
       setLocation, // yazıyla verilen konumun koordinatı (varsa) → client günceller
+      // Araç çalıştıysa mekan kartları AYNI yanıtta gelir → client'ın ayrıca
+      // /nearby çağırmasına gerek kalmaz (eski akışta iki HTTP turu vardı).
+      // null = araç hiç çalışmadı (eski işaret yolu geçerli).
+      places: toolPlaces,
     });
   } catch (error) {
     // Timeout'u ayır: kullanıcı donmasın, dürüst ve Merci ağzıyla bir cevap alsın.
@@ -822,6 +1104,24 @@ const CUISINE_RULES = [
   { test: /çiğ ?köfte|cig ?kofte|çiğköfte/i, cuisine: "", name: /çiğ ?köfte|cig ?kofte|komagene|çiğ/i, label: "çiğ köfte" },
   { test: /köfte|kofte/i, cuisine: "kofte|meatballs|meatball", name: /köfte|kofte/i, label: "köfte" },
   { test: /tost|sandviç|sandvic|sandwich/i, cuisine: "sandwich", name: /tost|sandviç|sandwich/i, label: "tost/sandviç" },
+  // ── FIRIN AİLESİ (2 AĞU — YAPISAL BOŞLUK) ──
+  // Simitçi/fırın/börekçi/poğaçacı OSM'de `shop=bakery` ile etiketlenir; food bucket'ı
+  // ise SADECE amenity=restaurant|fast_food sorguluyordu → "simit" için mükemmel bir
+  // kural yazılsa bile hiçbir zaman bulunamazdı. Kelime eksikliği değil, KATEGORİ
+  // HARİTASI eksikliğiydi (canlı bug: "simit" → Çiğ Köfteci Gakgoş Usta önerildi).
+  // Bu yüzden kural şemasına opsiyonel `sel` (ham selektör dizisi) eklendi: cuisine
+  // tag'iyle ifade EDİLEMEYEN türler artık kendi amenity/shop selektörünü verebiliyor.
+  {
+    test: /simit|f[ıi]r[ıi]n|b[öo]rek|po[ğg]a[çc]a|a[çc]ma|unlu mamul|ekmek|kruvasan|croissant/i,
+    cuisine: "",
+    sel: [
+      '["shop"="bakery"]',
+      '["shop"="pastry"]',
+      '["amenity"="fast_food"]["cuisine"~"simit|borek|börek|bakery|pastry|sandwich",i]',
+    ],
+    name: /simit|f[ıi]r[ıi]n|b[öo]rek|po[ğg]a[çc]a|unlu|ekmek|bakery|pastane/i,
+    label: "simit/fırın",
+  },
 ];
 // GENEL NEGATİF FİLTRE: kebap/köfte/döner/ızgara gibi ET- IZGARA isteğinde çiğköfte
 // zincirleri (Komagene, Çiğköftem, Oses) SIZMASIN — bunlar cuisine=turkish taşıyıp
@@ -885,6 +1185,8 @@ app.post("/nearby", rateLimit, async (req, res) => {
     const query = String((req.body && req.body.query) || "")
       .toLowerCase()
       .slice(0, 80);
+    // Yalnız sunucu-içi araç çağrısında true (bkz. aşağıdaki yorum bloğu).
+    const skipComment = !!(req.body && req.body.skipComment);
     // OTURMALI/İÇKİLİ SİNYAL: kullanıcı şarap/bira/kokteyl gibi içki YA DA "oturmalı
     // yemek / restoran / akşam yemeği" istiyorsa → fast-food, büfe, pizza-zinciri
     // (Domino's) DEĞİL, servisli-oturmalı restoran (amenity=restaurant) istenir.
@@ -1042,7 +1344,11 @@ app.post("/nearby", rateLimit, async (req, res) => {
     // Tier A: cuisine tag daraltması (yeme-içme amenity'leri içinde).
     // Oturmalı/içkili istekte SADECE restaurant (fast_food'lu zincir cuisine=pizza
     // eşleşmesi = Domino's → şarap yok → dışarıda bırak).
-    if (rule && rule.cuisine) {
+    // rule.sel = cuisine tag'iyle ifade edilemeyen türler için HAM selektör dizisi
+    // (ör. simit/fırın → shop=bakery). Varsa cuisine sorgusunun YERİNE geçer.
+    if (rule && rule.sel && rule.sel.length) {
+      els = await runExpanding(rule.sel);
+    } else if (rule && rule.cuisine) {
       const cuisineAmenity = wantsSitdown
         ? "restaurant"
         : "restaurant|fast_food|cafe|ice_cream";
@@ -1178,7 +1484,13 @@ app.post("/nearby", rateLimit, async (req, res) => {
     }
 
     // Merci yorumu (ucuz Haiku). Sonuç varsa listeden öner; YOKSA en yakın iyi semti öner.
+    // ⚠️ skipComment: /merci'nin `mekan_ara` ARACI bu ucu çağırdığında yorumu ASIL
+    // model kendisi yazar (mekanları görerek, sohbet bağlamıyla) → burada ikinci bir
+    // Haiku çağrısı yapmak hem gereksiz maliyet hem "iki ayrı ses" demek olurdu.
     let merciComment = "";
+    if (skipComment) {
+      return res.json({ places, isPro, broadened, matched: rule ? rule.label : "" });
+    }
     const wantsDifferent = excludeSet.size > 0; // "başka öner / beğenmedim" akışı
     const typeLabel =
       ({ food: "yemek", cafe: "kafe", dessert: "tatlı", bar: "bar/bira", activity: "aktivite" })[
@@ -1208,7 +1520,18 @@ app.post("/nearby", rateLimit, async (req, res) => {
             "Sen Merci, sevimli bir karar-ahtapotu. Sana kullanıcıya EN YAKIN GERÇEK mekanların listesi (isim + mesafe) verilir. " +
             "KISA (1-2 cümle), samimi, Türkçe ve TUTARLI tekil 'sen' diliyle (asla 'siz') bir öneri yap: birini öne çıkar, GERÇEK mesafeye değin (uzaksa dürüstçe söyle, örn. '~3 km, taksiyle kısa'), oyunbaz ol. " +
             "Mekanlar mahallende değil komşu semtte olabilir — bu normal, listedeki gerçek mesafeyi kullan. Listedeki isimler/mesafeler DIŞINDA hiçbir mekan/semt/mesafe UYDURMA. En fazla 1 emoji. " +
-            "DÜRÜSTLÜK: Sana yalnız mekan ADI + MESAFE verildi; menü/içki/fiyat bilgisi YOK. Mekan kartlarında da SADECE isim + 'yol tarifi' butonu var — menü/içki listesi/fiyat YAZMAZ. Bu yüzden 'kartlarda yazıyor', 'listesinde görürsün', 'menüde var' DEME ve bir mekânda belirli bir şeyin (rakı, spesifik yemek) bulunduğunu GARANTİ ETME ('kesin vardır' YASAK). Gerekiyorsa 'meyhane/balık lokantası genelde bulundurur, emin olmak istersen mekânı arayabilirsin' gibi temkinli konuş.",
+            "DÜRÜSTLÜK: Sana yalnız mekan ADI + MESAFE verildi; menü/içki/fiyat bilgisi YOK. Mekan kartlarında da SADECE isim + 'yol tarifi' butonu var — menü/içki listesi/fiyat YAZMAZ. Bu yüzden 'kartlarda yazıyor', 'listesinde görürsün', 'menüde var' DEME ve bir mekânda belirli bir şeyin (rakı, spesifik yemek) bulunduğunu GARANTİ ETME ('kesin vardır' YASAK). Gerekiyorsa 'meyhane/balık lokantası genelde bulundurur, emin olmak istersen mekânı arayabilirsin' gibi temkinli konuş. " +
+            // ⚠️ 2 AĞU — ASIL BUG BURADAYDI. Kullanıcının ham isteği ("simit") bu
+            // modele HİÇ verilmiyordu; sadece bucket etiketi ("yemek") gidiyordu.
+            // Sonuç: kullanıcı simit sordu, model listedeki Çiğ Köfteci'yi coşkuyla
+            // önerdi çünkü neyin istendiğini bilmiyordu. Artık ham istek veriliyor;
+            // eşleşme yoksa UYDURMAK yerine dürüstçe söylemesi isteniyor.
+            "EŞLEŞME KONTROLÜ (ÖNEMLİ): Kullanıcının ASIL isteği sana ayrıca verilir. " +
+            "Önce listedeki mekanların o isteğe UYUP UYMADIĞINA bak. Uymuyorsa (ör. kullanıcı simit " +
+            "istedi ama listede çiğ köfteci/burgerci var) o mekanları İSTENEN ŞEYMİŞ GİBİ SUNMA. " +
+            "Bunun yerine tek cümleyle dürüstçe söyle ve alternatif olarak sun: " +
+            "\"Tam simitçi çıkmadı buralarda 🐙 En yakın yeme-içme yerleri şunlar.\" " +
+            "İsteğe uyan yerler VARSA normal, coşkulu önerini yap.",
           messages: [
             {
               role: "user",
@@ -1217,7 +1540,13 @@ app.post("/nearby", rateLimit, async (req, res) => {
                 (wantsDifferent
                   ? "Kullanıcı öncekileri beğenmedi, bunlar FARKLI/yeni yerler — 'işte başka seçenekler' tonuyla sun.\n"
                   : "") +
-                "Tür: " + (rule ? rule.label : typeLabel) +
+                (query ? 'Kullanıcının ASIL isteği: "' + query + '"\n' : "") +
+                "Arama türü: " + (rule ? rule.label : typeLabel) +
+                (rule
+                  ? ""
+                  : "\n(NOT: Bu istek için özel bir tür daraltması YAPILAMADI — aşağıdaki liste " +
+                    "sadece EN YAKIN yeme-içme yerleridir, istenen şeye göre filtrelenmemiştir. " +
+                    "Uyup uymadığını sen değerlendir.)") +
                 "\nEn yakın gerçek mekanlar (isim + mesafe): " + top,
             },
           ],
