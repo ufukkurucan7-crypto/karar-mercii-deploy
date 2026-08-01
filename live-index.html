@@ -6234,6 +6234,19 @@
       }
 
       // ── vc32 NATIVE KÖPRÜLERİ (hepsi guard'lı — vc31/web'de sessizce yok sayılır) ──
+      // Önbellekteki konum (kmUserGeo) → {lat,lng} ya da null.
+      // /merci'ye koordinat göndermek için: sunucudaki `mekan_ara` aracı aramayı
+      // kendi içinde yapabilsin. 6 saat tazelik kuralı merciNearby ile AYNI değil
+      // bilerek — burada bayat koordinat da işe yarar (araca hiç vermemektense
+      // yaklaşık konum daha iyi; /nearby zaten yarıçapı kademeli genişletiyor).
+      function _kmGeo() {
+        try {
+          var g = JSON.parse(localStorage.getItem("kmUserGeo") || "null");
+          if (g && isFinite(g.lat) && isFinite(g.lng))
+            return { lat: g.lat, lng: g.lng };
+        } catch (e) {}
+        return null;
+      }
       function _capNative() {
         try {
           return !!(
@@ -7889,13 +7902,42 @@ function drawResultCard(opts) {
         var wrap = document.createElement("div");
         wrap.id = "paywall-wrap";
         wrap.className = "paywall-box";
+        // ── İKİNCİ BUTON: NATIVE = ödüllü reklam · WEB = uygulamayı indir ──
+        // ⚠️ 2 AĞU — KAPATILAN KAÇAK: web'de (kararmercii.com) ödüllü reklam
+        // ALTYAPISI YOK. Buna rağmen "Reklam İzle" butonu web'de de basılıyordu ve
+        // watchAdForTopic() içindeki `setTimeout(grant, 3000)` reklam GÖSTERMEDEN
+        // +4 mesaj veriyordu → tarayıcıdan bedava Merci (sunucu tavanı 60/gün'e
+        // kadar) = doğrudan API maliyeti + Pro aboneliğinin anlamsızlaşması.
+        // Artık web'de reklam butonu HİÇ üretilmiyor; yerine indirme çağrısı var
+        // (kaçağı kapatır + web→app dönüşümünü besler). Native yol değişmedi.
+        var _pwNative = _capNative();
+        var _pwSub, _pwBtn2, _pwCounter;
+        if (_pwNative) {
+          _pwSub =
+            "Kısa bir reklam izle, +4 mesaj kazan — ya da PRO ile günde 50 mesaj, reklamsız konuş.";
+          _pwBtn2 =
+            '<button class="paywall-btn-ad" onclick="watchAdForTopic()">📺 Reklam İzle (+4 mesaj)</button>';
+          _pwCounter = "Her reklam +4 mesaj • Pro'da günde 50 🌙";
+        } else if (!_kmIsIOSWeb()) {
+          // Android/masaüstü tarayıcı → Play linki anlamlı
+          _pwSub =
+            "Uygulamada kısa bir reklam izleyip +4 mesaj kazanabilirsin — ya da PRO ile günde 50 mesaj, reklamsız konuş.";
+          _pwBtn2 =
+            '<button class="paywall-btn-ad" onclick="_kmPaywallInstall()">📲 Uygulamayı İndir — Reklamla +4 Mesaj</button>';
+          _pwCounter = "Ödüllü reklam uygulamada • Pro'da günde 50 🌙";
+        } else {
+          // iOS tarayıcı: App Store sürümü henüz yok → gösterilecek mağaza linki yok
+          _pwSub = "PRO ile günde 50 mesaj, reklamsız konuş.";
+          _pwBtn2 = "";
+          _pwCounter = "Pro'da günde 50 mesaj 🌙";
+        }
         wrap.innerHTML =
           '<div class="paywall-emoji">🐙</div>' +
           '<div class="paywall-title">Merci seni bekliyor 🐙</div>' +
-          "<div class=\"paywall-sub\">Kısa bir reklam izle, +4 mesaj kazan — ya da PRO ile günde 50 mesaj, reklamsız konuş.</div>" +
+          '<div class="paywall-sub">' + _pwSub + "</div>" +
           '<button class="paywall-btn-primary" onclick="openProModal(\'quota\')">⭐ Pro\'ya Geç — Günde 50 Mesaj</button>' +
-          '<button class="paywall-btn-ad" onclick="watchAdForTopic()">📺 Reklam İzle (+4 mesaj)</button>' +
-          '<div class="paywall-counter">Her reklam +4 mesaj • Pro\'da günde 50 🌙</div>';
+          _pwBtn2 +
+          '<div class="paywall-counter">' + _pwCounter + "</div>";
         var chatWrap = document.querySelector(".chat-wrap");
         chatWrap.parentNode.insertBefore(wrap, chatWrap.nextSibling);
         document.getElementById("ask-merci").disabled = true;
@@ -8283,15 +8325,39 @@ function drawResultCard(opts) {
           btn.textContent = "⏳ Reklam yükleniyor...";
           btn.disabled = true;
         }
-        // Capacitor uygulaması → gerçek AdMob ödüllü reklam
-        if (KM_AD.inApp()) {
-          KM_AD.showRewarded().then(function (ok) {
-            ok ? grant() : fail();
-          });
+        // ⚠️ SERT KAPI — İKİNCİ SAVUNMA HATTI (2 AĞU).
+        // Burada eskiden `setTimeout(grant, 3000)` vardı: web'de reklam GÖSTERMEDEN
+        // 3 saniye sonra +4 mesaj veriyordu. Ödüllü reklam SADECE native uygulamada
+        // mevcut; web'de altyapı yok, dolayısıyla web'de ASLA grant() çağrılmamalı.
+        // showPaywall() artık web'de bu butonu zaten basmıyor, yani normal akışta
+        // buraya düşülmez — bu blok konsoldan elle çağırmaya karşı duruyor.
+        if (!KM_AD.inApp()) {
+          if (btn) {
+            btn.textContent = "📺 Reklam İzle (+4 mesaj)";
+            btn.disabled = false;
+          }
+          appendMsg(
+            "merci",
+            "Ödüllü reklam sadece uygulamada var 🐙 Uygulamayı indirirsen reklam izleyip mesaj kazanabilirsin.",
+          );
           return;
         }
-        // Web → şimdilik simülasyon (web'de ödüllü reklam yok)
-        setTimeout(grant, 3000);
+        KM_AD.showRewarded().then(function (ok) {
+          ok ? grant() : fail();
+        });
+      };
+
+      // Paywall'daki web indirme butonu → Play Store. (Ödüllü reklam web'de yok;
+      // kullanıcıyı hak vermek yerine uygulamaya yönlendiriyoruz.)
+      window._kmPaywallInstall = function () {
+        try {
+          logEv("paywall_install_click");
+        } catch (e) {}
+        try {
+          window.open(KM_PLAY_URL, "_blank");
+        } catch (e) {
+          location.href = KM_PLAY_URL;
+        }
       };
 
       // ── LIKE/DISLIKE ──
@@ -11674,34 +11740,63 @@ function drawResultCard(opts) {
             if (cb) cb(false, "", err && err.message);
           });
       }
+      // ── KONUM İZNİ MODALI (2 AĞU — sohbetten çıkarıldı) ──
+      // ESKİDEN: bu soru sohbetin İÇİNE bir mesaj kartı olarak basılıyordu. Sohbet
+      // balonu gibi görünüp altına buton koyduğu için "cevaplamadan soru soramıyorum"
+      // hissi veriyordu (aslında yazma alanını kilitlemiyordu ama öyle duruyordu) ve
+      // görsel olarak yamalı görünüyordu. Artık normal bir modal: sohbet akışına hiç
+      // karışmıyor, kapatılınca iz bırakmıyor, yazma alanına ASLA dokunmuyor.
+      // ⚠️ Renkler bilerek AÇIKÇA veriliyor: satır ~4490'daki toplu
+      // `html.dark [style*="var(--ac-bg)"]` kuralı inline var(--ac-bg) içeren her
+      // kutuyu koyuya çevirip içindeki yazıyı okunmaz bırakıyor. O yüzden inline
+      // stilde var(--ac-bg)/var(--ac-bg2) KULLANMA (bkz. km-cta dersi).
       function maybeAskLocation() {
         if (!currentUser) return;
         if (document.getElementById("km-tour")) return; // tanıtım turu sırasında sorma
         if (localStorage.getItem("kmUserLocation")) return; // zaten var
         if (localStorage.getItem("kmLocPrompted")) return; // daha önce soruldu
-        var msgs = document.getElementById("chat-messages");
-        if (!msgs) return;
-        // Üst üste birikmesin: zaten bir konum-sorusu duruyorsa tekrar ekleme
-        if (msgs.querySelector(".loc-ask-wrap")) return;
-        var wrap = document.createElement("div");
-        wrap.className = "msg-merci loc-ask-wrap";
-        wrap.innerHTML =
-          '<div class="chat-av-merci">' +
-          merciSVGChat(28) +
-          '</div><div class="chat-bubble">📍 Sana yakın mekan, yer ve yol önerileri verebilmem için konumuna ihtiyacım var. Açmak ister misin?</div>';
+        if (document.getElementById("km-loc-modal")) return; // zaten açık
+        var dark = document.documentElement.classList.contains("dark");
+        var cardBg = dark ? "#241b3b" : "#ffffff";
+        var cardFg = dark ? "#ece8f7" : "#2a2440";
+        var subFg = dark ? "#b3a9cc" : "#6b6480";
+        var ghostBg = dark ? "#332a4d" : "#eeecf5";
+        var ghostFg = dark ? "#cfc7e4" : "#666";
+
+        var ov = document.createElement("div");
+        ov.id = "km-loc-modal";
+        ov.style.cssText =
+          "position:fixed;inset:0;z-index:9999;background:rgba(20,12,40,.55);" +
+          "display:flex;align-items:center;justify-content:center;padding:20px";
+        var card = document.createElement("div");
+        card.style.cssText =
+          "background:" + cardBg + ";color:" + cardFg + ";max-width:340px;width:100%;" +
+          "border-radius:20px;padding:22px 20px;text-align:center;" +
+          "box-shadow:0 18px 50px rgba(0,0,0,.35)";
+        card.innerHTML =
+          '<div style="margin-bottom:10px">' + merciSVGChat(52) + "</div>" +
+          '<div style="font-size:17px;font-weight:900;margin-bottom:8px">Konumunu açalım mı? 📍</div>' +
+          '<div style="font-size:13.5px;line-height:1.5;color:' + subFg + '">' +
+          "Yakınındaki gerçek mekanları önerebilmem için konumuna ihtiyacım var. " +
+          "İstemezsen de sohbete devam edebilirsin — sadece mekan öneremem.</div>";
         var row = document.createElement("div");
-        row.style.cssText =
-          "display:flex;gap:8px;margin-top:8px;padding-left:40px;flex-wrap:wrap";
+        row.style.cssText = "display:flex;flex-direction:column;gap:8px;margin-top:16px";
+
+        function kapat() {
+          if (ov.parentNode) ov.parentNode.removeChild(ov);
+        }
         var yes = document.createElement("button");
         yes.style.cssText =
-          "background:linear-gradient(135deg,var(--ac),var(--ac-l));color:#fff;border:none;padding:10px 16px;border-radius:12px;font-weight:800;cursor:pointer";
-        yes.textContent = "📍 İzin Ver";
+          "width:100%;background:linear-gradient(135deg,var(--ac),var(--ac-l));color:#fff;border:none;" +
+          "padding:13px;border-radius:13px;font-size:14.5px;font-weight:900;" +
+          'font-family:"Nunito",sans-serif;cursor:pointer';
+        yes.textContent = "📍 Konumu Aç";
         yes.onclick = function () {
           localStorage.setItem("kmLocPrompted", "1");
           yes.disabled = true;
           yes.textContent = "⏳ ...";
           captureLocationOnce(function (ok, loc, errCode) {
-            wrap.remove();
+            kapat();
             if (ok && loc)
               appendMsg(
                 "merci",
@@ -11732,19 +11827,26 @@ function drawResultCard(opts) {
         };
         var no = document.createElement("button");
         no.style.cssText =
-          "background:#eee;color:#666;border:none;padding:10px 16px;border-radius:12px;font-weight:700;cursor:pointer";
+          "width:100%;background:" + ghostBg + ";color:" + ghostFg + ";border:none;" +
+          "padding:11px;border-radius:13px;font-size:13.5px;font-weight:800;" +
+          'font-family:"Nunito",sans-serif;cursor:pointer';
         no.textContent = "Şimdi değil";
         no.onclick = function () {
           localStorage.setItem("kmLocPrompted", "1");
-          wrap.remove();
+          kapat();
         };
         row.appendChild(yes);
         row.appendChild(no);
-        wrap.appendChild(row);
-        msgs.appendChild(wrap);
-        setTimeout(function () {
-          wrap.scrollIntoView({ behavior: "smooth", block: "start" });
-        }, 50);
+        card.appendChild(row);
+        ov.appendChild(card);
+        // Arka plana dokunmak = "şimdi değil" (kartın içine dokunmak kapatmasın)
+        ov.onclick = function (e) {
+          if (e.target === ov) {
+            localStorage.setItem("kmLocPrompted", "1");
+            kapat();
+          }
+        };
+        document.body.appendChild(ov);
       }
       // ── MERCİ → ÇARK / OYLAMA KÖPRÜSÜ ──
       // Merci 2+ seçenek verince sohbette "Çarka At / Oylamaya At" butonları çıkar;
@@ -12067,6 +12169,14 @@ function drawResultCard(opts) {
                 // Merci şehir sormaz. Yoksa null → NEED_LOCATION işareti devreye girer.
                 location: localStorage.getItem("kmUserLocation") || null,
                 resultContext: rc,
+                // ── TOOL USE (2 AĞU) ──
+                // Koordinat artık /merci'ye de gidiyor: mekan araması sunucu içinde
+                // `mekan_ara` ARACIYLA yapılıyor, sonuç modele geri veriliyor ve
+                // model mekanları GÖREREK cevap yazıyor. Koordinat yoksa (konum
+                // kapalı) sunucu aracı hiç tanımlamaz → eski [[NEED_LOCATION]]
+                // işaret yolu aynen çalışır, davranış değişmez.
+                lat: _kmGeo() ? _kmGeo().lat : undefined,
+                lng: _kmGeo() ? _kmGeo().lng : undefined,
               }),
             }),
           )
@@ -12145,6 +12255,22 @@ function drawResultCard(opts) {
             aiMessages.push({ role: "assistant", content: cleanReply });
             appendMsg("merci", cleanReply, true);
             saveCurrentChat(); // her cevaptan sonra sohbeti kaydet (kaybolmasın)
+
+            // ── TOOL USE: mekan kartları AYNI yanıtta geldiyse hemen bas ──
+            // Sunucu `mekan_ara` aracını çalıştırdıysa data.places dolu gelir ve
+            // model cevabını ZATEN bu mekanları görerek yazdı → ayrıca /nearby
+            // çağırmaya gerek yok (eski akışta ikinci bir HTTP turu vardı).
+            // data.places === null → araç hiç çalışmadı, aşağıdaki eski işaret
+            // yolu (locType/nearbyType) devrede kalır.
+            if (data.places && data.places.length) {
+              appendPlaceCards(data.places);
+              // "başka öner" akışı gösterilenleri hariç tutabilsin diye kaydet
+              window._shownPlaces = (window._shownPlaces || []).concat(
+                data.places.map(function (p) {
+                  return p.name;
+                }),
+              );
+            }
             if (locType) {
               var _lt = locType;
               // PROAKTİF KONUM: kullanıcı "konum aç" yazmak ya da şehir söylemek ZORUNDA
@@ -14532,34 +14658,85 @@ function drawResultCard(opts) {
         );
       }
       // ── GÜNLÜK ÇARK ÖNERİLERİ (her gün farklı; tıkla → çarka ekle) ──
+      // ── SAAT DİLİMİ (2 AĞU) ──
+      // Öneriler artık yalnız GÜNE değil GÜNÜN SAATİNE göre de değişiyor: sabah
+      // kahvaltı, öğlen öğle yemeği, akşam akşam yemeği, gece atıştırmalık/sipariş.
+      // Aktiviteler de aynı mantıkta (akşam → sinema/dizi, sabah → yürüyüş/spor).
+      // Her kaydın `s` alanı uygun olduğu dilimleri listeler; "her" = saatten bağımsız.
+      var WHEEL_SLOTS = ["sabah", "ogle", "ikindi", "aksam", "gece"];
+      function _wheelSlot() {
+        var h = new Date().getHours();
+        if (h >= 6 && h < 11) return "sabah";
+        if (h >= 11 && h < 15) return "ogle";
+        if (h >= 15 && h < 18) return "ikindi";
+        if (h >= 18 && h < 22) return "aksam";
+        return "gece"; // 22:00 – 06:00
+      }
       var WHEEL_SUGGESTIONS = [
-        { e: "🍔", t: "Ne yesek?", o: ["Pizza", "Burger", "Döner", "Makarna", "Sushi", "Çiğ köfte"] },
-        { e: "🎬", t: "Film mi dizi mi?", o: ["Film", "Dizi", "Belgesel", "Anime", "YouTube"] },
-        { e: "☕", t: "Ne içsek?", o: ["Çay", "Kahve", "Kola", "Ayran", "Limonata", "Su"] },
-        { e: "🎉", t: "Hafta sonu ne yapsak?", o: ["Sinema", "Kafe", "Yürüyüş", "Evde dinlen", "Alışveriş", "Arkadaş"] },
-        { e: "✈️", t: "Tatile nereye?", o: ["Antalya", "Bodrum", "İstanbul", "Kapadokya", "Trabzon", "Fethiye"] },
-        { e: "🍳", t: "Kahvaltıda ne yiyelim?", o: ["Menemen", "Yumurta", "Simit", "Peynir-zeytin", "Bal-kaymak"] },
-        { e: "🍰", t: "Hangi tatlı?", o: ["Baklava", "Sütlaç", "Dondurma", "Künefe", "Kek", "Profiterol"] },
-        { e: "💪", t: "Hangi spor?", o: ["Koşu", "Yüzme", "Bisiklet", "Yoga", "Ağırlık", "Futbol"] },
-        { e: "🎵", t: "Ne dinlesek?", o: ["Pop", "Rock", "Rap", "Türkü", "Jazz", "Arabesk"] },
-        { e: "🌍", t: "Bugün nereye?", o: ["Deniz", "Dağ", "Şehir turu", "Park", "Kamp", "Müze"] },
-        { e: "🎮", t: "Ne oynasak?", o: ["FIFA", "Minecraft", "Kutu oyunu", "Mobil oyun", "Satranç"] },
-        { e: "📚", t: "Ne okusak?", o: ["Roman", "Polisiye", "Bilim kurgu", "Kişisel gelişim", "Şiir"] },
-        { e: "🐾", t: "Hangi evcil hayvan?", o: ["Kedi", "Köpek", "Kuş", "Balık", "Hamster", "Tavşan"] },
-        { e: "🍕", t: "Hangi pizza?", o: ["Margarita", "Sucuklu", "Karışık", "Ton balıklı", "Mantarlı"] },
-        { e: "👕", t: "Ne giysek?", o: ["Spor", "Şık", "Rahat", "Klasik", "Renkli", "Siyah"] },
-        { e: "💑", t: "Buluşmada ne yapsak?", o: ["Yemek", "Sinema", "Sahil", "Kafe", "Konser", "Piknik"] },
+        { e: "🍔", t: "Ne yesek?", s: ["ogle", "aksam"], o: ["Pizza", "Burger", "Döner", "Makarna", "Sushi", "Çiğ köfte"] },
+        { e: "🎬", t: "Film mi dizi mi?", s: ["aksam", "gece"], o: ["Film", "Dizi", "Belgesel", "Anime", "YouTube"] },
+        { e: "☕", t: "Ne içsek?", s: "her", o: ["Çay", "Kahve", "Kola", "Ayran", "Limonata", "Su"] },
+        { e: "🎉", t: "Hafta sonu ne yapsak?", s: ["sabah", "ogle", "ikindi"], o: ["Sinema", "Kafe", "Yürüyüş", "Evde dinlen", "Alışveriş", "Arkadaş"] },
+        { e: "✈️", t: "Tatile nereye?", s: "her", o: ["Antalya", "Bodrum", "İstanbul", "Kapadokya", "Trabzon", "Fethiye"] },
+        { e: "🍳", t: "Kahvaltıda ne yiyelim?", s: ["sabah"], p: "sabah", o: ["Menemen", "Yumurta", "Simit", "Peynir-zeytin", "Bal-kaymak"] },
+        { e: "🍰", t: "Hangi tatlı?", s: ["ikindi", "aksam", "gece"], p: "ikindi", o: ["Baklava", "Sütlaç", "Dondurma", "Künefe", "Kek", "Profiterol"] },
+        { e: "💪", t: "Hangi spor?", s: ["sabah", "ikindi"], o: ["Koşu", "Yüzme", "Bisiklet", "Yoga", "Ağırlık", "Futbol"] },
+        { e: "🎵", t: "Ne dinlesek?", s: "her", o: ["Pop", "Rock", "Rap", "Türkü", "Jazz", "Arabesk"] },
+        { e: "🌍", t: "Bugün nereye?", s: ["sabah", "ogle", "ikindi"], o: ["Deniz", "Dağ", "Şehir turu", "Park", "Kamp", "Müze"] },
+        { e: "🎮", t: "Ne oynasak?", s: ["aksam", "gece"], o: ["FIFA", "Minecraft", "Kutu oyunu", "Mobil oyun", "Satranç"] },
+        { e: "📚", t: "Ne okusak?", s: ["ikindi", "gece"], o: ["Roman", "Polisiye", "Bilim kurgu", "Kişisel gelişim", "Şiir"] },
+        { e: "🐾", t: "Hangi evcil hayvan?", s: "her", o: ["Kedi", "Köpek", "Kuş", "Balık", "Hamster", "Tavşan"] },
+        { e: "🍕", t: "Hangi pizza?", s: ["aksam", "gece"], o: ["Margarita", "Sucuklu", "Karışık", "Ton balıklı", "Mantarlı"] },
+        { e: "👕", t: "Ne giysek?", s: ["sabah"], o: ["Spor", "Şık", "Rahat", "Klasik", "Renkli", "Siyah"] },
+        { e: "💑", t: "Buluşmada ne yapsak?", s: ["ikindi", "aksam"], o: ["Yemek", "Sinema", "Sahil", "Kafe", "Konser", "Piknik"] },
+        // ── Saate özel yeni kayıtlar ──
+        { e: "☀️", t: "Sabah ne yapsak?", s: ["sabah"], o: ["Yürüyüş", "Spor", "Kahve", "Kitap", "Müzik", "Erken çıkış"] },
+        { e: "🥗", t: "Öğlen ne yesek?", s: ["ogle"], p: "ogle", o: ["Ev yemeği", "Günün menüsü", "Salata", "Dürüm", "Çorba", "Tost"] },
+        { e: "🍽️", t: "Akşam yemeği ne?", s: ["aksam"], p: "aksam", o: ["Ev yemeği", "Sipariş", "Dışarı çıkalım", "Mangal", "Makarna", "Çorba"] },
+        { e: "🌆", t: "Akşam ne yapsak?", s: ["aksam"], o: ["Yürüyüş", "Sinema", "Kafe", "Dizi", "Oyun", "Sohbet"] },
+        { e: "🌙", t: "Gece atıştırmalık?", s: ["gece"], p: "gece", o: ["Cips", "Çikolata", "Meyve", "Tost", "Dondurma", "Kuruyemiş"] },
+        { e: "🛵", t: "Gece siparişi?", s: ["gece"], o: ["Pizza", "Burger", "Tavuk", "Lahmacun", "Çiğ köfte", "Tatlı"] },
       ];
       function dailySuggestionIndices(count) {
         var d = new Date();
         var doy = Math.floor((d - new Date(d.getFullYear(), 0, 0)) / 86400000);
-        var seed = d.getFullYear() * 1000 + doy;
-        var n = WHEEL_SUGGESTIONS.length,
+        var slot = _wheelSlot();
+        // Bu dilime uyanlar + "her" olanlar havuza girer. Havuz boş kalırsa (ileride
+        // yeni dilim eklenip kayıt atanmazsa) tümüne düş → ekran asla boş kalmasın.
+        var pool = [];
+        WHEEL_SUGGESTIONS.forEach(function (x, i) {
+          if (!x.s || x.s === "her" || x.s.indexOf(slot) >= 0) pool.push(i);
+        });
+        if (!pool.length)
+          pool = WHEEL_SUGGESTIONS.map(function (_, i) {
+            return i;
+          });
+        // Tohuma dilimi de kat: aynı gün içinde saat dilimi değişince liste yenilenir,
+        // ama aynı dilim içinde gün boyu sabit kalır (her açılışta zıplamasın).
+        var seed =
+          d.getFullYear() * 100000 + doy * 10 + WHEEL_SLOTS.indexOf(slot);
+        var n = pool.length,
+          hedef = Math.min(count, n),
           idxs = [],
-          k = seed % n;
-        while (idxs.length < Math.min(count, n)) {
-          if (idxs.indexOf(k) < 0) idxs.push(k);
-          k = (k + 7) % n;
+          k = seed % n,
+          guard = 0;
+        // İMZA ÖNERİ: dilimin ana kaydı (sabah→kahvaltı, öğlen→öğle yemeği,
+        // akşam→akşam yemeği, gece→atıştırmalık) HER ZAMAN ilk sırada olsun.
+        // Yoksa günlük rotasyona takılıp bazı günler listeye hiç girmiyordu —
+        // oysa saate göre önerinin bütün amacı tam olarak o kaydın görünmesi.
+        pool.forEach(function (i) {
+          if (WHEEL_SUGGESTIONS[i].p === slot && idxs.indexOf(i) < 0) idxs.push(i);
+        });
+        // ⚠️ 7'lik adım yalnız n ile aralarında asalsa tüm havuzu gezer. Havuz
+        // uzunluğu artık değişken (ör. n=7 veya 14 → gcd 7) → eski koşulsuz
+        // `while` SONSUZ DÖNGÜYE girerdi. Guard + sıralı tamamlama ile kapatıldı.
+        while (idxs.length < hedef && guard++ < n * 4) {
+          var cand = pool[k % n];
+          if (idxs.indexOf(cand) < 0) idxs.push(cand);
+          k += 7;
+        }
+        for (var j = 0; j < pool.length && idxs.length < hedef; j++) {
+          if (idxs.indexOf(pool[j]) < 0) idxs.push(pool[j]);
         }
         return idxs;
       }
