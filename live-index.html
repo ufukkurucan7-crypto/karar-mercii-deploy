@@ -121,7 +121,18 @@
         min-height: 100vh;
         min-height: 100dvh;
         position: relative;
+        /* ⚠️ overflow-x: hidden, .app'i BİR SCROLL KAPSAYICISINA çevirir (CSS spec: bir
+           eksen hidden, diğeri visible ise diğeri auto'ya düşer). Bu da içindeki
+           `.hdr { position: sticky; top: 0 }` başlığını SESSİZCE BOZAR: sticky artık
+           viewport'a değil hiç kaymayan .app'e göre yapışır → sayfa kaydırılınca başlık
+           yukarı kayıp KAYBOLUR (kullanıcı ss'lerindeki "başlık yarım/eksik" hatası;
+           Android 16 emülatöründe birebir üretildi ve clip ile düzeldiği doğrulandı).
+           overflow-x: clip aynı yatay taşma kırpmasını yapar ama scroll kapsayıcısı
+           YARATMAZ → sticky çalışır. hidden satırı eski tarayıcılar için fallback olarak
+           duruyor (clip'i desteklemeyen motorlar ikinci satırı yok sayar).
+           ⚠️ Bu iki satırı tek `hidden`e geri çevirme — başlık yine kaybolur. */
         overflow-x: hidden;
+        overflow-x: clip;
         /* Alt AdMob banner'ı içeriğin (özellikle alttaki butonların) üstüne binmesin
            diye banner yüksekliği kadar boşluk rezerve edilir (JS --ad-bottom ayarlar). */
         padding-bottom: var(--ad-bottom, 0px);
@@ -10622,8 +10633,19 @@ function drawResultCard(opts) {
               });
           }, 1600);
         }
-        // Kazanan spotlight'ı (~1.7sn) İZLENSİN, SONRA kazanan kartına in
+        // Kazanan spotlight'ı İZLENSİN, SONRA kazanan kartına in
         // (Deploy #14: eskiden 120ms'de kaydırıp spotlight'ı ekrandan kaçırıyordu).
+        //
+        // 1 Ağu — 1500ms ÇOK UZUNDU ("sonuca geç iniyor"). Animasyonun bilgi veren
+        // kısmı çok daha erken bitiyor: `.wstage.win-pop` 0.55sn, `wspotRing`
+        // keyframe'inde halka %20'de (=320ms) tam parlaklığa ulaşıp kalan 1.28sn
+        // boyunca SÖNEREK büyüyor. Yani 700ms'den sonrası sadece sönme kuyruğu.
+        // 700ms'e çekildi: win-pop biter bitmez, halka tam parlakken kaydırma başlar;
+        // halka sönme kuyruğunu smooth scroll SIRASINDA oynamaya devam eder (çark
+        // kartın hemen üstünde kaldığı için görünür) → animasyon KESİLMEZ, sadece
+        // ölü bekleme kalkar. Toplam his: ~1.9sn → ~1.1sn.
+        // ⚠️ Ayar tek yerden: aşağıdaki setTimeout süresi. 120ms gibi çok küçük
+        // değerlere ÇEKME — spotlight ekrandan kaçar (Deploy #14 hatası geri gelir).
         setTimeout(() => {
           burstAt(card);
           card.scrollIntoView({ behavior: "smooth", block: "center" });
@@ -10635,7 +10657,7 @@ function drawResultCard(opts) {
             _sb2.style.opacity = "1";
             _sb2.style.pointerEvents = "";
           }
-        }, 1500);
+        }, 700);
       }
 
       // ═══════════════════ VOTE ═══════════════════
