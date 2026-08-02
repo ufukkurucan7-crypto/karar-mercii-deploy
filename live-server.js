@@ -6,6 +6,38 @@ const Anthropic = require("@anthropic-ai/sdk");
 const app = express();
 app.use(express.json());
 
+// Deploy doğrulama ucu. SEBEP: index.html'in canlıda kaç byte olduğu curl ile
+// sayılabiliyor ama SUNUCU dosyasının hangi sürüm olduğu dışarıdan hiç
+// görünmüyordu → "deploy tuttu mu?" sorusu cihaz testine kalıyordu.
+// Tek curl ile: kararmercii.com/version
+// ⚠️ Sadece boyut/tarih/bayrak DURUMU döner; secret veya değer ASLA dönmez.
+const _bootedAt = new Date().toISOString();
+app.get("/version", (req, res) => {
+  const stat = (p) => {
+    try {
+      const s = fs.statSync(p);
+      return { bytes: s.size, mtime: s.mtime.toISOString() };
+    } catch {
+      return null;
+    }
+  };
+  res.set("Cache-Control", "no-store");
+  res.json({
+    ok: true,
+    server: stat(__filename),
+    index: stat(path.join(__dirname, "public", "index.html")),
+    bootedAt: _bootedAt,
+    uptimeSec: Math.round(process.uptime()),
+    node: process.version,
+    flags: {
+      toolUse: process.env.KM_TOOL_USE !== "0",
+      places: process.env.KM_PLACES || "osm",
+      anthropicKey: !!process.env.ANTHROPIC_API_KEY,
+      firebase: !!process.env.FIREBASE_SERVICE_ACCOUNT,
+    },
+  });
+});
+
 // assetlinks.json - Play Store app-link doğrulaması.
 // ⚠️ express.static'TEN ÖNCE olmalı: public/ içindeki eski/eksik static
 // assetlinks dosyası (yalnız F3:22+6B:72, 48:F0 eksik) bu route'u EZMESIN diye.
