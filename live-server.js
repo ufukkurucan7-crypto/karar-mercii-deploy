@@ -2322,6 +2322,15 @@ async function sendPush(o) {
     android: {
       priority: "high",
       notification: {
+        // ⚠️ KANAL — Android 8+ (API 26) ses/titreşim/önem KANALIN özelliğidir,
+        // bildirimin değil. Bu id client'taki KM_PUSH.CHANNEL_ID ile BİREBİR
+        // aynı olmalı; client o kanalı merci_ding sesiyle oluşturuyor. Buraya
+        // channelId yazılmazsa Android varsayılan kanalı kullanır ve ÖZEL SES
+        // ÇALMAZ (aşağıdaki `sound` alanı yalnız API 26 ALTINDA etkilidir).
+        // ⚠️ Sesi değiştirmek gerekirse client'ta ve BURADA id'yi merci_v2 yap;
+        // var olan kanalın sesi programatik olarak DEĞİŞTİRİLEMEZ.
+        channelId: "merci_v1",
+        sound: "merci_ding", // API 26 altı için (uzantısız, res/raw)
         // ⚠️ Bu ad android/app/src/main/res/drawable/ic_stat_notify.xml ile
         // BİREBİR eşleşmeli. Önce "ic_stat_icon" yazmıştım — öyle bir kaynak
         // YOKTU; Android bilinmeyen ikon adında bildirimi ya hiç göstermez ya
