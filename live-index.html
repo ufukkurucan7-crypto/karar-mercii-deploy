@@ -14447,13 +14447,22 @@ function drawResultCard(opts) {
           setM("ro-merci", 56);
           var nm = document.getElementById("ro-room-name");
           if (nm) nm.textContent = data.name || "Oylama";
-          // Salt-okunur: oylamaya dair her adımı kapat.
-          ["ro-name-step", "ro-vote-step", "ro-waiting", "ro-submit-btn", "ro-tie-msg", "ro-vote-list"].forEach(
+          // Salt-okunur: oylamaya dair parçaları kapat.
+          // ⚠️⚠️ `ro-vote-step` BU LİSTEDE OLMAMALI — CANLI BUG'DI (2 Ağu:
+          // "bildirime tıkladım, boş kart açıldı"). `ro-result` DOM'da
+          // `ro-vote-step`in ÇOCUĞU; ebeveyni display:none yapılınca çocuğa
+          // display:"" vermek HİÇBİR ŞEY YAPMAZ → kullanıcı bomboş overlay görür.
+          // Mevcut listenRoomOverlay da tam bu yüzden ebeveyni değil yalnız iç
+          // parçaları gizliyor; burada da aynısını yapıyoruz.
+          ["ro-name-step", "ro-waiting", "ro-submit-btn", "ro-tie-msg", "ro-vote-list"].forEach(
             function (id) {
               var el = document.getElementById(id);
               if (el) el.style.display = "none";
             },
           );
+          // Ebeveyn görünür kalmalı ki sonuç kartı basılabilsin.
+          var vs = document.getElementById("ro-vote-step");
+          if (vs) vs.style.display = "";
           var w = data.winner,
             pts = data.winnerPoints || 0,
             cnt = data.winnerVoters || data.voterCount || 0;
