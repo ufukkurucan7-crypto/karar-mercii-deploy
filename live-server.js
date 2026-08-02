@@ -39,6 +39,9 @@ app.get("/version", (req, res) => {
       anthropicKey: !!process.env.ANTHROPIC_API_KEY,
       firebase: !!process.env.FIREBASE_SERVICE_ACCOUNT,
     },
+    // Sağlayıcı teşhis sayaçları (arama terimi İÇERMEZ, yalnız sayılar).
+    // Hangi dalın patladığını tek bakışta söyler — bkz. _ttStats tanımı.
+    tomtom: _ttStats,
   });
 });
 
@@ -1228,6 +1231,30 @@ function ttCacheKey(lat, lng, q) {
 let _ttMonth = "";
 let _ttCount = 0;
 let _ttLoaded = false;
+
+// ── TEŞHİS SAYAÇLARI (2 AĞU akşam) ───────────────────────────────────────
+// SEBEP: TomTom başarısız olunca akış SESSİZCE OSM'e düşüyor — kullanıcı sadece
+// "kötü sonuç + yavaş" görüyor, sunucu logları dışarıdan okunamıyor. Bu sayaçlar
+// /version'da açılıp hangi dalın patladığını TEK BAKIŞTA söyler:
+//   filtered ↑ → TomTom mekanı BULDU ama alaka süzgecim eledi (süzgeç fazla katı)
+//   httpErr ↑  → anahtar/kota/istek sorunu (lastStatus'a bak)
+//   netErr ↑   → Replit'ten TomTom'a erişilemiyor (timeout)
+//   empty ↑    → TomTom gerçekten hiçbir şey bulamadı (veri yok)
+// ⚠️ Kullanıcının yazdığı ARAMA TERİMİ BİLEREK TUTULMUYOR (gizlilik) — sadece
+// sayılar. Teşhis için hangi dalın patladığı yeterli, terimin kendisi gerekmiyor.
+const _ttStats = {
+  attempts: 0,   // tomtomSearch ağ isteğine kadar geldi
+  ok: 0,         // en az 1 mekan döndürdü
+  empty: 0,      // TomTom 0 ham sonuç döndürdü
+  filtered: 0,   // ⭐ ham sonuç VARDI ama süzgeçten 0 çıktı
+  httpErr: 0,    // HTTP 4xx/5xx
+  netErr: 0,     // timeout / bağlantı hatası
+  capped: 0,     // aylık tavan doldu
+  cacheHit: 0,   // önbellekten karşılandı (ücretsiz)
+  lastStatus: 0, // son HTTP durum kodu
+  lastMs: 0,     // son çağrı süresi (ms)
+  lastRaw: 0,    // son çağrıda TomTom'un döndürdüğü HAM mekan sayısı
+};
 function ttMonthId() {
   return new Date().toISOString().slice(0, 7); // YYYY-MM
 }
@@ -1340,6 +1367,7 @@ async function tomtomSearch({ lat, lng, query, typeKey }) {
   if (hit && Date.now() - hit.at < TT_CACHE_TTL) {
     // ⚠️ Açık/kapalı ÖNBELLEKTEN OKUNMAZ, her seferinde YENİDEN hesaplanır —
     // yoksa sabah önbelleğe girmiş "AÇIK" akşam yanlış gösterilir.
+    _ttStats.cacheHit++;
     return {
       places: hit.places.map((p) => ({ ...p, open: ttOpenNow(p.oh) })),
       broadened: hit.broadened,
@@ -1348,6 +1376,7 @@ async function tomtomSearch({ lat, lng, query, typeKey }) {
   }
 
   if (!(await ttBudgetOk())) {
+    _ttStats.capped++;
     console.warn(
       `TomTom aylık tavan doldu (${_ttCount}/${PLACES_MONTHLY_CAP}) → OSM'e düşülüyor`,
     );
@@ -1359,21 +1388,33 @@ async function tomtomSearch({ lat, lng, query, typeKey }) {
     `?key=${encodeURIComponent(TOMTOM_KEY)}&lat=${lat}&lon=${lng}` +
     `&radius=6000&limit=40&countrySet=TR&language=tr-TR&openingHours=nextSevenDays`;
   const ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), 8000);
+  // 8sn → 6sn: TomTom yerelde ~1sn dönüyor. Başarısızlıkta arkasından TÜM OSM
+  // yolu (4 mirror × genişleyen yarıçap) çalıştığı için burada beklenen her
+  // saniye kullanıcıya doğrudan gecikme olarak yansıyor.
+  const timer = setTimeout(() => ctrl.abort(), 6000);
+  const _t0 = Date.now();
+  _ttStats.attempts++;
   let j;
   try {
     const r = await fetch(url, { signal: ctrl.signal });
+    _ttStats.lastStatus = r.status;
     if (!r.ok) {
+      _ttStats.httpErr++;
+      _ttStats.lastMs = Date.now() - _t0;
       console.error("TomTom HTTP", r.status, (await r.text()).slice(0, 200));
       return null;
     }
     j = await r.json();
   } catch (e) {
+    _ttStats.netErr++;
+    _ttStats.lastMs = Date.now() - _t0;
     console.error("TomTom hata:", e.name === "AbortError" ? "timeout" : e.message);
     return null;
   } finally {
     clearTimeout(timer);
   }
+  _ttStats.lastMs = Date.now() - _t0;
+  _ttStats.lastRaw = (j.results || []).length;
   ttBudgetSpend();
 
   const words = trFold(q).split(/\s+/).filter((w) => w.length >= 3);
@@ -1417,6 +1458,12 @@ async function tomtomSearch({ lat, lng, query, typeKey }) {
   // GENİŞLETMEDİR; /nearby bu bayrakla kullanıcıya dürüstçe "tam onu bulamadım,
   // en yakın alternatifler" der. Sessizce doğru sonuç gibi sunma.
   const broadened = words.length > 1 && !anyFullMatch;
+
+  // ⭐ TEŞHİSİN KALBİ: ham sonuç vardı ama süzgeçten 0 çıktıysa sorun VERİDE
+  // DEĞİL, BENİM SÜZGECİMDE. Bu ikisini ayırmadan "TomTom bulamadı" sanılıyordu.
+  if (!places.length && _ttStats.lastRaw > 0) _ttStats.filtered++;
+  else if (!places.length) _ttStats.empty++;
+  else _ttStats.ok++;
 
   if (_ttCache.size >= TT_CACHE_MAX) {
     // en eski girdiyi at (Map ekleme sırasını korur)
