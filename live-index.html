@@ -6318,8 +6318,34 @@
       // yok, hata da yok. iOS sürümü çıkınca aynı kod çalışır.
       var KM_PUSH = {
         TOPIC_ALL: "tum-kullanicilar",
+        // ⚠️⚠️ KANAL SÜRÜMLÜ: "merci_v1". Android 8+ (API 26) ses, titreşim ve
+        // önem derecesini BİLDİRİMİN DEĞİL KANALIN özelliği sayar. Bir kanal
+        // oluşturulduktan sonra sesi ARTIK DEĞİŞTİRİLEMEZ (kullanıcı elle
+        // değiştirebilir, uygulama değiştiremez). İleride sesi değiştirmek
+        // istersek bu id'yi merci_v2 yapmak ZORUNDAYIZ; aynı id'yi yeni sesle
+        // yeniden oluşturmak HİÇBİR ŞEY YAPMAZ ve sessizce eski ses çalar.
+        CHANNEL_ID: "merci_v1",
         plug: function () {
           return _capPlug("FirebaseMessaging");
+        },
+        // Kanalı kur. Zaten varsa Android çağrıyı yok sayar → her açılışta
+        // güvenle çağrılabilir.
+        ensureChannel: async function () {
+          var P = this.plug();
+          if (!P || !P.createChannel) return;
+          try {
+            await P.createChannel({
+              id: this.CHANNEL_ID,
+              name: "Karar Mercii",
+              description: "Oylama sonuçları ve duyurular",
+              importance: 4, // HIGH → ekranda belirir + ses çalar
+              // res/raw/merci_ding.wav — uzantısız yazılır.
+              // Ses uygulamanın kendi "ding" sesiyle BİREBİR aynı tarifle üretildi.
+              sound: "merci_ding",
+              vibration: true,
+              visibility: 1, // PUBLIC (kilit ekranında içerik görünür)
+            });
+          } catch (e) {}
         },
         // İzin daha önce verildi mi (yerel iz — Google'a her açılışta sormayalım)
         ok: function () {
@@ -6341,6 +6367,9 @@
               try {
                 localStorage.setItem("kmPushOk", "1");
               } catch (e) {}
+              // Kanal ABONELİKTEN ÖNCE kurulmalı: ilk bildirim gelmeden kanal
+              // yoksa Android varsayılan kanalı yaratır ve özel ses ÇALMAZ.
+              await this.ensureChannel();
               await this.subscribe(this.TOPIC_ALL);
             }
             return granted;
@@ -6389,9 +6418,14 @@
               } catch (e) {}
             });
           } catch (e) {}
-          // İzin zaten verilmişse genel topic aboneliğini tazele (token
-          // yenilenince abonelik düşebiliyor — her açılışta ucuz bir çağrı).
-          if (this.ok()) this.subscribe(this.TOPIC_ALL);
+          // İzin zaten verilmişse kanalı ve genel topic aboneliğini tazele
+          // (token yenilenince abonelik düşebiliyor — her açılışta ucuz çağrı).
+          // ⚠️ Kanal kurulumu ESKİ KULLANICILAR için de burada olmalı: sesi
+          // sonradan ekledik, izni önceden vermiş kullanıcıda kanal henüz yok.
+          if (this.ok()) {
+            this.ensureChannel();
+            this.subscribe(this.TOPIC_ALL);
+          }
         },
       };
       window.KM_PUSH = KM_PUSH;
