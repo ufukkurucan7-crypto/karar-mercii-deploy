@@ -2426,8 +2426,12 @@ app.post("/room/notify", rateLimit, async (req, res) => {
     // Sonuç gerçekten açıklanmış olmalı — "closed" değilken bildirim YOK.
     if (r.status !== "closed" || !r.winner)
       return res.status(409).json({ error: "Sonuç henüz açıklanmadı." });
-    const title = "Sonuç belli oldu! 🐙";
-    const body = `Kazanan: ${String(r.winner).slice(0, 60)} — dokun, karta bak.`;
+    // ⚠️ KAZANANI BİLDİRİMDE YAZMA (2 Ağu kullanıcı kararı). Bildirim gölgeliği
+    // sonucu ele verirse uygulamayı açmaya gerek kalmıyor: merak sönüyor,
+    // kullanıcı gelmiyor, kutlama anı (konfeti + kart) kaçıyor.
+    // Merakı canlı tut, sonucu uygulamada göster.
+    const title = "Oylama sonuçlandı! 🐙";
+    const body = "Kazananı görmek için dokun 👀";
     const id = await sendPush({ topic: "oda_" + code, title, body, room: code });
     await logPush({ title, body, topic: "oda_" + code, by: uid, kind, ok: true });
     res.json({ ok: true, id });
