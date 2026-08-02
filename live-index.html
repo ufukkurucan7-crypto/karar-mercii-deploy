@@ -6292,6 +6292,113 @@
       }
       window.openPlayStore = openPlayStore;
 
+      // ══════════════════════════════════════════════════════════════════════
+      // ── PUSH BİLDİRİM (2 AĞU 2026) ───────────────────────────────────────
+      // ══════════════════════════════════════════════════════════════════════
+      // MİMARİ: FCM TOPIC — token Firestore'da SAKLANMIYOR (17 Tem kota dersi).
+      //   `tum-kullanicilar` → duyuru / zamanlanmış / sponsorlu
+      //   `oda_<KOD>`        → sadece o odadakilere (oylama sonucu)
+      // Eklenti: @capacitor-firebase/messaging — mevcut @capacitor-firebase/
+      // authentication ile AYNI aile (capawesome) ve native subscribeToTopic'i
+      // var; @capacitor/push-notifications'ta topic desteği YOK, o yüzden o
+      // seçilmedi (hafızadaki ilk plan bu yüzden güncellendi).
+      // ⚠️ SADECE NATIVE. Web'de (kararmercii.com) sessizce devre dışı — eklenti
+      // yok, hata da yok. iOS sürümü çıkınca aynı kod çalışır.
+      var KM_PUSH = {
+        TOPIC_ALL: "tum-kullanicilar",
+        plug: function () {
+          return _capPlug("FirebaseMessaging");
+        },
+        // İzin daha önce verildi mi (yerel iz — Google'a her açılışta sormayalım)
+        ok: function () {
+          try {
+            return localStorage.getItem("kmPushOk") === "1";
+          } catch (e) {
+            return false;
+          }
+        },
+        // İzin İSTE. Yalnız kullanıcı bağlamı varken çağrılmalı (ilk odaya
+        // katılma anı) — bağlamsız izin isteği çoğunlukla reddedilir.
+        ask: async function () {
+          var P = this.plug();
+          if (!P || !P.requestPermissions) return false;
+          try {
+            var r = await P.requestPermissions();
+            var granted = r && r.receive === "granted";
+            if (granted) {
+              try {
+                localStorage.setItem("kmPushOk", "1");
+              } catch (e) {}
+              await this.subscribe(this.TOPIC_ALL);
+            }
+            return granted;
+          } catch (e) {
+            return false;
+          }
+        },
+        subscribe: async function (topic) {
+          var P = this.plug();
+          if (!P || !P.subscribeToTopic || !topic) return;
+          try {
+            await P.subscribeToTopic({ topic: String(topic) });
+          } catch (e) {}
+        },
+        unsubscribe: async function (topic) {
+          var P = this.plug();
+          if (!P || !P.unsubscribeFromTopic || !topic) return;
+          try {
+            await P.unsubscribeFromTopic({ topic: String(topic) });
+          } catch (e) {}
+        },
+        // Oda topic'i: sunucudaki safeTopic ile AYNI biçim ("oda_" + KOD).
+        roomTopic: function (code) {
+          return "oda_" + String(code || "").toUpperCase().trim();
+        },
+        _inited: false,
+        init: function () {
+          if (this._inited) return;
+          var P = this.plug();
+          if (!P || !P.addListener) return;
+          this._inited = true;
+          var self = this;
+          // ⭐ BİLDİRİME TIKLAMA → derin bağlantı. Uygulama KAPALIYKEN tıklanırsa
+          // da bu olay açılışta tetiklenir; o an oda ekranı hazır olmayabilir,
+          // bu yüzden kod saklanıp _kmDrainPendingRoom() ile sonra işlenir.
+          try {
+            P.addListener("notificationActionPerformed", function (ev) {
+              try {
+                var d = (ev && ev.notification && ev.notification.data) || {};
+                if (d.room) {
+                  window._kmPendingPushRoom = String(d.room).toUpperCase();
+                  _kmDrainPendingRoom();
+                } else if (d.url) {
+                  window.open(String(d.url), "_system");
+                }
+              } catch (e) {}
+            });
+          } catch (e) {}
+          // İzin zaten verilmişse genel topic aboneliğini tazele (token
+          // yenilenince abonelik düşebiliyor — her açılışta ucuz bir çağrı).
+          if (this.ok()) this.subscribe(this.TOPIC_ALL);
+        },
+      };
+      window.KM_PUSH = KM_PUSH;
+
+      // Bildirimden gelen oda kodunu işle. Uygulama tam açılmadan tetiklenebildiği
+      // için hazır değilse bekletir, hazır olunca çalışır.
+      function _kmDrainPendingRoom() {
+        var code = window._kmPendingPushRoom;
+        if (!code) return;
+        // ⚠️ `typeof` ile bak: `db` bu noktada TANIMSIZ olabilir ve düz erişim
+        // ReferenceError fırlatır (window.db her zaman set edilmiyor).
+        if (typeof _kmShowRoomResult !== "function" || typeof db === "undefined") {
+          setTimeout(_kmDrainPendingRoom, 600);
+          return;
+        }
+        window._kmPendingPushRoom = null;
+        _kmShowRoomResult(code);
+      }
+
       // Durum + navigasyon çubuğunu temaya senkronla (vc32 StatusBar + NavBar mini-plugin).
       function kmSyncSystemBars() {
         try {
@@ -6325,6 +6432,88 @@
         } catch (e) {}
       }
 
+      // ── PUANLAMA ÖN ELEMESİ (2 AĞU) ──────────────────────────────────────
+      // "Beğendin mi?" → 👍 Play puanlama diyaloğu · 👎 Bize Ulaşın.
+      // ⚠️ NEDEN: Google in-app review, diyaloğun gösterilip gösterilmediğini ya
+      // da kullanıcının puanlayıp puanlamadığını BİZE SÖYLEMEZ. Yani "sadece
+      // memnun olana sor" ancak KENDİ sorumuzla mümkün. Memnuniyetsizi mağazaya
+      // yollamak 1-2 yıldız demek; onu geri bildirim formuna alıyoruz.
+      // Renkler AÇIK yazıldı (var(--ac-bg) DEĞİL) — koyu temadaki toplu
+      // [style*=...] kuralı kutuyu okunmaz yapıyor (km-cta dersi).
+      function _kmAskEnjoy(cb) {
+        try {
+          if (document.getElementById("km-enjoy-modal")) return;
+          var dark = document.documentElement.classList.contains("dark");
+          var cardBg = dark ? "#241b3b" : "#ffffff";
+          var cardFg = dark ? "#ece8f7" : "#2a2440";
+          var subFg = dark ? "#b3a9cc" : "#6b6480";
+          var ghostBg = dark ? "#332a4d" : "#eeecf5";
+          var ghostFg = dark ? "#cfc7e4" : "#666";
+          var ov = document.createElement("div");
+          ov.id = "km-enjoy-modal";
+          ov.style.cssText =
+            "position:fixed;inset:0;z-index:9999;background:rgba(20,12,40,.55);" +
+            "display:flex;align-items:center;justify-content:center;padding:20px";
+          var card = document.createElement("div");
+          card.style.cssText =
+            "background:" + cardBg + ";color:" + cardFg + ";max-width:340px;width:100%;" +
+            "border-radius:20px;padding:22px 20px;text-align:center;" +
+            "box-shadow:0 18px 50px rgba(0,0,0,.35)";
+          card.innerHTML =
+            '<div style="margin-bottom:10px">' + merciSVGChat(52) + "</div>" +
+            '<div style="font-size:17px;font-weight:900;margin-bottom:8px">Karar Mercii işine yaradı mı? 🐙</div>' +
+            '<div style="font-size:13.5px;line-height:1.5;color:' + subFg + '">' +
+            "Kısacık bir cevap yeter — bana çok yardımı olur.</div>";
+          var row = document.createElement("div");
+          row.style.cssText =
+            "display:flex;flex-direction:column;gap:8px;margin-top:16px";
+          function kapat() {
+            if (ov.parentNode) ov.parentNode.removeChild(ov);
+          }
+          var yes = document.createElement("button");
+          yes.style.cssText =
+            "width:100%;background:linear-gradient(135deg,var(--ac),var(--ac-l));color:#fff;border:none;" +
+            "padding:13px;border-radius:13px;font-size:14.5px;font-weight:900;" +
+            'font-family:"Nunito",sans-serif;cursor:pointer';
+          yes.textContent = "👍 Evet, beğendim";
+          yes.onclick = function () {
+            kapat();
+            logEv("rate_prompt_liked");
+            if (cb) cb(true);
+          };
+          var no = document.createElement("button");
+          no.style.cssText =
+            "width:100%;background:" + ghostBg + ";color:" + ghostFg + ";border:none;" +
+            "padding:11px;border-radius:13px;font-size:13.5px;font-weight:800;" +
+            'font-family:"Nunito",sans-serif;cursor:pointer';
+          no.textContent = "👎 Eksikleri var";
+          no.onclick = function () {
+            kapat();
+            logEv("rate_prompt_disliked");
+            if (cb) cb(false);
+            // Mağazaya DEĞİL, bize: geri bildirim formunu aç.
+            try {
+              var m = document.getElementById("modal-bize-ulasin");
+              if (m) {
+                m.classList.add("on");
+                var fv = document.getElementById("feedback-merci-svg");
+                if (fv && !fv.innerHTML) setM("feedback-merci-svg", 40, "chat");
+              }
+            } catch (e) {}
+          };
+          ov.onclick = function (e) {
+            if (e.target === ov) kapat();
+          };
+          row.appendChild(yes);
+          row.appendChild(no);
+          card.appendChild(row);
+          ov.appendChild(card);
+          document.body.appendChild(ov);
+        } catch (e) {
+          if (cb) cb(true); // modal kurulamadıysa eski davranışa dön
+        }
+      }
+
       // In-app review: 3. tamamlanan karardan sonra, en erken 1 dk kullanımda,
       // 30 günde bir kez iste. Google diyaloğu her zaman göstermez — hata değil.
       var _kmAppStart = Date.now();
@@ -6355,7 +6544,15 @@
                 localStorage.setItem("km_review_asked_ts", String(last));
                 return;
               }
-              IR.requestReview().catch(function () {});
+              // ⭐ ÖN ELEME (2 AĞU): Play diyaloğunu HERKESE açmak yerine önce
+              // kendi modalımızla soruyoruz. Sebep: Google in-app review'ın
+              // gösterilip gösterilmediğini ya da kullanıcının puanlayıp
+              // puanlamadığını BİZE SÖYLEMEZ (kotalı, sessizce hiç açılmayabilir)
+              // → "memnun değilim" diyeni mağazaya göndermek 1-2 yıldız riski.
+              // 👍 → Play puanlama diyaloğu · 👎 → Bize Ulaşın (mağazaya GİTMEZ).
+              _kmAskEnjoy(function (liked) {
+                if (liked) IR.requestReview().catch(function () {});
+              });
             } catch (e) {}
           }, 1500); // sonuç ekranı otursun
         } catch (e) {}
@@ -6437,6 +6634,14 @@
           return;
         }
         currentUser = user;
+        // Push dinleyicilerini kur (bildirime tıklama → oda sonucu). İzin
+        // İSTEMEZ; yalnız daha önce verilmişse genel topic aboneliğini tazeler.
+        // ⚠️ Uygulama bildirime tıklanarak AÇILDIYSA olay burada yakalanır —
+        // init geç kalırsa derin bağlantı sessizce kaybolur.
+        try {
+          KM_PUSH.init();
+          _kmDrainPendingRoom();
+        } catch (e) {}
         isPremium = false;
         premiumResolved = false;
         _rcDone = false;
@@ -11367,15 +11572,23 @@ function drawResultCard(opts) {
                   if (p.submitted === true && p.votes && p.votes[w])
                     winnerPoints += +(p.votes[w] || 0);
                 });
-                db.collection("rooms").doc(shareCode).update({
-                  status: "closed",
-                  winner: w,
-                  winnerPoints,
-                  winnerVoters,
-                  tieItems: [],
-                  tbSpin: null,
-                  tbSeed: null,
-                });
+                db.collection("rooms")
+                  .doc(shareCode)
+                  .update({
+                    status: "closed",
+                    winner: w,
+                    winnerPoints,
+                    winnerVoters,
+                    tieItems: [],
+                    tbSpin: null,
+                    tbSeed: null,
+                  })
+                  // Sonuç YAZILDIKTAN sonra bildir: sunucu status==="closed"
+                  // görmezse 409 döndürür (yarış koşulu).
+                  .then(function () {
+                    _kmNotifyRoomResult(shareCode);
+                  })
+                  .catch(function () {});
               })
               .catch(() => {});
           }
@@ -12958,6 +13171,10 @@ function drawResultCard(opts) {
               name,
               options: onlineOpts,
               hostId: deviceId,
+              // ⚠️ PUSH İÇİN ZORUNLU (2 Ağu): sunucudaki /room/notify yetki
+              // kontrolü Firebase UID'ine bakar. `hostId` CİHAZ kimliğidir, UID
+              // değil — bu alan olmadan sunucu bildirimi REDDEDER (fail-closed).
+              hostUid: (currentUser && currentUser.uid) || null,
               maxParticipants: roomMaxP,
               timeLimit: _tl,
               status: "open",
@@ -12982,6 +13199,7 @@ function drawResultCard(opts) {
           currentRound = 1;
           amHost = true;
           tbAnimKey = "";
+          _kmAskPushForRoom(code); // ilk odada izin sor, sonra oda topic'ine abone et
           // KALICILIK: host oturumunu kaydet ki app kapanıp açılınca (veya host
           // kendi ?room= linkine tıklayınca) odasına GERİ dönebilsin (rejoin).
           try {
@@ -13416,6 +13634,8 @@ function drawResultCard(opts) {
               winnerVoters: voterCount,
               tieItems: [],
             });
+            // Sonuç yazıldı → odadakilere push (ateşle-unut).
+            _kmNotifyRoomResult(code);
             // KALICILIK: oda kesin kapandı → host oturum kaydını temizle.
             try {
               localStorage.removeItem("kmHostRoom");
@@ -13744,6 +13964,7 @@ function drawResultCard(opts) {
             doc.data().name || "Oylama";
           snd("ding");
           logEv("room_join");
+          _kmAskPushForRoom(code); // sonuç bildirimi için izin + oda topic'i
         } catch (e) {
           alert("Bağlantı hatası!");
         }
@@ -14111,6 +14332,190 @@ function drawResultCard(opts) {
         });
       }
 
+      // ── BİLDİRİMDEN GELEN SONUÇ GÖRÜNÜMÜ (2 AĞU) ────────────────────────
+      // ⚠️ NEDEN AYRI BİR FONKSİYON: Push tam da oda KAPANINCA gidiyor, ama
+      // mevcut iki giriş yolu da kapalı odayı REDDEDİYOR:
+      //   joinRoom()        → "Bu oylama kapanmış!" (satır ~13725)
+      //   initRoomOverlay() → "Bu oylama kapanmış!" (satır ~14129)
+      // Yani bildirime tıklayan kullanıcı, hiçbir şey yapmazsak SADECE bir uyarı
+      // görürdü. Bu fonksiyon oda overlay'ini salt-okunur "sonuç" kipinde açar:
+      // isim/oylama adımları gizli, yalnız kazanan kartı. Kart HTML'i
+      // listenRoomOverlay'deki kazanan bloğuyla BİREBİR aynı tutuldu.
+      async function _kmShowRoomResult(code) {
+        code = String(code || "").toUpperCase().trim();
+        if (!code) return;
+        try {
+          await ensureRoomAuth();
+          var doc = await db.collection("rooms").doc(code).get();
+          if (!doc.exists) {
+            alert("Oda bulunamadı — silinmiş olabilir.");
+            return;
+          }
+          var data = doc.data() || {};
+          if (data.status !== "closed" || !data.winner) {
+            // Sonuç henüz yoksa normal katılım akışına devret (oylama sürüyor).
+            initRoomOverlay(code);
+            return;
+          }
+          roCode = code;
+          document.getElementById("room-overlay").style.display = "block";
+          document
+            .querySelectorAll(".tabs,.hdr")
+            .forEach(function (el) {
+              el.style.display = "none";
+            });
+          setM("ro-merci", 56);
+          var nm = document.getElementById("ro-room-name");
+          if (nm) nm.textContent = data.name || "Oylama";
+          // Salt-okunur: oylamaya dair her adımı kapat.
+          ["ro-name-step", "ro-vote-step", "ro-waiting", "ro-submit-btn", "ro-tie-msg", "ro-vote-list"].forEach(
+            function (id) {
+              var el = document.getElementById(id);
+              if (el) el.style.display = "none";
+            },
+          );
+          var w = data.winner,
+            pts = data.winnerPoints || 0,
+            cnt = data.winnerVoters || data.voterCount || 0;
+          var rd = document.getElementById("ro-result");
+          rd.style.display = "";
+          rd.innerHTML =
+            '<div class="rcard"><div class="rlbl">Kazanan 🏆</div><div class="rwin shine">' +
+            w +
+            '</div><div class="rsay">' +
+            getSaying(w) +
+            '<br><span style="font-size:12px;font-weight:800;color:var(--ac);margin-top:4px;display:inline-block">' +
+            pts +
+            " puan · " +
+            cnt +
+            " kişi oyladı</span></div></div>";
+          hSuccess();
+          confetti();
+          snd("ding");
+          logEv("push_open_result");
+        } catch (e) {
+          try {
+            alert("Sonuç açılamadı, tekrar dene.");
+          } catch (e2) {}
+        }
+      }
+      window._kmShowRoomResult = _kmShowRoomResult;
+
+      // ── ODA SONUCU BİLDİRİMİNİ TETİKLE (yalnız HOST) ────────────────────
+      // Sunucu Firestore'u PERİYODİK TARAMAZ (17 Tem dersi) → tetiği host'un
+      // client'ı çeker. Ateşle-unut: bildirim gitmezse oylama akışı etkilenmez.
+      function _kmNotifyRoomResult(code) {
+        try {
+          if (!currentUser || !code) return;
+          currentUser
+            .getIdToken()
+            .then(function (t) {
+              return fetch("/room/notify", {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  Authorization: "Bearer " + t,
+                },
+                body: JSON.stringify({ room: code, kind: "result" }),
+              });
+            })
+            .catch(function () {});
+        } catch (e) {}
+      }
+
+      // Odaya katılan/kuran herkes o odanın topic'ine abone olur → sonuç
+      // çıkınca SADECE onlara gider (token koleksiyonu YOK).
+      function _kmJoinRoomTopic(code) {
+        try {
+          if (KM_PUSH.ok()) KM_PUSH.subscribe(KM_PUSH.roomTopic(code));
+        } catch (e) {}
+      }
+
+      // ── BİLDİRİM İZNİ — İLK ODAYA KATILMA ANINDA ────────────────────────
+      // ⚠️ ZAMANLAMA BİLEREK BURASI: Android 13+ POST_NOTIFICATIONS runtime izni
+      // ister ve BAĞLAMSIZ sorulursa çoğunlukla reddedilir. Kullanıcı tam da
+      // odaya katılırken "sonuç çıkınca haber verelim mi?" sorusu anlamlı →
+      // izin oranı çok daha yüksek. (Konum modalı dersi: sohbete KART BASMA,
+      // normal modal kullan; renkleri AÇIK yaz, var(--ac-bg) kullanma — koyu
+      // temada toplu kural kutuyu okunmaz yapıyor.)
+      function _kmAskPushForRoom(code) {
+        try {
+          if (!KM_PUSH.plug()) return; // web / eski sürüm → sessizce geç
+          if (KM_PUSH.ok()) {
+            _kmJoinRoomTopic(code);
+            return;
+          }
+          if (localStorage.getItem("kmPushPrompted")) return; // bir kez sorulur
+          if (document.getElementById("km-push-modal")) return;
+          localStorage.setItem("kmPushPrompted", "1");
+
+          var dark = document.documentElement.classList.contains("dark");
+          var cardBg = dark ? "#241b3b" : "#ffffff";
+          var cardFg = dark ? "#ece8f7" : "#2a2440";
+          var subFg = dark ? "#b3a9cc" : "#6b6480";
+          var ghostBg = dark ? "#332a4d" : "#eeecf5";
+          var ghostFg = dark ? "#cfc7e4" : "#666";
+
+          var ov = document.createElement("div");
+          ov.id = "km-push-modal";
+          ov.style.cssText =
+            "position:fixed;inset:0;z-index:9999;background:rgba(20,12,40,.55);" +
+            "display:flex;align-items:center;justify-content:center;padding:20px";
+          var card = document.createElement("div");
+          card.style.cssText =
+            "background:" + cardBg + ";color:" + cardFg + ";max-width:340px;width:100%;" +
+            "border-radius:20px;padding:22px 20px;text-align:center;" +
+            "box-shadow:0 18px 50px rgba(0,0,0,.35)";
+          card.innerHTML =
+            '<div style="margin-bottom:10px">' + merciSVGChat(52) + "</div>" +
+            '<div style="font-size:17px;font-weight:900;margin-bottom:8px">Sonuç çıkınca haber vereyim mi? 🔔</div>' +
+            '<div style="font-size:13.5px;line-height:1.5;color:' + subFg + '">' +
+            "Herkes oyunu verip kazanan belli olunca telefonuna bildirim gönderirim — " +
+            "ekranı açık tutmana gerek kalmaz.</div>";
+          var row = document.createElement("div");
+          row.style.cssText =
+            "display:flex;flex-direction:column;gap:8px;margin-top:16px";
+          function kapat() {
+            if (ov.parentNode) ov.parentNode.removeChild(ov);
+          }
+          var yes = document.createElement("button");
+          yes.style.cssText =
+            "width:100%;background:linear-gradient(135deg,var(--ac),var(--ac-l));color:#fff;border:none;" +
+            "padding:13px;border-radius:13px;font-size:14.5px;font-weight:900;" +
+            'font-family:"Nunito",sans-serif;cursor:pointer';
+          yes.textContent = "🔔 Haber Ver";
+          yes.onclick = function () {
+            yes.disabled = true;
+            yes.textContent = "⏳ ...";
+            KM_PUSH.ask().then(function (granted) {
+              kapat();
+              if (granted) {
+                _kmJoinRoomTopic(code);
+                logEv("push_permission_granted");
+              } else {
+                logEv("push_permission_denied");
+              }
+            });
+          };
+          var no = document.createElement("button");
+          no.style.cssText =
+            "width:100%;background:" + ghostBg + ";color:" + ghostFg + ";border:none;" +
+            "padding:11px;border-radius:13px;font-size:13.5px;font-weight:800;" +
+            'font-family:"Nunito",sans-serif;cursor:pointer';
+          no.textContent = "Şimdi değil";
+          no.onclick = kapat;
+          // Arka plana dokunmak = "şimdi değil" (konum modalıyla aynı davranış)
+          ov.onclick = function (e) {
+            if (e.target === ov) kapat();
+          };
+          row.appendChild(yes);
+          row.appendChild(no);
+          card.appendChild(row);
+          ov.appendChild(card);
+          document.body.appendChild(ov);
+        } catch (e) {}
+      }
+
       // ── ROOM OVERLAY (URL-based participant join) ──
       async function initRoomOverlay(code) {
         roCode = code.toUpperCase();
@@ -14197,6 +14602,10 @@ function drawResultCard(opts) {
           if (data.timeLimit > 0)
             startTimer(data.timeLimit * 60, "ro-timer", () => roSubmitVote());
           snd("ding");
+          // ⚠️ Bu, ?room= linkiyle gelen misafirin akışı — uygulama-içi
+          // joinRoom'dan AYRI. 29 Tem dersi: oda işi yaparken HER İKİ akışı da
+          // bağla, yoksa misafir bildirimi hiç almaz.
+          _kmAskPushForRoom(roCode);
         } catch (e) {
           alert("Bağlantı hatası!");
         }
