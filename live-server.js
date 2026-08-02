@@ -1268,8 +1268,15 @@ async function ttBudgetOk() {
   if (!_ttLoaded) {
     _ttLoaded = true; // hata olsa bile tekrar tekrar okumaya çalışma
     try {
-      const s = await adminDb.collection("apiUsage").doc("tomtom_" + m).get();
-      if (s.exists) _ttCount = s.data().count || 0;
+      // ⚠️ Firestore `.get()` kendi içinde uzun süre yeniden dener (60sn+) →
+      // ağ/kota sorununda bu await İSTEĞİ ASKIDA BIRAKIR. Bütçe sayacı
+      // "olsa iyi olur" bilgisidir, uğruna kullanıcı bekletilmez: 3sn'de
+      // vazgeç, bellekteki sayaçla devam et.
+      const s = await Promise.race([
+        adminDb.collection("apiUsage").doc("tomtom_" + m).get(),
+        new Promise((_, rej) => setTimeout(() => rej(new Error("timeout")), 3000)),
+      ]);
+      if (s && s.exists) _ttCount = s.data().count || 0;
     } catch (e) {
       console.error("TomTom bütçe okunamadı (bellekten devam):", e.message);
     }
@@ -1725,6 +1732,19 @@ app.post("/nearby", rateLimit, async (req, res) => {
       "https://overpass.private.coffee/api/interpreter",
       "https://maps.mail.ru/osm/tools/overpass/api/interpreter",
     ];
+    // ⚠️⚠️ SÜRE BÜTÇESİ (2 AĞU akşam — CANLIDA ASKIDA KALMA SEBEBİ)
+    // Eski hâlde ÜST SINIR YOKTU ve çarpım felaketti:
+    //   4 mirror × 30sn = 120sn  ×  (1 + 3 yarıçap genişlemesi) = 480sn
+    //   × 3 araç turu (MAX_TOOL_TURN) = 24 DAKİKA → istek hiç dönmüyordu.
+    // Bu bomba TomTom'dan ÖNCE de vardı; ilk yarıçap genelde tuttuğu için hiç
+    // patlamamıştı. TomTom başarısız olup yedeğe düşülünce ilk kez tetiklendi.
+    // ➜ Artık TEK bir mutlak son tarih var: ne kadar mirror/yarıçap denenirse
+    //   denensin /nearby'nin Overpass evresi bunu AŞAMAZ. Süre biterse elde ne
+    //   varsa onunla devam edilir (boş liste de olabilir — dürüst "bulamadım").
+    const OVERPASS_BUDGET_MS = 16000;
+    const _ovDeadline = Date.now() + OVERPASS_BUDGET_MS;
+    const _ovLeft = () => _ovDeadline - Date.now();
+
     async function runOverpass(r, sels) {
       const blocks = sels
         .map(
@@ -1734,9 +1754,19 @@ app.post("/nearby", rateLimit, async (req, res) => {
         .join("");
       const q = `[out:json][timeout:25];(${blocks});out center 60;`;
       for (const endpoint of OVERPASS_ENDPOINTS) {
+        // Bütçe bittiyse kalan mirror'ları HİÇ deneme.
+        if (_ovLeft() <= 1000) {
+          console.warn("Overpass süre bütçesi doldu → kalan mirror'lar atlandı");
+          return [];
+        }
         try {
           const ctrl = new AbortController();
-          const timer = setTimeout(() => ctrl.abort(), 30000);
+          // Tek istek 30sn değil: kalan bütçe ile 7sn'nin KÜÇÜĞÜ. Tek yavaş
+          // mirror tüm isteği yutamasın.
+          const timer = setTimeout(
+            () => ctrl.abort(),
+            Math.max(1000, Math.min(7000, _ovLeft())),
+          );
           let ovr;
           try {
             ovr = await fetch(endpoint, {
@@ -1781,6 +1811,13 @@ app.post("/nearby", rateLimit, async (req, res) => {
       let out = await runOverpass(radius, sels);
       const steps = [5000, 12000, 25000];
       for (let i = 0; i < steps.length && !out.length; i++) {
+        // Yarıçap genişletmesi de bütçeye tabi: her adım yeni bir tam mirror
+        // turu demek. Bütçe bitmişse "biraz daha deneyelim" YAPMA — kullanıcı
+        // dakikalarca bekleyeceğine dürüst "bulamadım" alsın.
+        if (_ovLeft() <= 2000) {
+          console.warn("Overpass bütçesi doldu → yarıçap genişletme durduruldu");
+          break;
+        }
         if (steps[i] > radius) out = await runOverpass(steps[i], sels);
       }
       return out;
