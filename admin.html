@@ -461,9 +461,36 @@
           .catch(function (e) { alert("Hata: " + e.message); });
       };
 
+      // Listelenen zamanlanmış kayıtların ham verisi (toggle sunucuya geri gönderiyor).
+      var _schedCache = {};
+
+      // ⚠️ HATA DÜZELTMESİ (2 Ağu): Eskiden bu fonksiyon SADECE `active` alanını
+      // çeviriyordu. Sonuç: bir bildirimi durdurup GÜNLER SONRA başlatınca `nextAt`
+      // geçmişte kalmış oluyordu → zamanlayıcının `nextAt <= now` sorgusu onu
+      // "vakti gelmiş" sayıp O DAKİKA gönderiyordu. Yani "Başlat" tuşu beklenmedik
+      // bir anda tüm kullanıcılara bildirim atabiliyordu.
+      // ÇÖZÜM: Başlatma da sunucu ucundan geçiyor; sunucu `nextAt`i BİR SONRAKİ
+      // uygun vakte YENİDEN HESAPLIYOR. Durdurma zararsız olduğu için doğrudan yazılır.
       window.pushToggle = function (id, active) {
-        db.collection("pushSchedule").doc(id).set({ active: !active }, { merge: true })
-          .then(loadPush)
+        if (active) {
+          // Durduruyoruz: nextAt'e dokunmaya gerek yok (sorguya zaten girmez).
+          db.collection("pushSchedule").doc(id).set({ active: false }, { merge: true })
+            .then(loadPush)
+            .catch(function (e) { alert("Hata: " + e.message); });
+          return;
+        }
+        var s = _schedCache[id];
+        if (!s) { alert("Kayıt okunamadı, sayfayı yenile."); return; }
+        _post("/admin/push/schedule", {
+          id: id,
+          title: s.title, body: s.body, url: s.url || "", topic: s.topic,
+          mode: s.mode, hour: s.hour, minute: s.minute, weekday: s.weekday,
+          active: true,
+        })
+          .then(function (j) {
+            alert("Başlatıldı ✅\nİlk gönderim: " + new Date(j.nextAt).toLocaleString("tr-TR"));
+            loadPush();
+          })
           .catch(function (e) { alert("Hata: " + e.message); });
       };
       window.pushDelete = function (id) {
@@ -504,8 +531,10 @@
         db.collection("pushSchedule").limit(50).get().then(function (snap) {
           var out = '<div class="card"><h3 style="margin:0 0 10px">⏰ Zamanlanmışlar (' + snap.size + ")</h3>";
           if (!snap.size) out += '<div class="empty">Henüz zamanlanmış bildirim yok.</div>';
+          _schedCache = {};
           snap.forEach(function (d) {
             var x = d.data() || {};
+            _schedCache[d.id] = x; // pushToggle sunucuya geri göndermek için kullanır
             var when =
               x.mode === "weekly" ? days[x.weekday || 0] + " " : x.mode === "once" ? "Tek sefer " : "Her gün ";
             when += String(x.hour || 0).padStart(2, "0") + ":" + String(x.minute || 0).padStart(2, "0");
