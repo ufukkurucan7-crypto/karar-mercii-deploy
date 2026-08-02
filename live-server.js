@@ -2322,7 +2322,11 @@ async function sendPush(o) {
     android: {
       priority: "high",
       notification: {
-        icon: "ic_stat_icon",
+        // ⚠️ Bu ad android/app/src/main/res/drawable/ic_stat_notify.xml ile
+        // BİREBİR eşleşmeli. Önce "ic_stat_icon" yazmıştım — öyle bir kaynak
+        // YOKTU; Android bilinmeyen ikon adında bildirimi ya hiç göstermez ya
+        // da beyaz kare basar. Tek renk silüet olması da şart (API 21+ maskeler).
+        icon: "ic_stat_notify",
         color: "#7c3aed",
         // Tıklama Capacitor'ın varsayılan intent'ine gider; data alanları
         // pushNotificationActionPerformed olayında client'a ulaşır.
