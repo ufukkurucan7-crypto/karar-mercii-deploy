@@ -1134,6 +1134,266 @@ const KIND_TR = {
   cinema: "sinema",
 };
 
+// ══════════════════════════════════════════════════════════════════════════
+// ── MEKAN SAĞLAYICI: TOMTOM (2 AĞU 2026) ─────────────────────────────────
+// ══════════════════════════════════════════════════════════════════════════
+// NEDEN: OSM'de Türk esnafı yok. ÖLÇÜLDÜ (Eminönü 3km, 10 esnaf sorgusu):
+//   OSM 5/10 — üstelik isabetlerin yarısı YANLIŞ EŞLEŞME ("ıslak burger"→
+//   McDonald's, "çiğ köfte"→Tarihi Sultanahmet KÖFTEcisi). TomTom 10/10.
+//   kokoreç: OSM 1 tane 2855m ↔ TomTom 19 tane, en yakını 757m ve AÇIK.
+//   midye dolma / tantuni / kumpir / boza / kelle söğüş → OSM'de HEPSİ 0.
+// ⚠️ Overpass serbest metin ARAYAMIYOR: nwr["name"~"kokoreç"] indekssiz olduğu
+//   için 3km'de bile 71 saniyede TIMEOUT. Yani OSM hattı sorguyu aramıyor,
+//   genel kovadan isim tutturuyor. Kelime tablosu büyütmek bunu ÇÖZMEZ.
+//
+// NEDEN GOOGLE DEĞİL (ekonomi kalitenin önüne geçti):
+//   Google Text Search Pro aşımda $32/1000. Ödüllü reklam geliri ≈ $0,003
+//   (TR eCPM ~$3). AD_MSG_BONUS=4 → bir reklamın açtığı 4 arama Google'da
+//   $0,128 = 43 KAT ZARAR. TomTom ~$0,50-0,75/1000 → aşımda bile kâr kalır.
+//   Ayrıca Google'ın openNow'ı FİLTRE → sonuç saate bağlanır → önbellek ölür.
+//   TomTom çalışma saatini VERİ olarak verir (ek ücretsiz, %67 kapsama) →
+//   liste 30 gün önbelleğe alınır, açık/kapalı hesabı BURADA bedavaya yapılır.
+//
+// ⚠️ ACİL GERİ DÖNÜŞ: Replit secrets → KM_PLACES=osm → anında OSM'e döner.
+//   DEPLOY GEREKMEZ, yeniden başlatma yeter. (KM_TOOL_USE ile aynı desen.)
+const KM_PLACES = String(process.env.KM_PLACES || "osm").toLowerCase();
+const TOMTOM_KEY = process.env.TOMTOM_KEY || "";
+// Sert aylık tavan. Dolunca sessizce OSM'e düşülür → fatura YAPISAL olarak $0,
+// uygulama bozulmaz, sadece eski kaliteye iner. Bedava kota 5.000, pay bırakıldı.
+const PLACES_MONTHLY_CAP = parseInt(process.env.KM_PLACES_CAP || "4500", 10);
+
+// Türkçe katlama: "Kokorec" ile "kokoreç" eşleşsin diye. Boşluksuz varyant da
+// üretilir ("Cigkofte" ↔ "çiğ köfte").
+function trFold(s) {
+  return (
+    String(s || "")
+      // ⚠️ İ (büyük noktalı I) toLowerCase()'ten ÖNCE çevrilmeli: JS'te
+      // "İ".toLowerCase() → "i" + U+0307 (ayrı birleşik nokta) üretir, yani
+      // toLowerCase sonrası /İ/ değişimi ÖLÜ KOD olur ve "İnci Kokoreç" gibi
+      // isimler eşleşmez. (test-tomtom.js bu tuzağı yakaladı — geri alma.)
+      .replace(/İ/g, "i")
+      .toLowerCase()
+      .replace(/ç/g, "c").replace(/ğ/g, "g").replace(/ı/g, "i")
+      .replace(/ö/g, "o").replace(/ş/g, "s").replace(/ü/g, "u")
+      // Kalan birleşik aksan işaretlerini (U+0300–U+036F) temizle: başka
+      // kaynaklardan gelen ayrışık (NFD) yazımlar da aynı forma insin.
+      .normalize("NFD")
+      .replace(/[̀-ͯ]/g, "")
+  );
+}
+
+// TomTom sınıflandırma kodu → Türkçe kategori. Listede OLMAYAN kod = ELE.
+// ⚠️ HOTEL_MOTEL bilerek YOK: "boza" aramasında 1. sonuç "Grand Bona Sera
+// Hotel" geldi (skor 0.708). Otel/kuyumcu/güzellik salonu asla mekan kartı olamaz.
+const TT_KIND_TR = {
+  RESTAURANT: "restoran",
+  RESTAURANT_AREA: "yemek alanı",
+  CAFE_PUB: "kafe",
+  NIGHTLIFE: "gece kulübü",
+  PARK_RECREATION_AREA: "park",
+  MOVIE_THEATER: "sinema",
+  LEISURE_CENTER: "eğlence merkezi",
+};
+// SHOP genel bir koddur (kuyumcu da SHOP, fırın da). Yalnız kategorilerinde
+// yiyecek geçen dükkanlar kabul edilir: "Şirin Waffle & Kumpir" (food shops) ✓,
+// "Dilek & Bora Gümüş Altın Alyans" (jewelry) ✗.
+const TT_FOOD_SHOP = /food|bakery|pastry|ice cream|confection|butcher|patisserie|market/i;
+
+// ── ÖNBELLEK: (500m ızgara × normalize sorgu) ────────────────────────────
+// ⭐ MALİYETİN KULLANICI SAYISIYLA BÜYÜMEMESİNİN SEBEBİ BU. Anahtar kullanıcı
+// DEĞİL, konum+sorgu → aynı semtten aynı soru ayda BİR kez ödenir. 5.000
+// kullanıcı birkaç yüz ızgaraya yığılır; kullanıcı 10 katına çıkınca maliyet
+// 10 kat DEĞİL ~2-3 kat artıp doygunlaşır (alan × kelime dağarcığıyla sınırlı).
+const _ttCache = new Map();
+const TT_CACHE_TTL = 30 * 24 * 3600 * 1000; // 30 gün
+const TT_CACHE_MAX = 3000; // bellek tavanı (Replit konteyneri küçük)
+function ttCacheKey(lat, lng, q) {
+  const dLat = 500 / 111320; // ~500m
+  const dLng = 500 / (111320 * Math.cos((lat * Math.PI) / 180) || 1);
+  return `${Math.round(lat / dLat)}_${Math.round(lng / dLng)}_${trFold(q).replace(/\s+/g, " ").trim()}`;
+}
+
+// ── AYLIK BÜTÇE SAYACI ───────────────────────────────────────────────────
+// ⚠️ [[firestore-kota-kacagi]] DERSİ: koleksiyon TARAMASI YOK. Tek doküman,
+// açılışta BİR kez okunur, sonra bellekte sayılır; yazma da tek dokümana artış.
+let _ttMonth = "";
+let _ttCount = 0;
+let _ttLoaded = false;
+function ttMonthId() {
+  return new Date().toISOString().slice(0, 7); // YYYY-MM
+}
+async function ttBudgetOk() {
+  const m = ttMonthId();
+  if (m !== _ttMonth) {
+    _ttMonth = m;
+    _ttCount = 0;
+    _ttLoaded = false;
+  }
+  if (!_ttLoaded) {
+    _ttLoaded = true; // hata olsa bile tekrar tekrar okumaya çalışma
+    try {
+      const s = await adminDb.collection("apiUsage").doc("tomtom_" + m).get();
+      if (s.exists) _ttCount = s.data().count || 0;
+    } catch (e) {
+      console.error("TomTom bütçe okunamadı (bellekten devam):", e.message);
+    }
+  }
+  return _ttCount < PLACES_MONTHLY_CAP;
+}
+function ttBudgetSpend() {
+  _ttCount++;
+  // Ateşle-unut: sayaç yazımı arama yanıtını BEKLETMEMELİ.
+  adminDb
+    .collection("apiUsage")
+    .doc("tomtom_" + _ttMonth)
+    .set(
+      { count: FieldValue.increment(1), month: _ttMonth, updatedAt: FieldValue.serverTimestamp() },
+      { merge: true },
+    )
+    .catch((e) => console.error("TomTom bütçe yazılamadı:", e.message));
+}
+
+// TomTom timeRanges → "şu an açık mı". Saat verisi ek ücretsiz geldiği için
+// bu hesap BİZDE yapılır; sonuç saate bağlı olmadığından önbellek bozulmaz.
+// (Bu yüzden dönen kayıtta `oh` ham aralık olarak saklanır, `open` DEĞİL.)
+function ttOpenNow(oh) {
+  if (!oh || !Array.isArray(oh.timeRanges)) return null;
+  const now = Date.now();
+  for (const tr of oh.timeRanges) {
+    const s = tr && tr.startTime,
+      e = tr && tr.endTime;
+    if (!s || !e || !s.date || !e.date) continue;
+    const p = (x) =>
+      new Date(
+        `${x.date}T${String(x.hour ?? 0).padStart(2, "0")}:${String(x.minute ?? 0).padStart(2, "0")}:00`,
+      ).getTime();
+    const sd = p(s),
+      ed = p(e);
+    if (isFinite(sd) && isFinite(ed) && now >= sd && now <= ed) return true;
+  }
+  return false;
+}
+
+// ── ALAKA FİLTRESİ — "boza → kuyumcu" TUZAĞINI KAPATIR ───────────────────
+// ⚠️ TomTom BULANIK (fuzzy) arar: gerçek eşleşme yoksa benzer sesli alakasız
+// yer döndürür ve bunu YÜKSEK SKORLA yapar. ÖLÇÜM: "boza" → Grand Bona Sera
+// Hotel 0.708 · Dilek & Bora Gümüş (KUYUMCU) 0.453 · Madame Roza Pizza 0.357.
+// Aynı ölçümde GERÇEK eşleşmeler: kumpir 0.693–0.965, kokoreç 0.893–0.955.
+// ➜ SKOR EŞİĞİ TEK BAŞINA İŞE YARAMAZ (0.708 çöp > 0.693 gerçek — ÇAKIŞIYOR).
+// ➜ Asıl ayırt edici: sorgu kelimesi mekan İSMİNDE geçiyor mu. "boza" hiçbir
+//   ismin içinde yok ("Bona","Bora","Roza") → hepsi elenir. Bunu değiştirme.
+function ttNameMatches(name, words) {
+  const n = trFold(name);
+  const nz = n.replace(/\s+/g, "");
+  return words.filter((w) => n.includes(w) || nz.includes(w.replace(/\s+/g, "")));
+}
+
+/**
+ * TomTom POI araması. Başarısızlıkta/kotada `null` döner → çağıran OSM'e düşer.
+ * Dönen mekanlar /nearby'nin OSM çıktısıyla AYNI şekilde: {name, kind, phone, lat, lng, dist}
+ * @returns {Promise<{places:Array, broadened:boolean, cached:boolean}|null>}
+ */
+async function tomtomSearch({ lat, lng, query, typeKey }) {
+  if (!TOMTOM_KEY) return null;
+  const q = String(query || "").trim();
+  if (q.length < 2) return null; // serbest metin yoksa TomTom'un anlamı yok
+
+  const ck = ttCacheKey(lat, lng, q);
+  const hit = _ttCache.get(ck);
+  if (hit && Date.now() - hit.at < TT_CACHE_TTL) {
+    // ⚠️ Açık/kapalı ÖNBELLEKTEN OKUNMAZ, her seferinde YENİDEN hesaplanır —
+    // yoksa sabah önbelleğe girmiş "AÇIK" akşam yanlış gösterilir.
+    return {
+      places: hit.places.map((p) => ({ ...p, open: ttOpenNow(p.oh) })),
+      broadened: hit.broadened,
+      cached: true,
+    };
+  }
+
+  if (!(await ttBudgetOk())) {
+    console.warn(
+      `TomTom aylık tavan doldu (${_ttCount}/${PLACES_MONTHLY_CAP}) → OSM'e düşülüyor`,
+    );
+    return null;
+  }
+
+  const url =
+    `https://api.tomtom.com/search/2/poiSearch/${encodeURIComponent(q)}.json` +
+    `?key=${encodeURIComponent(TOMTOM_KEY)}&lat=${lat}&lon=${lng}` +
+    `&radius=6000&limit=40&countrySet=TR&language=tr-TR&openingHours=nextSevenDays`;
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 8000);
+  let j;
+  try {
+    const r = await fetch(url, { signal: ctrl.signal });
+    if (!r.ok) {
+      console.error("TomTom HTTP", r.status, (await r.text()).slice(0, 200));
+      return null;
+    }
+    j = await r.json();
+  } catch (e) {
+    console.error("TomTom hata:", e.name === "AbortError" ? "timeout" : e.message);
+    return null;
+  } finally {
+    clearTimeout(timer);
+  }
+  ttBudgetSpend();
+
+  const words = trFold(q).split(/\s+/).filter((w) => w.length >= 3);
+  let anyFullMatch = false;
+  const places = (j.results || [])
+    .map((r) => {
+      const poi = r.poi || {};
+      const name = String(poi.name || "").trim();
+      if (!name) return null;
+      const code = (r.poi && r.poi.classifications && r.poi.classifications[0]
+        ? r.poi.classifications[0].code
+        : "") || "";
+      const cats = (poi.categories || []).join(" ");
+      // Kategori sağlaması: otel/kuyumcu/kuaför ELE; SHOP yalnız yiyecekse geçer.
+      let kind = TT_KIND_TR[code];
+      if (!kind && code === "SHOP" && TT_FOOD_SHOP.test(cats)) kind = "dükkan";
+      if (!kind) return null;
+      // İsim alaka sağlaması (asıl filtre — yukarıdaki bloğa bak).
+      if (words.length) {
+        const m = ttNameMatches(name, words);
+        if (!m.length) return null;
+        if (m.length === words.length) anyFullMatch = true;
+      }
+      const pos = r.position || {};
+      if (!isFinite(pos.lat) || !isFinite(pos.lon)) return null;
+      return {
+        name: name.slice(0, 60),
+        kind,
+        phone: String(poi.phone || "").slice(0, 30),
+        lat: pos.lat,
+        lng: pos.lon,
+        dist: Math.round(
+          isFinite(r.dist) ? r.dist : haversine(lat, lng, pos.lat, pos.lon),
+        ),
+        oh: poi.openingHours || null, // ham aralık — `open` çağrı anında hesaplanır
+      };
+    })
+    .filter(Boolean);
+
+  // Tam eşleşme yoksa (ör. "ıslak burger" → sadece "burger" tuttu) bu bir
+  // GENİŞLETMEDİR; /nearby bu bayrakla kullanıcıya dürüstçe "tam onu bulamadım,
+  // en yakın alternatifler" der. Sessizce doğru sonuç gibi sunma.
+  const broadened = words.length > 1 && !anyFullMatch;
+
+  if (_ttCache.size >= TT_CACHE_MAX) {
+    // en eski girdiyi at (Map ekleme sırasını korur)
+    _ttCache.delete(_ttCache.keys().next().value);
+  }
+  _ttCache.set(ck, { at: Date.now(), places, broadened });
+
+  return {
+    places: places.map((p) => ({ ...p, open: ttOpenNow(p.oh) })),
+    broadened,
+    cached: false,
+  };
+}
+
 // Yazıyla verilen semt/şehri koordinata çevir (Nominatim forward-geocode).
 // Otomatik konum yanlışsa kullanıcının metinle verdiği yere ÖNCELİK verilir.
 // Türkiye'ye ve (varsa) mevcut şehre bias'lanır; UA zorunlu (Nominatim politikası).
@@ -1508,14 +1768,59 @@ app.post("/nearby", rateLimit, async (req, res) => {
     let els = [];
     let broadened = false;
     let bucketTried = false;
+
+    // ── SAĞLAYICI: TOMTOM (varsa Overpass tier'ları HİÇ çalışmaz) ──────────
+    // ⭐ MALİYET KARARI: TomTom SADECE spesifik serbest metin sorgusunda çağrılır.
+    // "ne yesek / karnım aç" gibi GENEL istekler bedava OSM kovasında kalır —
+    // orada OSM zaten yeterli (en yakın restoranları listelemek etiket işi).
+    // Ücretli çağrı yalnız OSM'in çuvalladığı yerde ("kokoreç") harcanır.
+    // `searchTerm`: modelin ürettiği temiz terim (araç `arama` alanı) → yoksa
+    // ham kullanıcı metni. Model ipucu (hintIsim) daha temiz olduğunda o tercih
+    // edilir; ikisi de yoksa TomTom atlanır ve akış OSM'e düşer.
+    let ttRes = null;
+    let ttTerm = ""; // dışarıda: aşağıdaki `matched` ve dürüstlük mesajı kullanıyor
+    if (KM_PLACES === "tomtom" && ["food", "cafe", "dessert"].includes(typeKey)) {
+      const searchTerm = (hintIsim || query || "").replace(/\|/g, " ").trim();
+      ttTerm = searchTerm;
+      ttRes = await tomtomSearch({ lat, lng, query: searchTerm, typeKey });
+      if (ttRes) {
+        // ⚠️ REGRESYON KORUMASI: OSM boru hattı atlandığı için "başka öner"
+        // akışının exclude süzgeci, isim tekilleştirmesi ve 12'lik kırpma
+        // BURADA elle uygulanmalı — yoksa kullanıcı "başka öner" deyince
+        // aynı mekanlar geri gelir (canlıda sessiz bir gerileme olurdu).
+        const seenTt = new Set();
+        ttRes.places = ttRes.places
+          .filter((p) => {
+            const k = String(p.name).toLowerCase().trim();
+            if (excludeSet.size && excludeSet.has(k)) return false;
+            if (seenTt.has(k)) return false;
+            seenTt.add(k);
+            return true;
+          })
+          .sort((a, b) => a.dist - b.dist)
+          .slice(0, 12)
+          // `oh` ham TomTom çalışma-saati bloğu: yalnız sunucuda `open` hesabı
+          // için gerekli, client'a/modele GÖNDERİLMEZ (gereksiz yük + karmaşa).
+          .map(({ oh, ...p }) => p);
+      }
+      if (ttRes && !ttRes.places.length) ttRes = null; // boş döndüyse OSM'e şans ver
+      if (ttRes) {
+        broadened = ttRes.broadened;
+        console.log(
+          `TomTom "${searchTerm}" → ${ttRes.places.length} mekan` +
+            (ttRes.cached ? " (ÖNBELLEK)" : ` (ücretli, ay: ${_ttCount}/${PLACES_MONTHLY_CAP})`),
+        );
+      }
+    }
+
     // Tier A: cuisine tag daraltması (yeme-içme amenity'leri içinde).
     // Oturmalı/içkili istekte SADECE restaurant (fast_food'lu zincir cuisine=pizza
     // eşleşmesi = Domino's → şarap yok → dışarıda bırak).
     // rule.sel = cuisine tag'iyle ifade edilemeyen türler için HAM selektör dizisi
     // (ör. simit/fırın → shop=bakery). Varsa cuisine sorgusunun YERİNE geçer.
-    if (rule && rule.sel && rule.sel.length) {
+    if (!ttRes && rule && rule.sel && rule.sel.length) {
       els = await runExpanding(rule.sel);
-    } else if (rule && rule.cuisine) {
+    } else if (!ttRes && rule && rule.cuisine) {
       const cuisineAmenity = wantsSitdown
         ? "restaurant"
         : "restaurant|fast_food|cafe|ice_cream";
@@ -1524,7 +1829,7 @@ app.post("/nearby", rateLimit, async (req, res) => {
       ]);
     }
     // Tier B: cuisine tag'i yoksa, bucket sonuçlarını mekan İSMİNE göre süz
-    if (rule && !els.length) {
+    if (!ttRes && rule && !els.length) {
       const bucketEls = await runExpanding(bucketSelectors);
       bucketTried = true;
       const named = bucketEls.filter(
@@ -1540,7 +1845,7 @@ app.post("/nearby", rateLimit, async (req, res) => {
       }
     }
     // Bucket varsayılanı (spesifik istek yok ya da yukarıda denenmedi)
-    if (!els.length && !bucketTried) {
+    if (!ttRes && !els.length && !bucketTried) {
       els = await runExpanding(bucketSelectors);
     }
     // Kartta/etikette gösterilecek Türkçe tür adı: spesifik ve gerçekten bulunduysa
@@ -1571,7 +1876,11 @@ app.post("/nearby", rateLimit, async (req, res) => {
     // riskli kelimeler DIŞARIDA — yalnız açıkça bar-olmayan ibareler.
     const BAR_NAME_EXCLUDE =
       /(spor kul[üu]b|tenis|dernek|cemiyet|vak[ıi]f|spor merkez|fitness|spor salon|kültür merkez|hastane|üniversite|\bokulu\b)/i;
-    const places = els
+    // TomTom sonucu geldiyse OSM boru hattı (tag→Türkçe çeviri, blocklist, exclude)
+    // ATLANIR: TomTom tarafı kendi kategori/alaka süzgecini zaten uyguladı.
+    const places = ttRes
+      ? ttRes.places
+      : els
       .map((e) => {
         const plat = e.lat != null ? e.lat : e.center && e.center.lat;
         const plng = e.lon != null ? e.lon : e.center && e.center.lon;
@@ -1656,7 +1965,12 @@ app.post("/nearby", rateLimit, async (req, res) => {
     // Haiku çağrısı yapmak hem gereksiz maliyet hem "iki ayrı ses" demek olurdu.
     let merciComment = "";
     if (skipComment) {
-      return res.json({ places, isPro, broadened, matched: rule ? rule.label : "" });
+      return res.json({
+        places,
+        isPro,
+        broadened,
+        matched: ttRes ? ttTerm : rule ? rule.label : "",
+      });
     }
     const wantsDifferent = excludeSet.size > 0; // "başka öner / beğenmedim" akışı
     const typeLabel =
@@ -1672,12 +1986,25 @@ app.post("/nearby", rateLimit, async (req, res) => {
           .slice(0, 3)
           .map((p) => p.name)
           .join(", ");
+        // ⚠️ `rule` TomTom yolunda NULL olabilir (tablo hiç çalışmadı) → etiketi
+        // aranan terimden al, yoksa jenerik bucket adına düş. rule.label'a doğrudan
+        // dokunmak TomTom açıkken çökme sebebiydi.
+        const wantedLabel = (ttRes ? ttTerm : rule && rule.label) || typeLabel;
         merciComment =
-          `Tam olarak "${rule.label}" çıkmadı buralarda 🐙 Ama en yakın ${typeLabel} yerleri şunlar: ${near}. Beğenirsen aşağıdan bak 👇`;
+          `Tam olarak "${wantedLabel}" çıkmadı buralarda 🐙 Ama en yakın ${typeLabel} yerleri şunlar: ${near}. Beğenirsen aşağıdan bak 👇`;
       } else if (places.length) {
+        // AÇIK/KAPALI bilgisi TomTom'dan ek ücretsiz geliyor (kapsama ~%67).
+        // Kullanıcının asıl şikayeti "açık mekanlar var ama önermedi" idi →
+        // modele veriyoruz ki açık olanı öne çıkarabilsin. Bilgi yoksa hiçbir
+        // şey yazma (null) — "kapalı" diye YANLIŞ varsayma.
         const top = places
           .slice(0, 6)
-          .map((p) => `${p.name} (${p.dist}m)`)
+          .map(
+            (p) =>
+              `${p.name} (${p.dist}m` +
+              (p.open === true ? ", ŞU AN AÇIK" : p.open === false ? ", şu an kapalı" : "") +
+              ")",
+          )
           .join(", ");
         const cr = await anthropic.messages.create(
           {
@@ -1708,8 +2035,8 @@ app.post("/nearby", rateLimit, async (req, res) => {
                   ? "Kullanıcı öncekileri beğenmedi, bunlar FARKLI/yeni yerler — 'işte başka seçenekler' tonuyla sun.\n"
                   : "") +
                 (query ? 'Kullanıcının ASIL isteği: "' + query + '"\n' : "") +
-                "Arama türü: " + (rule ? rule.label : typeLabel) +
-                (rule
+                "Arama türü: " + (ttRes ? ttTerm : rule ? rule.label : typeLabel) +
+                (ttRes || rule
                   ? ""
                   : "\n(NOT: Bu istek için özel bir tür daraltması YAPILAMADI — aşağıdaki liste " +
                     "sadece EN YAKIN yeme-içme yerleridir, istenen şeye göre filtrelenmemiştir. " +
