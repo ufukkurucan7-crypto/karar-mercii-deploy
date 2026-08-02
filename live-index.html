@@ -6396,6 +6396,23 @@
       };
       window.KM_PUSH = KM_PUSH;
 
+      // ⚠️ SOĞUK AÇILIŞ YARIŞI: Uygulama KAPALIYKEN bildirime dokunulursa
+      // notificationActionPerformed olayı, auth çözülmeden ÖNCE gelebilir.
+      // Dinleyici yalnız onAuthStateChanged içinde kurulsaydı o olay kaybolur,
+      // kullanıcı boş ana ekrana düşerdi. Bu yüzden mümkün olan EN ERKEN anda da
+      // kuruyoruz. init() `_inited` ile korumalı → iki kez çağrılması zararsız.
+      if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", function () {
+          try {
+            KM_PUSH.init();
+          } catch (e) {}
+        });
+      } else {
+        try {
+          KM_PUSH.init();
+        } catch (e) {}
+      }
+
       // Bildirimden gelen oda kodunu işle. Uygulama tam açılmadan tetiklenebildiği
       // için hazır değilse bekletir, hazır olunca çalışır.
       function _kmDrainPendingRoom() {
