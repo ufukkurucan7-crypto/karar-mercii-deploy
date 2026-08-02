@@ -187,7 +187,9 @@ const KM_INTERNAL_TOKEN = require("crypto").randomBytes(24).toString("hex");
 // ETMİYORUZ — auth, günlük kota, exclude akışı, cuisine daraltması, çiğköfte filtresi
 // gibi 450 satırlık birikmiş mantık olduğu gibi korunuyor; sadece skipComment ile
 // ikinci Haiku yorumu atlanıyor (nihai cevabı asıl model yazacak).
-async function callNearbyInternal({ lat, lng, type, query, auth }) {
+async function callNearbyInternal({
+  lat, lng, type, query, auth, osmCuisine, osmShop, osmIsim,
+}) {
   const r = await fetch(`http://127.0.0.1:${PORT}/nearby`, {
     method: "POST",
     headers: {
@@ -195,7 +197,11 @@ async function callNearbyInternal({ lat, lng, type, query, auth }) {
       Authorization: auth || "",
       "x-km-internal": KM_INTERNAL_TOKEN,
     },
-    body: JSON.stringify({ lat, lng, type, query, skipComment: true }),
+    body: JSON.stringify({
+      lat, lng, type, query, skipComment: true,
+      // Modelin ürettiği OSM ipuçları — /nearby tarafında SANITIZE edilir.
+      osmCuisine, osmShop, osmIsim,
+    }),
   });
   const body = await r.json().catch(() => ({}));
   if (!r.ok) {
@@ -233,6 +239,37 @@ const MEKAN_ARA_TOOL = {
           "Kullanıcının istediği ŞEY, kendi kelimeleriyle ve Türkçe: 'simit', 'kebap', " +
           "'çiğ köfte', 'suşi', 'rakı balık', 'kahvaltı'. Kullanıcı belirli bir şey " +
           "söylemediyse boş bırak. Bu metin arama daraltmasında kullanılır.",
+      },
+      // ── OSM İPUÇLARI: KELİME TABLOSUNU BİTİREN PARÇA (2 AĞU) ──
+      // Sunucudaki CUISINE_RULES elle yazılmış ~20 satırlık bir tabloydu; listede
+      // olmayan her kavram ("kokoreç", "kumpir", "midye", "tantuni"...) jenerik
+      // "en yakın yemek yeri" sepetine düşüyordu. Sonsuz kavram / sonlu tablo.
+      // ÇÖZÜM: etiketleri MODEL üretsin — Türkçe yemek kültürünü zaten biliyor
+      // (kokoreç=sakatat, kumpir=patates, midye=deniz ürünü). Bu alanlar dolu
+      // gelirse sunucu tabloyu ATLAYIP doğrudan bunlarla arar; boşsa eski tablo
+      // yedek olarak devreye girer. Ek API çağrısı YOK — aynı çağrının parçası.
+      osm_cuisine: {
+        type: "string",
+        description:
+          "OpenStreetMap `cuisine` etiketi için regex, | ile ayrılmış İNGİLİZCE/OSM " +
+          "değerleri. Örnek: kokoreç → 'kokorec|offal|street_food', kumpir → " +
+          "'potato|baked_potato', midye → 'seafood|mussel', tantuni → 'turkish|wrap'. " +
+          "Emin değilsen boş bırak.",
+      },
+      osm_shop: {
+        type: "string",
+        description:
+          "Mekan bir DÜKKÂN türüyse OSM `shop` değerleri, | ile ayrılmış. Örnek: " +
+          "simit/börek → 'bakery|pastry', kasap → 'butcher', şarküteri → 'deli'. " +
+          "Restoran/kafe gibi amenity türleri için boş bırak.",
+      },
+      osm_isim: {
+        type: "string",
+        description:
+          "Mekan İSMİNDE geçmesi muhtemel kelimeler, | ile ayrılmış TÜRKÇE regex. " +
+          "OSM'de etiket eksikse isimden yakalamak için. Örnek: kokoreç → " +
+          "'kokoreç|kokorec', kumpir → 'kumpir|patates', tantuni → 'tantuni'. " +
+          "Türkçe karakterlerin hem 'ç/c' hem 'ı/i' varyantını yaz.",
       },
     },
     required: ["tur"],
@@ -719,63 +756,95 @@ KIRMIZI ÇİZGİLER:
       timeout: ANTHROPIC_TIMEOUT_MAIN, // yanıt gelmezse asılı kalma → 504 (aşağıda)
     });
 
-    // ── ARAÇ TURU ── model mekan_ara'yı çağırdıysa: aramayı yap, SONUCU MODELE
-    // GERİ VER, ikinci turda nihai cevabı yazsın. Bu ikinci tur, /nearby'nin eski
-    // ayrı yorum çağrısının yerine geçer (skipComment) → toplam çağrı sayısı aynı.
+    // ── ARAÇ DÖNGÜSÜ ──────────────────────────────────────────────────────
+    // ⚠️ 2 AĞU — DÜZELTİLEN BUG ("kokoreç" canlı hatası): burası eskiden TEK
+    // SEFERLİK bir `if` idi. Model ilk aramanın sonucunu alakasız bulup aracı
+    // İKİNCİ kez çağırınca (ki bu DOĞRU davranış) ikinci yanıt da tool_use olup
+    // metin içermiyordu → `text` boş → kullanıcı "Bir şeyler ters gitti, tekrar
+    // dene!" görüyor, ama ilk aramanın kartları yine basıldığı için ekranda
+    // "hata + alakasız mekanlar" çıkıyordu. Artık gerçek döngü: model bitirene
+    // (stop_reason !== "tool_use") kadar dönüyor, üst sınır MAX_TOOL_TURN.
+    const MAX_TOOL_TURN = 3; // 1 ilk çağrı + en fazla 3 araç turu
+    // ⚠️ İKİ AYRI BİLGİ, KARIŞTIRMA:
+    //   toolRan    = araç ÇALIŞTI mı (bulsun bulmasın) → emniyet ağı guard'ı
+    //   toolPlaces = son BAŞARILI aramanın mekanları  → client'a giden kartlar
+    // Tek değişkene indirilirse: araç çalışıp hiçbir şey bulamadığında toolPlaces
+    // null kalır, emniyet ağı "araç hiç çalışmadı" sanıp işaret enjekte eder ve
+    // client İKİNCİ bir /nearby araması tetikler (çift kota + çift kart).
+    let toolRan = false;
     let toolPlaces = null;
-    if (useTools && response.stop_reason === "tool_use") {
-      const toolResults = [];
-      for (const block of response.content) {
-        if (block.type !== "tool_use" || block.name !== "mekan_ara") continue;
-        let payload;
-        try {
-          const found = await callNearbyInternal({
-            lat: _lat,
-            lng: _lng,
-            type: (block.input && block.input.tur) || "food",
-            query: (block.input && block.input.arama) || "",
-            auth: req.headers.authorization || "",
+    if (useTools) {
+      let convo = messages.slice();
+      let tur = 0;
+      while (response.stop_reason === "tool_use" && tur < MAX_TOOL_TURN) {
+        tur++;
+        const toolResults = [];
+        for (const block of response.content) {
+          if (block.type !== "tool_use" || block.name !== "mekan_ara") continue;
+          const inp = block.input || {};
+          let payload;
+          try {
+            const found = await callNearbyInternal({
+              lat: _lat,
+              lng: _lng,
+              type: inp.tur || "food",
+              query: inp.arama || "",
+              auth: req.headers.authorization || "",
+              // Modelin ürettiği OSM ipuçları (aşağıdaki şema notuna bak)
+              osmCuisine: inp.osm_cuisine || "",
+              osmShop: inp.osm_shop || "",
+              osmIsim: inp.osm_isim || "",
+            });
+            const bulunan = Array.isArray(found.places) ? found.places : [];
+            // Kartları SON BAŞARILI aramadan al; boş tur öncekini silmesin.
+            if (bulunan.length) toolPlaces = bulunan;
+            payload = bulunan.length
+              ? "Bulunan GERÇEK mekanlar (bu kartlar kullanıcıya da gösterilecek):\n" +
+                bulunan
+                  .slice(0, 6)
+                  .map((p) => `- ${p.name} | ${p.dist} m`)
+                  .join("\n") +
+                (found.broadened
+                  ? "\n\nUYARI: Tam olarak istenen tür bulunamadı; bunlar en yakın " +
+                    "ALTERNATİFLER. Kullanıcıya bunu dürüstçe söyle, istediği şeymiş gibi sunma."
+                  : "") +
+                "\n\nBu listedekiler DIŞINDA mekan/semt/mesafe uydurma. Menü, fiyat, içki " +
+                "bilgisi sende YOK — bir mekânda belirli bir şeyin olduğunu garanti etme."
+              : "Hiç mekan bulunamadı." +
+                (tur < MAX_TOOL_TURN
+                  ? " İSTERSEN bir kez daha dene: osm_cuisine/osm_shop/osm_isim " +
+                    "ipuçlarını değiştir ya da tur'u genişlet. Denemek istemiyorsan " +
+                    "kullanıcıya bulamadığını DÜRÜSTÇE söyle."
+                  : " UYDURMA. Kullanıcıya kısaca bulamadığını söyle ve başka bir tür " +
+                    "denemeyi ya da çarkı çevirmeyi öner.");
+          } catch (e) {
+            // Arama patlarsa sohbet ÖLMESİN: modele durumu bildir, kullanıcıya
+            // teknik detay sızdırmadan neşeli bir cümle yazsın.
+            console.error("mekan_ara araç hatası:", e.message);
+            payload =
+              "Arama şu an yapılamadı. Kullanıcıya kısa ve neşeli bir dille birazdan " +
+              "tekrar denemesini söyle; sistem/teknik detay verme.";
+          }
+          toolResults.push({
+            type: "tool_result",
+            tool_use_id: block.id,
+            content: payload,
           });
-          toolPlaces = Array.isArray(found.places) ? found.places : [];
-          payload = toolPlaces.length
-            ? "Bulunan GERÇEK mekanlar (bu kartlar kullanıcıya da gösterilecek):\n" +
-              toolPlaces
-                .slice(0, 6)
-                .map((p) => `- ${p.name} | ${p.dist} m`)
-                .join("\n") +
-              (found.broadened
-                ? "\n\nUYARI: Tam olarak istenen tür bulunamadı; bunlar en yakın " +
-                  "ALTERNATİFLER. Kullanıcıya bunu dürüstçe söyle, istediği şeymiş gibi sunma."
-                : "") +
-              "\n\nBu listedekiler DIŞINDA mekan/semt/mesafe uydurma. Menü, fiyat, içki " +
-              "bilgisi sende YOK — bir mekânda belirli bir şeyin olduğunu garanti etme."
-            : "Hiç mekan bulunamadı. UYDURMA. Kullanıcıya kısaca bulamadığını söyle ve " +
-              "başka bir tür denemeyi ya da çarkı çevirmeyi öner.";
-        } catch (e) {
-          // Arama patlarsa sohbet ÖLMESİN: modele durumu bildir, kullanıcıya
-          // teknik detay sızdırmadan neşeli bir cümle yazsın.
-          console.error("mekan_ara araç hatası:", e.message);
-          payload =
-            "Arama şu an yapılamadı. Kullanıcıya kısa ve neşeli bir dille birazdan " +
-            "tekrar denemesini söyle; sistem/teknik detay verme.";
         }
-        toolResults.push({
-          type: "tool_result",
-          tool_use_id: block.id,
-          content: payload,
+        if (!toolResults.length) break; // tanımadığımız araç → döngüyü kilitleme
+        toolRan = true; // araç gerçekten çalıştı (mekan bulmuş olması şart değil)
+        convo = convo.concat([
+          { role: "assistant", content: response.content },
+          { role: "user", content: toolResults },
+        ]);
+        // Son turda aracı GERİ ÇEK → model mecburen metin yazar, sonsuz
+        // araç-çağırma sarmalıyla boş cevap dönmesi imkânsız hale gelir.
+        const sonTur = tur >= MAX_TOOL_TURN;
+        const istek = { ...baseReq, messages: convo };
+        if (sonTur) delete istek.tools;
+        response = await anthropic.messages.create(istek, {
+          timeout: ANTHROPIC_TIMEOUT_MAIN,
         });
-      }
-      if (toolResults.length) {
-        response = await anthropic.messages.create(
-          {
-            ...baseReq,
-            messages: messages.concat([
-              { role: "assistant", content: response.content },
-              { role: "user", content: toolResults },
-            ]),
-          },
-          { timeout: ANTHROPIC_TIMEOUT_MAIN },
-        );
       }
     }
 
@@ -849,7 +918,7 @@ KIRMIZI ÇİZGİLER:
     // olabilir; her iki durumda da model cevabını buna göre yazdı). Emniyet ağı
     // burada işaret enjekte ederse client İKİNCİ bir /nearby araması tetikler →
     // çift kart, çift kota tüketimi. Bu yüzden araç turu olduysa ağ devre dışı.
-    if (toolPlaces === null && !/\[\[\s*(NEED_LOCATION|NEARBY)\s*:/i.test(text)) {
+    if (!toolRan && !/\[\[\s*(NEED_LOCATION|NEARBY)\s*:/i.test(text)) {
       const promisesLookup =
         /(bak[ıi]yorum|ç[ıi]kar[ıi]yorum|s[ıi]ral[ıi]yorum|listeliyorum|getiriyorum|buluyorum|tar[ıi]yorum)/i.test(
           text,
@@ -1187,6 +1256,19 @@ app.post("/nearby", rateLimit, async (req, res) => {
       .slice(0, 80);
     // Yalnız sunucu-içi araç çağrısında true (bkz. aşağıdaki yorum bloğu).
     const skipComment = !!(req.body && req.body.skipComment);
+    // ── MODELİN ÜRETTİĞİ OSM İPUÇLARI (2 AĞU) ──
+    // ⚠️ GÜVENLİK: bu değerler MODELDEN geliyor ve (a) Overpass QL sorgu metnine
+    // gömülüyor, (b) new RegExp()'e veriliyor. Ham bırakılırsa tırnak/köşeli
+    // parantez ile sorgu kırılabilir, iç içe niceleyiciyle ReDoS üretilebilir.
+    // Bu yüzden karakter kümesi BEYAZ LİSTE ile daraltılıyor: geriye sadece
+    // harf/rakam/alt çizgi ve `|` kalıyor → ne sorgu kaçışı ne regex bombası mümkün.
+    const _sanTag = (v) =>
+      String(v || "").toLowerCase().replace(/[^a-z0-9_|]/g, "").slice(0, 120);
+    const _sanIsim = (v) =>
+      String(v || "").toLowerCase().replace(/[^a-z0-9çğıöşü|\s]/g, "").slice(0, 120);
+    const hintCuisine = _sanTag(req.body && req.body.osmCuisine);
+    const hintShop = _sanTag(req.body && req.body.osmShop);
+    const hintIsim = _sanIsim(req.body && req.body.osmIsim);
     // OTURMALI/İÇKİLİ SİNYAL: kullanıcı şarap/bira/kokteyl gibi içki YA DA "oturmalı
     // yemek / restoran / akşam yemeği" istiyorsa → fast-food, büfe, pizza-zinciri
     // (Domino's) DEĞİL, servisli-oturmalı restoran (amenity=restaurant) istenir.
@@ -1334,10 +1416,63 @@ app.post("/nearby", rateLimit, async (req, res) => {
     // yoksa bucket'tan mekan İSMİNDE eşleştir → (C) o da yoksa DÜRÜSTÇE bucket'a
     // genişle (broadened=true) ve mesajda "tam X yok, en yakın alternatifler" de.
     // Yalnız yeme-içme bucket'larında uygulanır (bar/aktivite'de mutfak anlamsız).
-    const rule =
-      query && ["food", "cafe", "dessert"].includes(typeKey)
-        ? CUISINE_RULES.find((c) => c.test.test(query))
-        : null;
+    // ── ÖNCELİK 1: MODELİN ÜRETTİĞİ İPUÇLARI (tabloyu ATLAR) ──
+    // Elle yazılmış CUISINE_RULES sonlu; kavramlar sonsuz ("kokoreç", "kumpir",
+    // "midye", "tantuni"...). Model bu etiketleri kendi üretebildiği için artık
+    // BİRİNCİL yol bu; tablo yalnızca model ipucu vermezse yedek olarak çalışır.
+    let rule = null;
+    if (hintCuisine || hintShop || hintIsim) {
+      const sels = [];
+      if (hintShop) {
+        hintShop
+          .split("|")
+          .map((s) => s.trim())
+          .filter(Boolean)
+          .slice(0, 6)
+          .forEach((sh) => sels.push(`["shop"="${sh}"]`));
+      }
+      if (hintCuisine) {
+        const am = wantsSitdown
+          ? "restaurant"
+          : "restaurant|fast_food|cafe|ice_cream";
+        sels.push(`["amenity"~"^(${am})$"]["cuisine"~"${hintCuisine}",i]`);
+      }
+      // İsim regex'i: ipucu varsa ondan, yoksa sorgunun kelimelerinden.
+      // (Karakter kümesi zaten sanitize edildiği için niceleyici/parantez içeremez.)
+      let nameRe = /$^/; // hiçbir şeyle eşleşmeyen güvenli varsayılan
+      const isimKaynak =
+        hintIsim ||
+        String(query || "")
+          .trim()
+          .split(/\s+/)
+          .filter((w) => w.length > 2)
+          .join("|");
+      if (isimKaynak) {
+        try {
+          nameRe = new RegExp(isimKaynak, "i");
+        } catch (e) {
+          nameRe = /$^/;
+        }
+      }
+      rule = {
+        sel: sels,
+        cuisine: "",
+        name: nameRe,
+        label: query || "aradığın tür",
+        _model: true, // teşhis: bu kural tablodan değil modelden geldi
+      };
+      console.log(
+        "mekan_ara ipuçları:",
+        JSON.stringify({ hintCuisine, hintShop, hintIsim, sel: sels.length }),
+      );
+    }
+    // ── ÖNCELİK 2: eski elle yazılmış tablo (yedek) ──
+    if (!rule) {
+      rule =
+        query && ["food", "cafe", "dessert"].includes(typeKey)
+          ? CUISINE_RULES.find((c) => c.test.test(query))
+          : null;
+    }
     let els = [];
     let broadened = false;
     let bucketTried = false;
