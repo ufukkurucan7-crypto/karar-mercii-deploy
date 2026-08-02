@@ -6304,6 +6304,23 @@
       }
       window.openPlayStore = openPlayStore;
 
+      // ⚠️⚠️ PAYLAŞILAN LİNKLERDE `window.location.origin` KULLANMA (2 Ağu bug).
+      // Uygulama/site Replit dağıtımından servis edilirken origin `*.replit.app`
+      // oluyor → WhatsApp'a replit.app linki gidiyordu. İKİ SORUN:
+      //   1) Alıcıya güvensiz/alakasız bir adres görünüyor.
+      //   2) ⭐ ASIL SORUN: Android app-link intent-filter'ı YALNIZ
+      //      kararmercii.com ve www.kararmercii.com'u doğruluyor (manifest).
+      //      replit.app linki uygulamada DEĞİL TARAYICIDA açılır → davet edilen
+      //      kişi uygulamayı hiç açmaz. Bu, [[buyume-dagitim-plani]]'nda
+      //      "davet linki indirmeyi öldürüyor" diye kayıtlı kaçağın ta kendisi.
+      // Bu yüzden paylaşıma giden HER link sabit kanonik alan adını kullanır.
+      // (İç navigasyon — ör. ana sayfaya dönüş — origin kullanmaya devam
+      // edebilir; orada bulunduğun dağıtımda kalmak DOĞRU davranış.)
+      var KM_ORIGIN = "https://kararmercii.com";
+      function roomLink(code) {
+        return KM_ORIGIN + "/?room=" + encodeURIComponent(String(code || ""));
+      }
+
       // ══════════════════════════════════════════════════════════════════════
       // ── PUSH BİLDİRİM (2 AĞU 2026) ───────────────────────────────────────
       // ══════════════════════════════════════════════════════════════════════
@@ -14243,7 +14260,7 @@ function drawResultCard(opts) {
       }
 
       function shareWhatsApp() {
-        var link = window.location.origin + "?room=" + shareCode;
+        var link = roomLink(shareCode); // ⚠️ origin DEĞİL — bkz. KM_ORIGIN notu
         var name = (
           document.getElementById("room-title-display").textContent || ""
         ).replace(" — Oda açık", "");
@@ -14276,7 +14293,7 @@ function drawResultCard(opts) {
       }
 
       function copyLink() {
-        var link = window.location.origin + "?room=" + shareCode;
+        var link = roomLink(shareCode); // ⚠️ origin DEĞİL — bkz. KM_ORIGIN notu
         navigator.clipboard.writeText(link).catch(() => {});
         var b = document.getElementById("copy-link-btn");
         b.textContent = "Kopyalandı!";
