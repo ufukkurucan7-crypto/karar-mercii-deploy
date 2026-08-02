@@ -272,9 +272,14 @@ const MEKAN_ARA_TOOL = {
       arama: {
         type: "string",
         description:
-          "Kullanıcının istediği ŞEY, kendi kelimeleriyle ve Türkçe: 'simit', 'kebap', " +
-          "'çiğ köfte', 'suşi', 'rakı balık', 'kahvaltı'. Kullanıcı belirli bir şey " +
-          "söylemediyse boş bırak. Bu metin arama daraltmasında kullanılır.",
+          "Kullanıcının istediği ŞEY — Türkçe, TEKİL, EKSİZ ve DOĞRU YAZILMIŞ kök hâlde. " +
+          "Bu metin doğrudan mekan arama servisine gider, o yüzden NORMALLEŞTİR: " +
+          "kullanıcı 'kokorec nerde yiyebilirim' / 'KOKOREÇÇİ' / 'kokorecci' / 'kokoreçler' " +
+          "yazsa da sen sadece 'kokoreç' gönder. Örnekler: 'kumpirci'→'kumpir', " +
+          "'tantunici'→'tantuni', 'midyeci'→'midye', 'dürümcü'→'dürüm', " +
+          "'simitçi'→'simit', 'balıkçılar'→'balık'. Cümle, fiil ya da soru YAZMA — " +
+          "sadece yemeğin/mekanın adı. Kullanıcı belirli bir şey söylemediyse BOŞ BIRAK " +
+          "(boş bırakmak, uydurma bir terim göndermekten iyidir).",
       },
       // ── OSM İPUÇLARI: KELİME TABLOSUNU BİTİREN PARÇA (2 AĞU) ──
       // Sunucudaki CUISINE_RULES elle yazılmış ~20 satırlık bir tabloydu; listede
@@ -1286,10 +1291,38 @@ function ttOpenNow(oh) {
 // ➜ SKOR EŞİĞİ TEK BAŞINA İŞE YARAMAZ (0.708 çöp > 0.693 gerçek — ÇAKIŞIYOR).
 // ➜ Asıl ayırt edici: sorgu kelimesi mekan İSMİNDE geçiyor mu. "boza" hiçbir
 //   ismin içinde yok ("Bona","Bora","Roza") → hepsi elenir. Bunu değiştirme.
+//
+// ⚠️⚠️ BU SÜZGEÇ TOMTOM'DAN DAHA KATI OLMAMALI — yoksa TomTom doğru mekanı
+// bulur, biz atarız ve sessizce OSM'e düşeriz (kullanıcı sadece kötü sonuç
+// görür, hata görmez). TÜRKÇE'DE ASIL KIRILMA NOKTASI EKLERDİR:
+//   sorgu "kokoreççi" → "kokorecci"   ·   mekan "Gala Kokoreç" → "gala kokorec"
+//   düz alt-dize testi: "gala kokorec".includes("kokorecci") = FALSE → KAYIP
+// Türkçe SONDAN EKLEMELİ bir dildir, yani kök HER ZAMAN başta durur → doğru
+// karşılaştırma ORTAK ÖNEK uzunluğudur, alt-dize değil.
+//   kokorecci ↔ kokorec  → ortak önek 7 ✅   ·   tantuni ↔ tantunici → 7 ✅
+//   midye ↔ midyeci → 5 ✅                   ·   simit ↔ simitci → 5 ✅
+// Eşik 5 (kısa kelimelerde kelimenin tamamı) çöpü hâlâ eliyor:
+//   boza ↔ bona → ortak önek 2 ❌   ·   boza ↔ bora → 2 ❌   ·   boza ↔ roza → 0 ❌
+// Yani "boza → kuyumcu" koruması AYNEN duruyor, sadece ek toleransı eklendi.
+const TT_MIN_PREFIX = 5;
+function _commonPrefix(a, b) {
+  const n = Math.min(a.length, b.length);
+  let i = 0;
+  while (i < n && a[i] === b[i]) i++;
+  return i;
+}
 function ttNameMatches(name, words) {
   const n = trFold(name);
   const nz = n.replace(/\s+/g, "");
-  return words.filter((w) => n.includes(w) || nz.includes(w.replace(/\s+/g, "")));
+  // İsmi kelimelere ayır: kök karşılaştırması kelime BAŞINDAN yapılmalı.
+  const tokens = n.split(/[^a-z0-9]+/).filter(Boolean);
+  return words.filter((w) => {
+    const wz = w.replace(/\s+/g, "");
+    if (n.includes(w) || nz.includes(wz)) return true; // hızlı yol: düz içerme
+    // Ek toleransı: kelimenin ya da mekan sözcüğünün kökü ortaksa eşleş.
+    const need = Math.min(wz.length, TT_MIN_PREFIX);
+    return tokens.some((t) => _commonPrefix(t, wz) >= need);
+  });
 }
 
 /**
