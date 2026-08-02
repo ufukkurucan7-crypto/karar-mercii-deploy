@@ -342,6 +342,7 @@ function isAnthropicTimeout(e) {
 // export (admin.credential) güvenilir değil; subpath import kullanıyoruz.
 const { initializeApp, cert } = require("firebase-admin/app");
 const { getAuth } = require("firebase-admin/auth");
+const { getMessaging } = require("firebase-admin/messaging");
 const {
   getFirestore,
   FieldValue,
@@ -2261,6 +2262,284 @@ app.post("/nearby", rateLimit, async (req, res) => {
   } catch (e) {
     console.error("Nearby Error:", e.message);
     res.status(500).json({ error: "Konum önerisi alınamadı, tekrar dene." });
+  }
+});
+
+// ══════════════════════════════════════════════════════════════════════════
+// ── PUSH BİLDİRİM (2 AĞU 2026) ───────────────────────────────────────────
+// ══════════════════════════════════════════════════════════════════════════
+// MİMARİ KARARI — TOPIC, TOKEN KOLEKSİYONU DEĞİL:
+// Klasik yol "her cihazın FCM token'ını Firestore'da tut, gönderirken hepsini
+// oku, multicast at" olurdu. Bu, 17 Tem'de tüm Firestore'u durduran desenin
+// AYNISI ([[firestore-kota-kacagi]]): her bildirimde koleksiyon taraması.
+// Bunun yerine FCM TOPIC:
+//   • `tum-kullanicilar`  → herkese duyuru / oto bildirim / sponsorlu push
+//   • `oda_<KOD>`         → SADECE o odadakilere (hedefli ama tarama YOK)
+// Gönderim = tek API çağrısı, **0 Firestore okuması**. Token hiç saklanmıyor.
+//
+// ⚠️ Cloud Functions KULLANILMIYOR — Blaze planı ister. Bu sunucu yeterli.
+const ADMIN_UID = "gq8uRlcr4TOwe41qWnKk18DZ0Wt1";
+const TOPIC_ALL = "tum-kullanicilar";
+
+// FCM topic adı kuralı: [a-zA-Z0-9-_.~%]+ . Oda kodu dışarıdan geldiği için
+// beyaz listeyle temizlenir (enjeksiyon/geçersiz topic'e karşı).
+function safeTopic(t) {
+  return String(t || "").replace(/[^a-zA-Z0-9\-_.~%]/g, "").slice(0, 200);
+}
+
+// Bearer token → UID. Hata durumunda null (çağıran 401 döndürür).
+async function uidFromReq(req) {
+  const h = req.headers.authorization || "";
+  if (!h.startsWith("Bearer ")) return null;
+  try {
+    const d = await getAuth().verifyIdToken(h.slice(7));
+    return d.uid || null;
+  } catch (e) {
+    return null;
+  }
+}
+
+/**
+ * Tek noktadan gönderim. Bildirim gövdesi BURADA kurulur ki tıklama davranışı
+ * (deep link) her yerde aynı olsun.
+ * @param {{topic:string,title:string,body:string,room?:string,url?:string}} o
+ */
+async function sendPush(o) {
+  const topic = safeTopic(o.topic);
+  if (!topic) throw new Error("Geçersiz topic");
+  const data = {};
+  // ⭐ TIKLAMA HEDEFİ: `room` varsa uygulama o odayı açar (client tarafında
+  // mevcut ?room= akışına bağlanır), yoksa `url`, o da yoksa ana ekran.
+  if (o.room) data.room = String(o.room).slice(0, 12);
+  if (o.url) data.url = String(o.url).slice(0, 300);
+  return getMessaging().send({
+    topic,
+    notification: {
+      title: String(o.title || "").slice(0, 80),
+      body: String(o.body || "").slice(0, 200),
+    },
+    data,
+    android: {
+      priority: "high",
+      notification: {
+        icon: "ic_stat_icon",
+        color: "#7c3aed",
+        // Tıklama Capacitor'ın varsayılan intent'ine gider; data alanları
+        // pushNotificationActionPerformed olayında client'a ulaşır.
+        clickAction: "FLUTTER_NOTIFICATION_CLICK",
+      },
+    },
+  });
+}
+
+// Gönderilenlerin kaydı (admin panelde "son gönderilenler"). Tek doküman
+// yazımı — koleksiyon taraması YOK.
+async function logPush(rec) {
+  try {
+    await adminDb.collection("pushLog").add({
+      ...rec,
+      at: FieldValue.serverTimestamp(),
+    });
+  } catch (e) {
+    console.error("pushLog yazılamadı:", e.message);
+  }
+}
+
+// ── 1) ADMIN: ELLE BİLDİRİM ──────────────────────────────────────────────
+app.post("/admin/push", rateLimit, async (req, res) => {
+  const uid = await uidFromReq(req);
+  if (!uid) return res.status(401).json({ error: "Oturum doğrulanamadı." });
+  if (uid !== ADMIN_UID) return res.status(403).json({ error: "Yetkin yok." });
+  const { title, body, url } = req.body || {};
+  const topic = safeTopic((req.body && req.body.topic) || TOPIC_ALL);
+  if (!title || !body)
+    return res.status(400).json({ error: "Başlık ve metin zorunlu." });
+  try {
+    const id = await sendPush({ topic, title, body, url });
+    await logPush({ title, body, url: url || "", topic, by: "admin", ok: true });
+    res.json({ ok: true, id, topic });
+  } catch (e) {
+    console.error("admin/push hata:", e.message);
+    await logPush({ title, body, topic, by: "admin", ok: false, err: e.message });
+    res.status(500).json({ error: "Gönderilemedi: " + e.message });
+  }
+});
+
+// ── 2) ODA SONUCU → SADECE O ODADAKİLERE ─────────────────────────────────
+// ⚠️ TETİĞİ HOST'UN CLIENT'I ÇEKER. Sunucunun Firestore'u periyodik taraması
+// KESİNLİKLE YOK (17 Tem dersi). live-index.html'de sonucu YALNIZ host yazıyor
+// (`amHost` → status:"closed"), dolayısıyla tetik tam olarak orada, bir kez.
+// Sunucu sadece TEK oda dokümanını okuyup doğrular = 1 okuma.
+app.post("/room/notify", rateLimit, async (req, res) => {
+  const uid = await uidFromReq(req);
+  if (!uid) return res.status(401).json({ error: "Oturum doğrulanamadı." });
+  const code = String((req.body && req.body.room) || "").trim();
+  if (!/^[A-Za-z0-9-]{3,12}$/.test(code))
+    return res.status(400).json({ error: "Oda kodu geçersiz." });
+  const kind = String((req.body && req.body.kind) || "result");
+  try {
+    const snap = await adminDb.collection("rooms").doc(code).get();
+    if (!snap.exists) return res.status(404).json({ error: "Oda yok." });
+    const r = snap.data() || {};
+    // ⚠️⚠️ YETKİ — KAPALI BAŞARISIZLIK (fail-closed). ÖNCE `r.hostUid && ...`
+    // yazmıştım: oda dokümanında `hostUid` ALANI YOK (yalnız `hostId: deviceId`
+    // var, o da Firebase UID DEĞİL) → koşul her zaman false, kontrol SESSİZCE
+    // ATLANIYORDU. Sonuç: giriş yapmış herhangi biri, oda kodunu bilen herkese
+    // sahte bildirim gönderebilirdi. Artık alan YOKSA da REDDEDİLİR.
+    // ⚠️ Bu yüzden client oda kurarken `hostUid: <firebase uid>` YAZMAK ZORUNDA.
+    // Eski odalarda alan olmadığı için bildirim gitmez — kabul edilen davranış
+    // (push zaten yeni sürümle geliyor), sessiz güvenlik açığına yeğdir.
+    if (!r.hostUid || r.hostUid !== uid)
+      return res
+        .status(403)
+        .json({ error: "Bu odanın sahibi değilsin (ya da oda eski sürümde kuruldu)." });
+
+    // ⚠️ YALNIZ "result" DESTEKLENİYOR (2 Ağu kararı). "Odaya davet edildin"
+    // bildirimi BİLEREK YOK: davet WhatsApp'tan ?room= linkiyle gidiyor, sistem
+    // davet edilenin KİMLİĞİNİ bilmiyor → hedeflenecek topic yok. Profil/arkadaş
+    // listesi olmadan bu teknik olarak imkânsız, uygulaması olmayana zaten push
+    // gönderilemez. Profil özelliği gelirse `user_<UID>` topic'iyle eklenebilir.
+    if (kind !== "result")
+      return res.status(400).json({ error: "Bilinmeyen bildirim türü." });
+    // Sonuç gerçekten açıklanmış olmalı — "closed" değilken bildirim YOK.
+    if (r.status !== "closed" || !r.winner)
+      return res.status(409).json({ error: "Sonuç henüz açıklanmadı." });
+    const title = "Sonuç belli oldu! 🐙";
+    const body = `Kazanan: ${String(r.winner).slice(0, 60)} — dokun, karta bak.`;
+    const id = await sendPush({ topic: "oda_" + code, title, body, room: code });
+    await logPush({ title, body, topic: "oda_" + code, by: uid, kind, ok: true });
+    res.json({ ok: true, id });
+  } catch (e) {
+    console.error("room/notify hata:", e.message);
+    res.status(500).json({ error: "Gönderilemedi." });
+  }
+});
+
+// ── 3) ZAMANLANMIŞ / OTOMATİK BİLDİRİMLER ────────────────────────────────
+// Kullanıcı isteği: "bazen akşam ne yiyorsun diye sorarız, cuma günü hafta sonu
+// ne yapıyorsun gibi atarız, ileride sponsorlu push göndeririz."
+// → Kodda SABİT metin YOK; admin panelden yönetilen `pushSchedule` kayıtları.
+//
+// ⚠️⚠️ KOTA TASARIMI (17 Tem dersinin doğrudan uygulaması):
+// Zamanlayıcı TÜM koleksiyonu TARAMAZ. `nextAt <= now` ile FİLTRELİ sorgu atar
+// → vakti gelmemiş kayıtlar sorguya HİÇ girmez, okunmaz. Sırası gelen yoksa
+// dönen doküman sayısı 0 → boşta okuma maliyeti ~0. `nextAt` alanı OLMAYAN
+// kayıt hiç indekslenmez, yani devre dışı kayıtlar da bedava.
+const PUSH_TICK_MS = 60 * 1000;
+
+// Türkiye UTC+3, yaz saati YOK → TR saatini UTC'ye çevirmek sabit -3 saat.
+const TR_OFFSET_H = 3;
+function nextRunAt(sch, fromMs) {
+  const base = new Date(fromMs || Date.now());
+  const hh = Math.min(23, Math.max(0, parseInt(sch.hour, 10) || 0));
+  const mm = Math.min(59, Math.max(0, parseInt(sch.minute, 10) || 0));
+  const d = new Date(base);
+  d.setUTCSeconds(0, 0);
+  d.setUTCHours(hh - TR_OFFSET_H, mm, 0, 0);
+  if (sch.mode === "weekly") {
+    const want = Math.min(6, Math.max(0, parseInt(sch.weekday, 10) || 0));
+    // TR gününe göre ilerlet (UTC+3'te gün sınırı kayabilir → TR saatiyle bak)
+    for (let i = 0; i < 8; i++) {
+      const trDay = new Date(d.getTime() + TR_OFFSET_H * 3600e3).getUTCDay();
+      if (trDay === want && d.getTime() > base.getTime()) break;
+      d.setUTCDate(d.getUTCDate() + 1);
+    }
+  } else if (d.getTime() <= base.getTime()) {
+    d.setUTCDate(d.getUTCDate() + 1); // günlük: bugünkü saat geçtiyse yarın
+  }
+  return d;
+}
+
+async function pushTick() {
+  try {
+    const now = Timestamp.now();
+    const due = await adminDb
+      .collection("pushSchedule")
+      .where("active", "==", true)
+      .where("nextAt", "<=", now)
+      .limit(10)
+      .get();
+    if (due.empty) return; // ⭐ normal durum: 0 doküman okundu
+    for (const doc of due.docs) {
+      const s = doc.data() || {};
+      try {
+        await sendPush({
+          topic: safeTopic(s.topic || TOPIC_ALL),
+          title: s.title,
+          body: s.body,
+          url: s.url,
+        });
+        await logPush({
+          title: s.title, body: s.body, topic: s.topic || TOPIC_ALL,
+          by: "zamanlayici", scheduleId: doc.id, ok: true,
+        });
+      } catch (e) {
+        console.error("Zamanlanmış push gönderilemedi:", doc.id, e.message);
+      }
+      // "once" → tek seferlik, gönderince kapan. Diğerleri bir sonraki vakte.
+      const upd =
+        s.mode === "once"
+          ? { active: false, nextAt: FieldValue.delete() }
+          : { nextAt: Timestamp.fromDate(nextRunAt(s, Date.now() + 60000)) };
+      await doc.ref.set(
+        { ...upd, lastSentAt: FieldValue.serverTimestamp(), sentCount: FieldValue.increment(1) },
+        { merge: true },
+      );
+    }
+    _tickFails = 0; // başarılı tur → sayaç sıfırlansın
+  } catch (e) {
+    // En olası sebep: `active + nextAt` composite index'i henüz kurulmamış.
+    // ⚠️ Dakikada bir aynı hatayı basmak logu boğar ve gerçek sorunları
+    // gizler → 3 ardışık hatadan sonra zamanlayıcıyı DURDUR, tek bir net
+    // talimat bırak. Index kurulunca yeniden başlatma yeterli.
+    _tickFails++;
+    console.error(`pushTick hata (${_tickFails}/3):`, e.message);
+    if (_tickFails >= 3 && _tickTimer) {
+      clearInterval(_tickTimer);
+      _tickTimer = null;
+      console.error(
+        "🔴 Zamanlanmış bildirim döngüsü DURDURULDU. Muhtemel sebep: Firestore " +
+          "composite index eksik (pushSchedule: active ASC, nextAt ASC). " +
+          "Index'i kurup sunucuyu yeniden başlat.",
+      );
+    }
+  }
+}
+let _tickFails = 0;
+let _tickTimer = setInterval(pushTick, PUSH_TICK_MS);
+_tickTimer.unref?.();
+
+// Admin: zamanlanmış kayıt oluştur/güncelle (nextAt'i SUNUCU hesaplar ki
+// panelden yanlış/eksik değer gelse bile zamanlayıcı tutarlı kalsın).
+app.post("/admin/push/schedule", rateLimit, async (req, res) => {
+  const uid = await uidFromReq(req);
+  if (!uid) return res.status(401).json({ error: "Oturum doğrulanamadı." });
+  if (uid !== ADMIN_UID) return res.status(403).json({ error: "Yetkin yok." });
+  const b = req.body || {};
+  if (!b.title || !b.body)
+    return res.status(400).json({ error: "Başlık ve metin zorunlu." });
+  const mode = ["once", "daily", "weekly"].includes(b.mode) ? b.mode : "daily";
+  const rec = {
+    title: String(b.title).slice(0, 80),
+    body: String(b.body).slice(0, 200),
+    url: String(b.url || "").slice(0, 300),
+    topic: safeTopic(b.topic || TOPIC_ALL),
+    mode,
+    hour: Math.min(23, Math.max(0, parseInt(b.hour, 10) || 0)),
+    minute: Math.min(59, Math.max(0, parseInt(b.minute, 10) || 0)),
+    weekday: Math.min(6, Math.max(0, parseInt(b.weekday, 10) || 0)),
+    active: b.active !== false,
+  };
+  rec.nextAt = Timestamp.fromDate(nextRunAt(rec, Date.now()));
+  try {
+    const ref = b.id
+      ? adminDb.collection("pushSchedule").doc(String(b.id))
+      : adminDb.collection("pushSchedule").doc();
+    await ref.set(rec, { merge: true });
+    res.json({ ok: true, id: ref.id, nextAt: rec.nextAt.toDate().toISOString() });
+  } catch (e) {
+    console.error("push/schedule hata:", e.message);
+    res.status(500).json({ error: "Kaydedilemedi." });
   }
 });
 
