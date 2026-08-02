@@ -8158,10 +8158,16 @@ function drawResultCard(opts) {
           .getElementById("plan-monthly")
           .classList.toggle("selected", plan === "monthly");
         var btn = document.getElementById("pro-buy-btn");
+        // Mağaza fiyatı geldiyse onu kullan (KM_RC.applyPrices doldurur),
+        // gelmediyse sabit metne düş → web/eski build davranışı aynı kalır.
+        var sp =
+          typeof KM_RC !== "undefined" && KM_RC.priceStr
+            ? KM_RC.priceStr[plan]
+            : "";
         if (plan === "yearly") {
-          btn.textContent = "⭐ Yıllık Pro — 399₺/yıl";
+          btn.textContent = "⭐ Yıllık Pro — " + (sp || "399₺") + "/yıl";
         } else {
-          btn.textContent = "⭐ Aylık Pro — 49₺/ay";
+          btn.textContent = "⭐ Aylık Pro — " + (sp || "49₺") + "/ay";
         }
       };
       // ═══════════════ REVENUECAT (PRO abonelik) ═══════════════
@@ -8170,10 +8176,12 @@ function drawResultCard(opts) {
         // Android → goog_..., iOS → appl_... (RevenueCat panosu → Project → API Keys).
         API_KEYS: {
           android: "goog_PBWwciuubvPHAShpGIlLqPHSgGI",
-          // ⚠️ iOS anahtarını RevenueCat panosunda iOS app'i (bundle app.kararmercii.com)
-          // ekleyince al, buraya yapıştır (appl_ ile başlar). Placeholder kaldıkça iOS'ta
-          // RC atlanır → PRO yalnız Firestore'dan gelir, çökme/yanlış-anahtar olmaz.
-          ios: "appl_PLACEHOLDER_REPLACE_ME",
+          // iOS public SDK anahtarı (RevenueCat → Project Settings → API Keys → App Store).
+          // 3 Ağu 2026'da girildi; bundle app.kararmercii.com, entitlement "premium",
+          // offering "default" ($rc_monthly/$rc_annual paketlerinde iOS ürünleri bağlı).
+          // ⚠️ Bu PUBLIC anahtardır, istemciye gömülmek içindir (goog_ gibi) — sır DEĞİL.
+          //    RevenueCat'teki sk_ ile başlayan gizli anahtar buraya ASLA girmez.
+          ios: "appl_MaZRPQpIwELfJtCAzRkdOuqKWNY",
         },
         ENTITLEMENT: "premium",
         configured: false,
@@ -8285,10 +8293,71 @@ function drawResultCard(opts) {
                 if (!self.pkgs.yearly && (t === "ANNUAL" || /year|annual/i.test(pid)))
                   self.pkgs.yearly = pk;
               });
+              self.applyPrices();
             })
             .catch(function (e) {
               console.log("RC offerings hata", e);
             });
+        },
+        // Mağazadan gelen GERÇEK fiyatı arayüze yazar.
+        // ⚠️ NEDEN VAR: fiyatlar 4 yerde sabit kodluydu (49₺/399₺). Android'de
+        // tutuyordu çünkü Play ürünleri tam o rakama kurulmuştu; Apple TR fiyat
+        // basamağı farklı çıkarsa iOS'ta YANLIŞ fiyat gösterirdik (Apple bunu
+        // yanıltıcı sayıp reddedebilir). Artık kaynak mağazanın kendisi.
+        // Fiyat okunamazsa HİÇBİR ŞEY yazmaz → mevcut sabit metin korunur (web/eski build regresyonu yok).
+        priceStr: { monthly: "", yearly: "" },
+        _fmtMoney: function (v, cur) {
+          try {
+            return new Intl.NumberFormat("tr-TR", {
+              style: "currency",
+              currency: cur || "TRY",
+              maximumFractionDigits: 0,
+            }).format(v);
+          } catch (e) {
+            return Math.round(v) + "₺";
+          }
+        },
+        applyPrices: function () {
+          try {
+            var mp = this.pkgs.monthly && this.pkgs.monthly.product;
+            var yp = this.pkgs.yearly && this.pkgs.yearly.product;
+            var q = function (sel) {
+              return document.querySelector(sel);
+            };
+            if (mp && mp.priceString) {
+              this.priceStr.monthly = mp.priceString;
+              var mEl = q("#plan-monthly .pro-plan-price");
+              if (mEl) mEl.innerHTML = mp.priceString + "<span>/ay</span>";
+            }
+            if (yp && yp.priceString) {
+              this.priceStr.yearly = yp.priceString;
+              var yNote = q("#plan-yearly .pro-plan-note");
+              if (yNote)
+                yNote.textContent = yp.priceString + "/yıl · En avantajlı";
+              // Yıllık kartta aylık karşılığı gösteriliyor (yıllık ÷ 12)
+              if (typeof yp.price === "number" && yp.price > 0) {
+                var yEl = q("#plan-yearly .pro-plan-price");
+                if (yEl)
+                  yEl.innerHTML =
+                    this._fmtMoney(yp.price / 12, yp.currencyCode) +
+                    "<span>/ay</span>";
+                // İndirim rozeti de gerçek fiyatlardan hesaplansın
+                if (mp && typeof mp.price === "number" && mp.price > 0) {
+                  var pct = Math.round((1 - yp.price / 12 / mp.price) * 100);
+                  var badge = q("#plan-yearly .pro-plan-badge");
+                  if (badge) {
+                    if (pct >= 5) badge.textContent = "%" + pct + " İNDİRİM";
+                    else badge.style.display = "none";
+                  }
+                }
+              }
+            }
+            // Seçili planın buton yazısını da tazele
+            if (typeof window.selectPlan === "function" && selectedPlan)
+              window.selectPlan(selectedPlan);
+          } catch (e) {
+            console.log("RC fiyat yazma hata", e);
+          }
         },
         hasPremium: function (info) {
           var active = info && info.entitlements && info.entitlements.active;
