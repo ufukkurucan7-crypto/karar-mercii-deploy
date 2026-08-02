@@ -1169,7 +1169,13 @@ const KIND_TR = {
 // ⚠️ ACİL GERİ DÖNÜŞ: Replit secrets → KM_PLACES=osm → anında OSM'e döner.
 //   DEPLOY GEREKMEZ, yeniden başlatma yeter. (KM_TOOL_USE ile aynı desen.)
 const KM_PLACES = String(process.env.KM_PLACES || "osm").toLowerCase();
-const TOMTOM_KEY = process.env.TOMTOM_KEY || "";
+// ⚠️ .trim() ŞART — CANLIDA 401 SEBEBİYDİ (2 Ağu gece). Replit Secrets'a
+// yapıştırılan değerin sonunda görünmez boşluk/satır sonu kalmıştı; URL'ye
+// encodeURIComponent ile girince "%20"ye dönüşüp anahtarı geçersiz kıldı →
+// TomTom HTTP 401 → sessizce OSM'e düşüş → "Ümraniye'de kokoreç bulamadım"
+// (oysa 515 m'de Otağ Kokoreç vardı). Görünmez karakteri ASLA kullanıcıya
+// borç bırakma, kod temizlesin.
+const TOMTOM_KEY = String(process.env.TOMTOM_KEY || "").trim();
 // Sert aylık tavan. Dolunca sessizce OSM'e düşülür → fatura YAPISAL olarak $0,
 // uygulama bozulmaz, sadece eski kaliteye iner. Bedava kota 5.000, pay bırakıldı.
 const PLACES_MONTHLY_CAP = parseInt(process.env.KM_PLACES_CAP || "4500", 10);
@@ -1339,6 +1345,13 @@ function ttOpenNow(oh) {
 //   boza ↔ bona → ortak önek 2 ❌   ·   boza ↔ bora → 2 ❌   ·   boza ↔ roza → 0 ❌
 // Yani "boza → kuyumcu" koruması AYNEN duruyor, sadece ek toleransı eklendi.
 const TT_MIN_PREFIX = 5;
+// İsim tutmasa bile TomTom'un alaka skoru bu eşiğin üstündeyse mekan KABUL edilir
+// (adı "Kuzureç"/"Bereket Büfe" olan kokoreççiler böyle kurtarılır). Eşik ölçümle
+// seçildi: gerçek eşleşmeler 0.82–0.93, "boza" çöpü 0.708 ve altı → 0.80 ayırır.
+const TT_SCORE_TRUST = 0.8;
+// Yarıçap kademeleri: yakında yoksa komşu ilçelere bak. Ek ÜCRETLİ çağrı yalnız
+// bir önceki kademe 0 sonuç verirse yapılır.
+const TT_RADII = [6000, 15000, 30000];
 function _commonPrefix(a, b) {
   const n = Math.min(a.length, b.length);
   let i = 0;
@@ -1390,76 +1403,111 @@ async function tomtomSearch({ lat, lng, query, typeKey }) {
     return null;
   }
 
-  const url =
-    `https://api.tomtom.com/search/2/poiSearch/${encodeURIComponent(q)}.json` +
-    `?key=${encodeURIComponent(TOMTOM_KEY)}&lat=${lat}&lon=${lng}` +
-    `&radius=6000&limit=40&countrySet=TR&language=tr-TR&openingHours=nextSevenDays`;
-  const ctrl = new AbortController();
-  // 8sn → 6sn: TomTom yerelde ~1sn dönüyor. Başarısızlıkta arkasından TÜM OSM
-  // yolu (4 mirror × genişleyen yarıçap) çalıştığı için burada beklenen her
-  // saniye kullanıcıya doğrudan gecikme olarak yansıyor.
-  const timer = setTimeout(() => ctrl.abort(), 6000);
-  const _t0 = Date.now();
-  _ttStats.attempts++;
-  let j;
-  try {
-    const r = await fetch(url, { signal: ctrl.signal });
-    _ttStats.lastStatus = r.status;
-    if (!r.ok) {
-      _ttStats.httpErr++;
-      _ttStats.lastMs = Date.now() - _t0;
-      console.error("TomTom HTTP", r.status, (await r.text()).slice(0, 200));
-      return null;
-    }
-    j = await r.json();
-  } catch (e) {
-    _ttStats.netErr++;
-    _ttStats.lastMs = Date.now() - _t0;
-    console.error("TomTom hata:", e.name === "AbortError" ? "timeout" : e.message);
-    return null;
-  } finally {
-    clearTimeout(timer);
-  }
-  _ttStats.lastMs = Date.now() - _t0;
-  _ttStats.lastRaw = (j.results || []).length;
-  ttBudgetSpend();
-
   const words = trFold(q).split(/\s+/).filter((w) => w.length >= 3);
   let anyFullMatch = false;
-  const places = (j.results || [])
-    .map((r) => {
-      const poi = r.poi || {};
-      const name = String(poi.name || "").trim();
-      if (!name) return null;
-      const code = (r.poi && r.poi.classifications && r.poi.classifications[0]
-        ? r.poi.classifications[0].code
-        : "") || "";
-      const cats = (poi.categories || []).join(" ");
-      // Kategori sağlaması: otel/kuyumcu/kuaför ELE; SHOP yalnız yiyecekse geçer.
-      let kind = TT_KIND_TR[code];
-      if (!kind && code === "SHOP" && TT_FOOD_SHOP.test(cats)) kind = "dükkan";
-      if (!kind) return null;
-      // İsim alaka sağlaması (asıl filtre — yukarıdaki bloğa bak).
-      if (words.length) {
-        const m = ttNameMatches(name, words);
-        if (!m.length) return null;
-        if (m.length === words.length) anyFullMatch = true;
+
+  // ── TEK YARIÇAP DENEMESİ ────────────────────────────────────────────────
+  async function tryRadius(radiusM) {
+    const url =
+      `https://api.tomtom.com/search/2/poiSearch/${encodeURIComponent(q)}.json` +
+      `?key=${encodeURIComponent(TOMTOM_KEY)}&lat=${lat}&lon=${lng}` +
+      `&radius=${radiusM}&limit=40&countrySet=TR&language=tr-TR&openingHours=nextSevenDays`;
+    const ctrl = new AbortController();
+    // 6sn: TomTom ~1sn dönüyor. Başarısızlıkta arkasından TÜM OSM yolu
+    // çalıştığı için burada beklenen her saniye kullanıcıya gecikme olarak yansır.
+    const timer = setTimeout(() => ctrl.abort(), 6000);
+    const _t0 = Date.now();
+    _ttStats.attempts++;
+    let j;
+    try {
+      const r = await fetch(url, { signal: ctrl.signal });
+      _ttStats.lastStatus = r.status;
+      if (!r.ok) {
+        _ttStats.httpErr++;
+        _ttStats.lastMs = Date.now() - _t0;
+        // ⚠️ 401 = anahtar geçersiz (genelde Secrets'ta görünmez boşluk).
+        // Ayrı ve bağırarak logla; sessiz OSM düşüşü saatler kaybettirdi.
+        console.error(
+          r.status === 401
+            ? "🔴 TomTom 401 YETKİSİZ — TOMTOM_KEY geçersiz/bozuk (boşluk?). Sağlayıcı DEVRE DIŞI, OSM'e düşülüyor."
+            : "TomTom HTTP " + r.status + " " + (await r.text()).slice(0, 200),
+        );
+        return null;
       }
-      const pos = r.position || {};
-      if (!isFinite(pos.lat) || !isFinite(pos.lon)) return null;
-      return {
-        name: name.slice(0, 60),
-        kind,
-        phone: String(poi.phone || "").slice(0, 30),
-        lat: pos.lat,
-        lng: pos.lon,
-        dist: Math.round(
-          isFinite(r.dist) ? r.dist : haversine(lat, lng, pos.lat, pos.lon),
-        ),
-        oh: poi.openingHours || null, // ham aralık — `open` çağrı anında hesaplanır
-      };
-    })
-    .filter(Boolean);
+      j = await r.json();
+    } catch (e) {
+      _ttStats.netErr++;
+      _ttStats.lastMs = Date.now() - _t0;
+      console.error("TomTom hata:", e.name === "AbortError" ? "timeout" : e.message);
+      return null;
+    } finally {
+      clearTimeout(timer);
+    }
+    _ttStats.lastMs = Date.now() - _t0;
+    _ttStats.lastRaw = (j.results || []).length;
+    ttBudgetSpend();
+
+    return (j.results || [])
+      .map((r) => {
+        const poi = r.poi || {};
+        const name = String(poi.name || "").trim();
+        if (!name) return null;
+        const code = (r.poi && r.poi.classifications && r.poi.classifications[0]
+          ? r.poi.classifications[0].code
+          : "") || "";
+        const cats = (poi.categories || []).join(" ");
+        // Kategori sağlaması: otel/kuyumcu/kuaför ELE; SHOP yalnız yiyecekse geçer.
+        let kind = TT_KIND_TR[code];
+        if (!kind && code === "SHOP" && TT_FOOD_SHOP.test(cats)) kind = "dükkan";
+        if (!kind) return null;
+        // ── ALAKA: İSİM **YA DA** YÜKSEK SKOR ──────────────────────────────
+        // ⚠️ Yalnız isme bakmak GERÇEK MEKAN KAYBETTİRİR: bir kokoreççinin adı
+        // "Kuzureç" ya da "Bereket Büfe" olabilir; yemek adı isminde geçmez.
+        // TomTom'un kendi alaka skoru bunu bilir. ÖLÇÜM (2 Ağu):
+        //   Ümraniye "kokoreç" GERÇEK sonuçlar → 0.82–0.93
+        //   Eminönü "boza" ÇÖP sonuçlar        → 0.708 / 0.646 / 0.453 / 0.357
+        // Aralar AYRIK → eşik 0.80 güvenli marjla ikisini ayırır. Skor yolu
+        // yalnız YİYECEK kategorisiyle birlikte geçerli (otel/kuyumcu zaten elendi).
+        let matched = false;
+        if (words.length) {
+          const m = ttNameMatches(name, words);
+          if (m.length) {
+            matched = true;
+            if (m.length === words.length) anyFullMatch = true;
+          } else if (isFinite(r.score) && r.score >= TT_SCORE_TRUST) {
+            matched = true; // ismi tutmadı ama TomTom yüksek güvenle alakalı diyor
+          }
+          if (!matched) return null;
+        }
+        const pos = r.position || {};
+        if (!isFinite(pos.lat) || !isFinite(pos.lon)) return null;
+        return {
+          name: name.slice(0, 60),
+          kind,
+          phone: String(poi.phone || "").slice(0, 30),
+          lat: pos.lat,
+          lng: pos.lon,
+          dist: Math.round(
+            isFinite(r.dist) ? r.dist : haversine(lat, lng, pos.lat, pos.lon),
+          ),
+          oh: poi.openingHours || null, // ham aralık — `open` çağrı anında hesaplanır
+        };
+      })
+      .filter(Boolean);
+  }
+
+  // ── YARIÇAP GENİŞLETME ──────────────────────────────────────────────────
+  // ⚠️ Kullanıcı isteği (2 Ağu): "diyelim ki Ümraniye'de bulamadı — yakın
+  // ilçelere baksaydı, Acıbadem'de kokoreççi var." OSM yolunda bu zaten vardı
+  // (runExpanding), TomTom yolunda YOKTU: tek sabit 6 km, sonuç yoksa "bulamadım".
+  // Şimdi kademeli genişliyor. Ek ÜCRETLİ çağrı yalnız 0 sonuçta yapılır —
+  // yani nadiren, ve tam da en çok işe yarayacağı anda.
+  let places = null;
+  for (const rad of TT_RADII) {
+    places = await tryRadius(rad);
+    if (places === null) return null; // ağ/anahtar hatası → OSM'e düş
+    if (places.length) break;
+  }
 
   // Tam eşleşme yoksa (ör. "ıslak burger" → sadece "burger" tuttu) bu bir
   // GENİŞLETMEDİR; /nearby bu bayrakla kullanıcıya dürüstçe "tam onu bulamadım,
