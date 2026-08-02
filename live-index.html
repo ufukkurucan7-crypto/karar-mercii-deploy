@@ -2699,15 +2699,27 @@
       }
       /* ── Poz-özel mikro hareketler (Deploy #15) ──
          Hepsi SVG İÇİ eleman → container float/breath ile çakışmaz; GPU-dostu. */
+      /* ⚠️ EL SALLAMA — "takılıyor" ŞİKAYETİNİN SEBEBİ VE ÇÖZÜMÜ (2 Ağu)
+         ESKİSİ: 0%(-3deg) → 25%(-17deg) → 60%(9deg) → 100%(-3deg), 1.4s ease-in-out.
+         CSS zamanlama fonksiyonunu HER KEYFRAME ARALIĞINA AYRI uygular → kol
+         -17deg'de ve 9deg'de TAMAMEN DURUP yeniden hızlanıyordu. Üstelik duraklar
+         asimetrikti (350ms / 490ms / 560ms) → düzensiz, tökezleyen bir his.
+         YENİSİ: simetrik SARKAÇ. Tek gidiş + tek dönüş, her yarım döngü TEK eased
+         aralık. Hız yalnız gerçek dönüş noktalarında sıfırlanır (fizik olarak
+         doğru), ortada maksimumdur → kesintisiz akış. 0.85s = doğal el sallama
+         temposu (1.4s ağır kalıyordu).
+         ⚠️ Ara keyframe EKLEME — her eklenen durak yeni bir duraklama demek. */
       @keyframes mwave {
-        0%, 100% { transform: rotate(-3deg); }
-        25% { transform: rotate(-17deg); }
-        60% { transform: rotate(9deg); }
+        0%, 100% { transform: rotate(-16deg); }
+        50% { transform: rotate(10deg); }
       }
       .m-wave-arm {
         transform-box: view-box;
         transform-origin: 415px 286px;
-        animation: mwave 1.4s ease-in-out infinite;
+        animation: mwave 0.85s ease-in-out infinite;
+        /* Kompozit katmana al: kapsayıcıdaki mfloat/mbreath ile birlikte
+           çalışırken her karede yeniden boyama yapılmasın. */
+        will-change: transform;
       }
       @keyframes mzzz {
         0% { transform: translateY(4px); opacity: 0; }
@@ -16006,7 +16018,12 @@ function drawResultCard(opts) {
       renderCats();
       renderAIChips();
       renderOb1();
-      setM("ob2-merci", 120, "think");
+      // ⚠️ "Karar Mercii'ne Hoş Geldin!" ekranı — poz "think" DEĞİL (2 Ağu).
+      // Düşünceli/çene-tutan poz karşılama ekranına uymuyordu (kullanıcı bildirdi).
+      // "celebrate" = kollar havada + açık gülümseme + 🎉 → "hoş geldin, buyur".
+      // Bir önceki ekran (ob1) zaten "wave" kullanıyor; aynı pozu tekrarlamamak
+      // için kutlama seçildi. Diğer seçenekler: chat, love, curious, glasses.
+      setM("ob2-merci", 120, "celebrate");
       gentleFloat("ob2-merci");
       setM("modal-auth-merci", 80, "wave");
       setM("chat-init-av", 28, "chat");
