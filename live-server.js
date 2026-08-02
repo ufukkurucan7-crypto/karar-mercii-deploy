@@ -2328,9 +2328,18 @@ async function sendPush(o) {
         // da beyaz kare basar. Tek renk silüet olması da şart (API 21+ maskeler).
         icon: "ic_stat_notify",
         color: "#7c3aed",
-        // Tıklama Capacitor'ın varsayılan intent'ine gider; data alanları
-        // pushNotificationActionPerformed olayında client'a ulaşır.
-        clickAction: "FLUTTER_NOTIFICATION_CLICK",
+        // ⚠️⚠️ BURADA `clickAction: "FLUTTER_NOTIFICATION_CLICK"` VARDI — CANLI
+        // BUG'IN SEBEBİ BUYDU (2 Ağu cihaz testi: "bildirim geliyor ama
+        // tıklayınca uygulama açılmıyor").
+        // clickAction, bildirime dokununca ATEŞLENECEK INTENT ACTION'ını belirler.
+        // "FLUTTER_NOTIFICATION_CLICK" bir FLUTTER sözleşmesidir; Flutter'ın FCM
+        // eklentisi manifest'ine o action için intent-filter koyar. Bizim
+        // uygulamamız CAPACITOR ve MainActivity'de öyle bir filtre YOK → dokunuş
+        // hiçbir aktivitenin karşılamadığı bir intent üretiyor → HİÇBİR ŞEY OLMUYOR.
+        // clickAction VERİLMEZSE FCM varsayılana döner: uygulamanın launcher
+        // aktivitesini açar ve data payload'ını intent'e koyar; Capacitor eklentisi
+        // de notificationActionPerformed olayını tetikler. Doğru davranış budur.
+        // ⚠️ Buraya clickAction EKLEME.
       },
     },
   });
