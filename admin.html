@@ -280,6 +280,8 @@
         <button class="tab" data-tab="merci">🤖 Merci AI<span class="cnt" id="cnt-merci">·</span></button>
         <button class="tab" data-tab="kota">📊 AI Kota<span class="cnt" id="cnt-kota">·</span></button>
         <button class="tab" data-tab="oda">🚪 Odalar<span class="cnt" id="cnt-oda">·</span></button>
+        <button class="tab" data-tab="push">📢 Bildirim<span class="cnt" id="cnt-push">·</span></button>
+        <button class="tab" data-tab="saglik">🩺 Sağlık<span class="cnt" id="cnt-saglik">·</span></button>
       </div>
       <div class="wrap">
         <div class="row" id="toolbar"></div>
@@ -394,6 +396,192 @@
         else if (tab === "merci") loadMerci();
         else if (tab === "kota") loadUsage();
         else if (tab === "oda") loadRooms();
+        else if (tab === "push") loadPush();
+        else if (tab === "saglik") loadHealth();
+      }
+
+      // ══════════════════════════════════════════════════════════════════════
+      // ── 📢 BİLDİRİM SEKMESİ (2 AĞU 2026) ─────────────────────────────────
+      // ══════════════════════════════════════════════════════════════════════
+      // Bu panel Firestore'a DOĞRUDAN yazmaz; gönderim sunucudaki /admin/push
+      // ucundan geçer. Sebep: FCM gönderimi sunucu anahtarı gerektirir ve
+      // yetki tek yerde (ADMIN_UID) doğrulanır.
+      // ⚠️ Zamanlanmış kayıtlar da sunucuya gider — `nextAt`i SUNUCU hesaplar
+      // (TR saati → UTC), panelden yanlış değer gelse bile zamanlayıcı tutarlı.
+      function _adminHeaders() {
+        return auth.currentUser.getIdToken().then(function (t) {
+          return { "Content-Type": "application/json", Authorization: "Bearer " + t };
+        });
+      }
+      function _post(url, body) {
+        return _adminHeaders().then(function (h) {
+          return fetch(url, { method: "POST", headers: h, body: JSON.stringify(body) }).then(
+            function (r) {
+              return r.json().then(function (j) {
+                if (!r.ok) throw new Error(j.error || "HTTP " + r.status);
+                return j;
+              });
+            },
+          );
+        });
+      }
+
+      window.pushSendNow = function () {
+        var title = $("pt").value.trim();
+        var body = $("pb").value.trim();
+        var url = $("pu").value.trim();
+        var topic = $("ptopic").value.trim() || "tum-kullanicilar";
+        if (!title || !body) { alert("Başlık ve metin zorunlu."); return; }
+        if (!confirm('"' + title + '"\n\nBu bildirim ' + topic + ' abonelerine GİDECEK. Emin misin?')) return;
+        var b = $("pbtn"); b.disabled = true; b.textContent = "Gönderiliyor…";
+        _post("/admin/push", { title: title, body: body, url: url, topic: topic })
+          .then(function () { alert("Gönderildi ✅"); $("pt").value = ""; $("pb").value = ""; $("pu").value = ""; loadPush(); })
+          .catch(function (e) { alert("Hata: " + e.message); })
+          .then(function () { b.disabled = false; b.textContent = "📤 Şimdi Gönder"; });
+      };
+
+      window.pushSchedule = function () {
+        var title = $("st").value.trim();
+        var body = $("sb").value.trim();
+        var url = $("su").value.trim();
+        var mode = $("smode").value;
+        var hour = parseInt($("sh").value, 10) || 0;
+        var minute = parseInt($("sm").value, 10) || 0;
+        var weekday = parseInt($("swd").value, 10) || 0;
+        if (!title || !body) { alert("Başlık ve metin zorunlu."); return; }
+        _post("/admin/push/schedule", {
+          title: title, body: body, url: url, mode: mode,
+          hour: hour, minute: minute, weekday: weekday, active: true,
+        })
+          .then(function (j) {
+            alert("Kaydedildi ✅\nİlk gönderim: " + new Date(j.nextAt).toLocaleString("tr-TR"));
+            $("st").value = ""; $("sb").value = ""; $("su").value = "";
+            loadPush();
+          })
+          .catch(function (e) { alert("Hata: " + e.message); });
+      };
+
+      window.pushToggle = function (id, active) {
+        db.collection("pushSchedule").doc(id).set({ active: !active }, { merge: true })
+          .then(loadPush)
+          .catch(function (e) { alert("Hata: " + e.message); });
+      };
+      window.pushDelete = function (id) {
+        if (!confirm("Bu zamanlanmış bildirim silinsin mi?")) return;
+        db.collection("pushSchedule").doc(id).delete().then(loadPush)
+          .catch(function (e) { alert("Hata: " + e.message); });
+      };
+
+      function loadPush() {
+        $("toolbar").innerHTML = "";
+        var days = ["Pazar", "Pazartesi", "Salı", "Çarşamba", "Perşembe", "Cuma", "Cumartesi"];
+        var dayOpts = days.map(function (d, i) { return '<option value="' + i + '">' + d + "</option>"; }).join("");
+        var html =
+          '<div class="card"><h3 style="margin:0 0 10px">📤 Hemen Gönder</h3>' +
+          '<input id="pt" placeholder="Başlık (ör. Akşam ne yesek? 🍽️)" style="width:100%;padding:9px;margin-bottom:6px">' +
+          '<input id="pb" placeholder="Metin" style="width:100%;padding:9px;margin-bottom:6px">' +
+          '<input id="pu" placeholder="Link (opsiyonel — sponsorlu için)" style="width:100%;padding:9px;margin-bottom:6px">' +
+          '<input id="ptopic" value="tum-kullanicilar" style="width:100%;padding:9px;margin-bottom:8px">' +
+          '<button class="btn" id="pbtn" onclick="pushSendNow()">📤 Şimdi Gönder</button>' +
+          '<div style="font-size:12px;color:#888;margin-top:6px">⚠️ Geri alınamaz. Yalnız uygulamayı kurup bildirime izin verenlere gider.</div></div>' +
+
+          '<div class="card"><h3 style="margin:0 0 10px">⏰ Zamanla</h3>' +
+          '<input id="st" placeholder="Başlık" style="width:100%;padding:9px;margin-bottom:6px">' +
+          '<input id="sb" placeholder="Metin" style="width:100%;padding:9px;margin-bottom:6px">' +
+          '<input id="su" placeholder="Link (opsiyonel)" style="width:100%;padding:9px;margin-bottom:6px">' +
+          '<div class="row" style="gap:6px;margin-bottom:8px">' +
+          '<select id="smode" style="padding:9px"><option value="daily">Her gün</option><option value="weekly">Haftalık</option><option value="once">Tek sefer</option></select>' +
+          '<select id="swd" style="padding:9px">' + dayOpts + "</select>" +
+          '<input id="sh" type="number" min="0" max="23" value="18" style="width:64px;padding:9px" title="Saat (TR)">' +
+          '<input id="sm" type="number" min="0" max="59" value="0" style="width:64px;padding:9px" title="Dakika">' +
+          "</div>" +
+          '<button class="btn" onclick="pushSchedule()">💾 Kaydet</button>' +
+          '<div style="font-size:12px;color:#888;margin-top:6px">Saatler <b>Türkiye saati</b>. Haftalık seçilmezse gün alanı yok sayılır.</div></div>' +
+          '<div id="plist"><div class="empty">Yükleniyor…</div></div>';
+        $("list").innerHTML = html;
+
+        // Zamanlanmışlar + son gönderilenler
+        db.collection("pushSchedule").limit(50).get().then(function (snap) {
+          var out = '<div class="card"><h3 style="margin:0 0 10px">⏰ Zamanlanmışlar (' + snap.size + ")</h3>";
+          if (!snap.size) out += '<div class="empty">Henüz zamanlanmış bildirim yok.</div>';
+          snap.forEach(function (d) {
+            var x = d.data() || {};
+            var when =
+              x.mode === "weekly" ? days[x.weekday || 0] + " " : x.mode === "once" ? "Tek sefer " : "Her gün ";
+            when += String(x.hour || 0).padStart(2, "0") + ":" + String(x.minute || 0).padStart(2, "0");
+            out +=
+              '<div style="border-top:1px solid #eee;padding:8px 0">' +
+              "<b>" + esc(x.title || "") + "</b> — " + esc(x.body || "") +
+              '<div style="font-size:12px;color:#888;margin-top:3px">' + when +
+              " · " + (x.active ? "🟢 aktif" : "⚪ kapalı") +
+              " · gönderim: " + (x.sentCount || 0) +
+              (x.nextAt && x.nextAt.toDate ? " · sıradaki: " + x.nextAt.toDate().toLocaleString("tr-TR") : "") +
+              "</div>" +
+              '<div class="row" style="margin-top:6px">' +
+              '<button class="btn sm" onclick="pushToggle(\'' + d.id + "'," + (x.active ? "true" : "false") + ')">' +
+              (x.active ? "⏸ Durdur" : "▶️ Başlat") + "</button>" +
+              '<button class="btn danger sm" onclick="pushDelete(\'' + d.id + '\')">🗑 Sil</button>' +
+              "</div></div>";
+          });
+          out += "</div>";
+          return db.collection("pushLog").orderBy("at", "desc").limit(20).get().then(function (ls) {
+            out += '<div class="card"><h3 style="margin:0 0 10px">📜 Son Gönderilenler</h3>';
+            if (!ls.size) out += '<div class="empty">Henüz gönderim yok.</div>';
+            ls.forEach(function (d) {
+              var x = d.data() || {};
+              out +=
+                '<div style="border-top:1px solid #eee;padding:7px 0">' +
+                (x.ok === false ? "❌ " : "✅ ") + "<b>" + esc(x.title || "") + "</b>" +
+                '<div style="font-size:12px;color:#888">' + esc(x.topic || "") + " · " + esc(x.by || "") +
+                (x.at && x.at.toDate ? " · " + x.at.toDate().toLocaleString("tr-TR") : "") +
+                (x.err ? " · " + esc(x.err) : "") + "</div></div>";
+            });
+            out += "</div>";
+            $("plist").innerHTML = out;
+            $("cnt-push").textContent = snap.size;
+          });
+        }).catch(function (e) {
+          $("plist").innerHTML = '<div class="empty">Okunamadı: ' + esc(e.message) +
+            "<br><small>pushSchedule/pushLog için Firestore kuralları eklenmiş mi?</small></div>";
+        });
+      }
+
+      // ── 🩺 SAĞLIK: /version çıktısını panelde göster ──────────────────────
+      // Böylece sunucu sürümü, bayraklar ve TomTom sayaçları için curl'e ya da
+      // Claude'a sormaya gerek kalmaz.
+      function loadHealth() {
+        $("toolbar").innerHTML = "";
+        fetch("/version", { cache: "no-store" })
+          .then(function (r) { return r.json(); })
+          .then(function (v) {
+            var t = v.tomtom || {};
+            var f = v.flags || {};
+            var bad = function (b) { return b ? "🟢" : "🔴"; };
+            $("list").innerHTML =
+              '<div class="card"><h3 style="margin:0 0 10px">🩺 Sunucu</h3>' +
+              "<div>Sürüm: <b>" + (v.server && v.server.bytes) + "</b> byte</div>" +
+              "<div>index.html: " + (v.index && v.index.bytes) + " byte</div>" +
+              "<div>Başlatma: " + new Date(v.bootedAt).toLocaleString("tr-TR") +
+              " (" + Math.round((v.uptimeSec || 0) / 60) + " dk)</div>" +
+              "<div>Node: " + esc(v.node || "") + "</div></div>" +
+              '<div class="card"><h3 style="margin:0 0 10px">🚩 Bayraklar</h3>' +
+              "<div>Mekan sağlayıcı: <b>" + esc(f.places || "") + "</b></div>" +
+              "<div>" + bad(f.tomtomKey) + " TomTom anahtarı</div>" +
+              "<div>" + bad(f.toolUse) + " Tool use</div>" +
+              "<div>" + bad(f.anthropicKey) + " Anthropic anahtarı</div>" +
+              "<div>" + bad(f.firebase) + " Firebase</div></div>" +
+              '<div class="card"><h3 style="margin:0 0 10px">💰 TomTom Kullanımı</h3>' +
+              "<div>Bu ay ücretli çağrı: <b>" + (t.attempts || 0) + "</b> (tavan 4500)</div>" +
+              "<div>Önbellekten karşılanan: " + (t.cacheHit || 0) + " · başarılı: " + (t.ok || 0) + "</div>" +
+              "<div>Süzülen: " + (t.filtered || 0) + " · boş: " + (t.empty || 0) + "</div>" +
+              "<div>HTTP hata: " + (t.httpErr || 0) + " (son kod " + (t.lastStatus || 0) + ") · ağ hata: " + (t.netErr || 0) + "</div>" +
+              "<div>Tavan doldu: " + (t.capped || 0) + " · son süre: " + (t.lastMs || 0) + " ms</div>" +
+              '<div style="font-size:12px;color:#888;margin-top:6px">⚠️ Sayaçlar sunucu yeniden başlayınca sıfırlanır (aylık bütçe Firestore\'da tutulur).</div></div>';
+            $("cnt-saglik").textContent = f.tomtomKey ? "🟢" : "🔴";
+          })
+          .catch(function (e) {
+            $("list").innerHTML = '<div class="empty">/version okunamadı: ' + esc(e.message) + "</div>";
+          });
       }
 
       // ── Ban altyapısı (bans/{uid}) ──
