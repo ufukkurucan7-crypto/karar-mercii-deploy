@@ -32,6 +32,10 @@ app.get("/version", (req, res) => {
     flags: {
       toolUse: process.env.KM_TOOL_USE !== "0",
       places: process.env.KM_PLACES || "osm",
+      // ⚠️ places:"tomtom" ama tomtomKey:false = sağlayıcı SESSİZCE devre dışı
+      // (tomtomSearch anahtar yoksa null döner, akış OSM'e düşer, hata görünmez).
+      // Bu ikisini AYRI raporla — tek bayrağa bakıp "açık" sanma tuzağı gerçek.
+      tomtomKey: !!process.env.TOMTOM_KEY,
       anthropicKey: !!process.env.ANTHROPIC_API_KEY,
       firebase: !!process.env.FIREBASE_SERVICE_ACCOUNT,
     },
@@ -1774,13 +1778,20 @@ app.post("/nearby", rateLimit, async (req, res) => {
     // "ne yesek / karnım aç" gibi GENEL istekler bedava OSM kovasında kalır —
     // orada OSM zaten yeterli (en yakın restoranları listelemek etiket işi).
     // Ücretli çağrı yalnız OSM'in çuvalladığı yerde ("kokoreç") harcanır.
-    // `searchTerm`: modelin ürettiği temiz terim (araç `arama` alanı) → yoksa
-    // ham kullanıcı metni. Model ipucu (hintIsim) daha temiz olduğunda o tercih
-    // edilir; ikisi de yoksa TomTom atlanır ve akış OSM'e düşer.
+    // ⚠️⚠️ SIRA KRİTİK — CANLIDA BUNUN TERSİ BUG'DI (2 Ağu, cihaz testi):
+    // `query`    = modelin `arama` alanı → TEMİZ İNSAN TERİMİ ("kokoreç")
+    // `hintIsim` = OSM İÇİN üretilmiş REGEX ("kokoreç|kokoreçci|kokorec")
+    // Önce hintIsim alınıp `|` boşluğa çevrilince TomTom'a "kokoreç kokoreçci
+    // kokorec" diye bozuk çok-terimli bir metin sorgusu gidiyordu → sonuç boş →
+    // ttRes null → sessizce OSM'e düşüyordu (kullanıcı 7,3 km'deki tek kokoreççiyi
+    // gördü, oysa yakında çok vardı). Regex'i serbest metin aramasına ASLA verme;
+    // mecbur kalınırsa YALNIZ ilk alternatif kullanılır.
     let ttRes = null;
     let ttTerm = ""; // dışarıda: aşağıdaki `matched` ve dürüstlük mesajı kullanıyor
     if (KM_PLACES === "tomtom" && ["food", "cafe", "dessert"].includes(typeKey)) {
-      const searchTerm = (hintIsim || query || "").replace(/\|/g, " ").trim();
+      const searchTerm = (
+        query || String(hintIsim || "").split("|")[0] || ""
+      ).trim();
       ttTerm = searchTerm;
       ttRes = await tomtomSearch({ lat, lng, query: searchTerm, typeKey });
       if (ttRes) {
