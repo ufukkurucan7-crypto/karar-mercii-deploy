@@ -5947,24 +5947,87 @@
                 🔑 Odaya Katıl
               </button>
             </div>
-            <!-- Seçenek Ekleme (popup onayından sonra görünür) -->
+            <!-- Oda kurulumu — 8 Ağu: AÇILIR PENCERE KALDIRILDI, tek akış.
+                 Ayarlar artık burada, seçeneklerle aynı ekranda. Eleman id'leri
+                 bilerek AYNEN korundu (host-name, room-name, maxp-row, time-row,
+                 custom wrap'ler) → setMaxP/setTimeLimit/toggleCustomTime/
+                 applyCustomTime/createRoom hiç değişmeden çalışmaya devam ediyor. -->
             <div id="online-setup" style="display: none">
-              <!-- Bağlam çipi: oda adı + ayarlar (toggle yerine) -->
-              <div id="room-ctx-chip" class="ctx-chip">
-                <div class="ctx-ic">📡</div>
-                <div class="ctx-mid">
-                  <div class="ctx-t" id="ctx-room-name">Oda</div>
-                  <div class="ctx-s" id="ctx-room-meta">—</div>
-                </div>
+              <p class="lbl">Adın (zorunlu)</p>
+              <div class="irow" style="margin-bottom: 12px">
+                <input id="host-name" type="text" placeholder="Adını yaz..." />
+              </div>
+              <p class="lbl">Oda Adı (zorunlu)</p>
+              <div class="irow" style="margin-bottom: 12px">
+                <input id="room-name" type="text" placeholder="örn. Pizza Gecesi" />
+              </div>
+              <p class="lbl">Kaç kişi oy verecek? (sen dahil)</p>
+              <div class="pcount-row" id="maxp-row" style="margin-bottom: 4px">
+                <button class="onl-sel-btn" data-val="2" onclick="setMaxP(2)">2</button>
+                <button class="onl-sel-btn" data-val="3" onclick="setMaxP(3)">3</button>
+                <button class="onl-sel-btn" data-val="4" onclick="setMaxP(4)">4</button>
+                <button class="onl-sel-btn" data-val="5" onclick="setMaxP(5)">5</button>
+                <button class="onl-sel-btn" data-val="6" onclick="setMaxP(6)">6</button>
+                <button class="onl-sel-btn" data-val="8" onclick="setMaxP(8)">8</button>
+                <button class="onl-sel-btn" data-val="10" onclick="setMaxP(10)">10</button>
                 <button
-                  type="button"
-                  class="ctx-edit"
-                  onclick="openOnlineSetupPopup()"
+                  class="onl-sel-btn other"
+                  id="maxp-custom-btn"
+                  title="Diğer"
+                  onclick="toggleMaxPCustom()"
                 >
-                  ✎ Düzenle
+                  <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Diğer
                 </button>
               </div>
-              <p class="lbl">Seçenek Ekle (min 2)</p>
+              <div id="maxp-custom-wrap" style="display: none; margin-bottom: 8px">
+                <div class="irow" style="align-items: center">
+                  <input
+                    id="maxp-custom-inp"
+                    type="number"
+                    min="2"
+                    max="50"
+                    placeholder="Kişi sayısı..."
+                    style="width: 100%"
+                  />
+                  <button
+                    class="abtn"
+                    onclick="applyMaxPCustom()"
+                    style="font-size: 13px; padding: 11px 14px"
+                  >
+                    ✓
+                  </button>
+                </div>
+              </div>
+              <p class="lbl" style="margin-top: 8px">Süre Limiti</p>
+              <div class="onl-sel-row" id="time-row" style="margin-bottom: 4px">
+                <button class="onl-sel-btn" data-tval="5" onclick="setTimeLimit(5)">5 dk</button>
+                <button class="onl-sel-btn" data-tval="10" onclick="setTimeLimit(10)">10 dk</button>
+                <button class="onl-sel-btn" data-tval="30" onclick="setTimeLimit(30)">30 dk</button>
+                <button class="onl-sel-btn" data-tval="60" onclick="setTimeLimit(60)">1 saat</button>
+                <!-- "Sınırsız" KALDIRILDI → 24 saat (varsayılan). Süresiz odalar hiç kapanmayıp
+                     Firestore okuma kotasını yakıyordu. -->
+                <button class="onl-sel-btn on" data-tval="1440" onclick="setTimeLimit(1440)">24 saat</button>
+                <button
+                  class="onl-sel-btn"
+                  data-tval="custom"
+                  id="time-custom-btn"
+                  onclick="toggleCustomTime()"
+                >
+                  <svg viewBox="0 0 24 24" style="width:12px;height:12px;fill:none;stroke:currentColor;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round;vertical-align:-1px;margin-right:1px"><path d="M12 5v14M5 12h14"/></svg>Diğer
+                </button>
+              </div>
+              <div id="custom-time-wrap" style="display: none; margin-bottom: 8px">
+                <!-- İKİ KÜÇÜK KUTU: sol SAAT, sağ DAKİKA. Toplam = saat*60 + dk, tavan 24 saat. -->
+                <div class="irow" style="align-items: center; gap: 6px; margin-bottom: 0">
+                  <input id="custom-time-h" class="ct-box" type="number" min="0" max="24" inputmode="numeric" placeholder="0" />
+                  <span class="ct-unit">saat</span>
+                  <input id="custom-time-m" class="ct-box" type="number" min="0" max="59" inputmode="numeric" placeholder="0" />
+                  <span class="ct-unit">dk</span>
+                  <button class="abtn" onclick="applyCustomTime()" style="font-size: 13px; padding: 9px 13px">✓</button>
+                </div>
+                <div class="ct-hint">En fazla 24 saat</div>
+              </div>
+              <p class="lbl" style="margin-top: 14px">Seçenek Ekle (min 2)</p>
               <div class="irow">
                 <input
                   id="voi"
@@ -9071,7 +9134,7 @@ function drawResultCard(opts) {
         },
         // Ekranda açık bir popup/modal var mı?
         modalSelectors:
-          ".menu-overlay.on, .info-modal.on, .pro-modal.on, .auth-modal.on, .confirm-modal.on, .modal-overlay.on, .online-popup-overlay.on, #online-setup-popup.on, #paywall-wrap, #chat-hist-overlay, #km-tour, .settings-panel.on",
+          ".menu-overlay.on, .info-modal.on, .pro-modal.on, .auth-modal.on, .confirm-modal.on, .modal-overlay.on, #paywall-wrap, #chat-hist-overlay, #km-tour, .settings-panel.on",
         anyModalOpen: function () {
           try {
             return !!document.querySelector(this.modalSelectors);
@@ -10217,11 +10280,13 @@ function drawResultCard(opts) {
           },
           {
             tab: "vote",
-            sel: "#online-setup-popup .online-popup-box",
+            // 8 Ağu: açılır pencere kaldırıldı, kurulum tek ekranda → selektör
+            // ve metin buna göre güncellendi (tur eski ekranı anlatmasın).
+            sel: "#online-setup",
             settle: 380,
             pose: "default",
             title: "📡 Oda Oluştur",
-            body: "Oda kurarken adını, oda adını, <b>kaç kişi</b> olacağını ve <b>süreyi</b> seçersin. Onaylayınca <b>4 haneli kodu</b> paylaş — arkadaşların katılsın!",
+            body: "Adını, oda adını, <b>kaç kişi</b> olacağını ve <b>süreyi</b> seç; hemen altına da seçenekleri ekle. <b>Odayı Oluştur</b>'a basınca çıkan <b>4 haneli kodu</b> paylaş — arkadaşların katılsın!",
             skipIf: function () {
               return tourVoteBusy();
             },
@@ -10387,8 +10452,7 @@ function drawResultCard(opts) {
           try {
             var mo = document.getElementById("menu-overlay");
             if (mo) mo.classList.remove("on");
-            var sp = document.getElementById("online-setup-popup");
-            if (sp) sp.classList.remove("on");
+            // (oda kurulumu artık açılır pencere değil — temizlenecek overlay yok)
           } catch (e) {}
         }
         function end() {
@@ -13791,54 +13855,46 @@ function drawResultCard(opts) {
           if (ji) ji.value = "";
         }
       }
+      // 8 Ağu: açılır pencere kaldırıldı — bu fonksiyon artık kurulum bölümünü
+      // ekranda AÇIYOR. Adı bilerek korundu (HTML onclick'leri ve tur adımları
+      // bu adı çağırıyor; yeniden adlandırmak sessiz kırılmaya davetiye olurdu).
       function openOnlineSetupPopup() {
         // Önce join panelini kapat
         document.getElementById("online-join").style.display = "none";
         document.getElementById("online-name-input").style.display = "none";
         document.getElementById("online-participant").style.display = "none";
         document.getElementById("role-join-btn").classList.remove("on");
-        document.getElementById("online-setup-popup").classList.add("on");
+        // Kurulum + seçenekler tek ekranda
+        document.getElementById("online-setup").style.display = "";
+        // ⚠️ Rol seçici GİZLENMİYOR: eskiden ayrı bir onay adımı vardı ve satır
+        // ancak onaydan sonra gizleniyordu. Tek akışta "Oda Oluştur"a basar
+        // basmaz gizlersek, fikrini değiştirip "Odaya Katıl"a geçmek isteyen
+        // kullanıcı kilitli kalırdı. Tekrar basmak zararsız (aynı bölüm açılır).
+        // Seçenek alanı görünür oldu → kategori seçimi anlamlı
+        var cw = document.getElementById("cats-vote-wrap");
+        if (cw) cw.style.display = "block";
         // Varsayılan değerleri seçili göster
         setMaxP(roomMaxP);
         setTimeLimit(roomTimeLimit);
-      }
-      function closeOnlineSetupPopup() {
-        document.getElementById("online-setup-popup").classList.remove("on");
-      }
-      function confirmOnlineSetup() {
-        var hName = document.getElementById("host-name").value.trim();
-        if (!hName) {
-          alert("Adını yaz!");
-          return;
-        }
-        var name = document.getElementById("room-name").value.trim();
-        if (!name) {
-          alert("Oda adı zorunlu!");
-          return;
-        }
-        closeOnlineSetupPopup();
-        document.getElementById("online-setup").style.display = "";
-        // Çift "Oda Oluştur" önlemi: üst toggle'ı gizle, yerine bağlam çipi göster
-        document.getElementById("online-role-row").style.display = "none";
-        var chip = document.getElementById("room-ctx-chip");
-        if (chip) {
-          document.getElementById("ctx-room-name").textContent = name;
-          var metaTxt = roomMaxP + " kişi";
-          // Her oda artık süreli (süresiz seçeneği kaldırıldı) → insanca biçimle
-          metaTxt += " · " + fmtRoomDur(clampRoomMin(roomTimeLimit)) + " süre";
-          document.getElementById("ctx-room-meta").textContent = metaTxt;
-          chip.style.display = "flex";
-        }
-        // Seçenek ekleme alanı açıldı → artık kategori seçimi anlamlı, göster
-        var cw = document.getElementById("cats-vote-wrap");
-        if (cw) cw.style.display = "block";
         snd("ding");
-        // Oto-scroll: kullanıcı seçenek ekleme + "Odayı Oluştur" alanını görsün (Deploy #14)
         setTimeout(function () {
           var os = document.getElementById("online-setup");
           if (os && os.scrollIntoView)
             os.scrollIntoView({ behavior: "smooth", block: "start" });
         }, 140);
+      }
+      // Tur (tutorial) hâlâ çağırıyor → kurulum bölümünü kapatır.
+      function closeOnlineSetupPopup() {
+        var os = document.getElementById("online-setup");
+        if (os) os.style.display = "none";
+        var rr = document.getElementById("online-role-row");
+        if (rr) rr.style.display = "";
+      }
+      // Ayrı "Devam Et" adımı kalmadı: ad ve oda adı zorunluluğunu zaten
+      // createRoom denetliyor (boşsa uyarıp odayı kurmuyor). Geriye dönük
+      // uyumluluk için duruyor.
+      function confirmOnlineSetup() {
+        openOnlineSetupPopup();
       }
       function toggleMaxPCustom() {
         var w = document.getElementById("maxp-custom-wrap");
@@ -17445,13 +17501,7 @@ function drawResultCard(opts) {
             signOut();
           });
 
-        // ── ONLINE SETUP POPUP OVERLAY KAPAT ──
-        var onlinePopup = document.getElementById("online-setup-popup");
-        if (onlinePopup) {
-          onlinePopup.addEventListener("click", function (e) {
-            if (e.target === onlinePopup) closeOnlineSetupPopup();
-          });
-        }
+        // (Oda kurulumu açılır pencere değil artık — dışarı tık dinleyicisi kaldırıldı.)
 
         // ── YILDIZ PUANLAMA ──
         var chosenStar = 0;
@@ -18610,138 +18660,6 @@ function drawResultCard(opts) {
     </div>
 
     <!-- ═══ ONLINE SETUP POPUP ═══ -->
-    <div class="online-popup-overlay" id="online-setup-popup">
-      <div class="online-popup-box">
-        <div class="online-popup-hdr">
-          <div class="online-popup-title">📡 Oda Oluştur</div>
-          <button class="online-popup-close" onclick="closeOnlineSetupPopup()">
-            ✕
-          </button>
-        </div>
-        <p class="lbl">Adın (zorunlu)</p>
-        <div class="irow" style="margin-bottom: 14px">
-          <input id="host-name" type="text" placeholder="Adını yaz..." />
-        </div>
-        <p class="lbl">Oda Adı (zorunlu)</p>
-        <div class="irow" style="margin-bottom: 14px">
-          <input id="room-name" type="text" placeholder="örn. Pizza Gecesi" />
-        </div>
-        <p class="lbl">Kaç kişi oy verecek? (sen dahil)</p>
-        <div class="pcount-row" id="maxp-row" style="margin-bottom: 4px">
-          <button class="onl-sel-btn" data-val="2" onclick="setMaxP(2)">2</button>
-          <button class="onl-sel-btn" data-val="3" onclick="setMaxP(3)">3</button>
-          <button class="onl-sel-btn" data-val="4" onclick="setMaxP(4)">4</button>
-          <button class="onl-sel-btn" data-val="5" onclick="setMaxP(5)">5</button>
-          <button class="onl-sel-btn" data-val="6" onclick="setMaxP(6)">6</button>
-          <button class="onl-sel-btn" data-val="8" onclick="setMaxP(8)">8</button>
-          <button class="onl-sel-btn" data-val="10" onclick="setMaxP(10)">10</button>
-          <button
-            class="onl-sel-btn other"
-            id="maxp-custom-btn"
-            title="Diğer"
-            onclick="toggleMaxPCustom()"
-          >
-            <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Diğer
-          </button>
-        </div>
-        <div id="maxp-custom-wrap" style="display: none; margin-bottom: 8px">
-          <div class="irow" style="align-items: center">
-            <input
-              id="maxp-custom-inp"
-              type="number"
-              min="2"
-              max="50"
-              placeholder="Kişi sayısı..."
-              style="width: 100%"
-            />
-            <button
-              class="abtn"
-              onclick="applyMaxPCustom()"
-              style="font-size: 13px; padding: 11px 14px"
-            >
-              ✓
-            </button>
-          </div>
-        </div>
-        <p class="lbl" style="margin-top: 8px">Süre Limiti</p>
-        <div class="onl-sel-row" id="time-row" style="margin-bottom: 4px">
-          <button class="onl-sel-btn" data-tval="5" onclick="setTimeLimit(5)">
-            5 dk
-          </button>
-          <button class="onl-sel-btn" data-tval="10" onclick="setTimeLimit(10)">
-            10 dk
-          </button>
-          <button class="onl-sel-btn" data-tval="30" onclick="setTimeLimit(30)">
-            30 dk
-          </button>
-          <button class="onl-sel-btn" data-tval="60" onclick="setTimeLimit(60)">
-            1 saat
-          </button>
-          <!-- "Sınırsız" KALDIRILDI → 24 saat (varsayılan). Süresiz odalar hiç kapanmayıp
-               Firestore okuma kotasını yakıyordu. -->
-          <button
-            class="onl-sel-btn on"
-            data-tval="1440"
-            onclick="setTimeLimit(1440)"
-          >
-            24 saat
-          </button>
-          <button
-            class="onl-sel-btn"
-            data-tval="custom"
-            id="time-custom-btn"
-            onclick="toggleCustomTime()"
-          >
-            <svg viewBox="0 0 24 24" style="width:12px;height:12px;fill:none;stroke:currentColor;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round;vertical-align:-1px;margin-right:1px"><path d="M12 5v14M5 12h14"/></svg>Diğer
-          </button>
-        </div>
-        <div id="custom-time-wrap" style="display: none; margin-bottom: 8px">
-          <!-- İKİ KÜÇÜK KUTU: sol SAAT, sağ DAKİKA. Toplam = saat*60 + dk, tavan 24 saat. -->
-          <div class="irow" style="align-items: center; gap: 6px; margin-bottom: 0">
-            <input
-              id="custom-time-h"
-              class="ct-box"
-              type="number"
-              min="0"
-              max="24"
-              inputmode="numeric"
-              placeholder="0"
-            />
-            <span class="ct-unit">saat</span>
-            <input
-              id="custom-time-m"
-              class="ct-box"
-              type="number"
-              min="0"
-              max="59"
-              inputmode="numeric"
-              placeholder="0"
-            />
-            <span class="ct-unit">dk</span>
-            <button
-              class="abtn"
-              onclick="applyCustomTime()"
-              style="font-size: 13px; padding: 9px 13px"
-            >
-              ✓
-            </button>
-          </div>
-          <div class="ct-hint">En fazla 24 saat</div>
-        </div>
-        <div style="display: flex; gap: 8px; margin-top: 16px">
-          <button
-            class="btn ghost"
-            style="flex: 1"
-            onclick="closeOnlineSetupPopup()"
-          >
-            İptal
-          </button>
-          <button class="btn" style="flex: 2" onclick="confirmOnlineSetup()">
-            ✅ Devam Et
-          </button>
-        </div>
-      </div>
-    </div>
 
     <!-- ═══ CONFIRM MODAL ═══ -->
     <div class="confirm-modal" id="confirm-modal">
