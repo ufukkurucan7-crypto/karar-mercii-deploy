@@ -995,6 +995,10 @@
       @keyframes proPerkIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
       /* Güven satırı */
       .pro-hero-body .pro-trust { display: flex; align-items: center; justify-content: center; gap: 6px; margin-top: 10px; font-size: 10.5px; font-weight: 800; color: var(--ac-l2); letter-spacing: 0.2px; }
+      /* Apple 3.1.2: abonelik ekranında otomatik yenileme metni + Koşullar/Gizlilik
+         bağlantıları ZORUNLU. Menüde olmaları yetmez, paywall'ın kendisinde olacak. */
+      .pro-hero-body .pro-legal { margin-top: 10px; font-size: 9.5px; line-height: 1.45; text-align: center; color: var(--ac-l2); opacity: 0.85; }
+      .pro-hero-body .pro-legal span { font-weight: 800; text-decoration: underline; cursor: pointer; white-space: nowrap; }
       .pro-plan-badge {
         position: absolute;
         top: -10px;
@@ -8143,6 +8147,16 @@ function drawResultCard(opts) {
         }
         selectPlan("yearly");
         if (typeof KM_RC !== "undefined") KM_RC.loadOfferings();
+        // Mağaza adını platforma göre yaz (iOS'ta "Google Play" = Apple 3.1.1 reddi)
+        var tl = document.getElementById("pro-trust-line");
+        if (tl) {
+          var _pf = typeof KM_RC !== "undefined" ? KM_RC.platform() : "web";
+          var _store =
+            _pf === "ios" ? "App Store" : _pf === "android" ? "Google Play" : "";
+          tl.textContent =
+            (_store ? "🔒 " + _store + " güvencesi · " : "🔒 ") +
+            "İstediğin an iptal";
+        }
         // Hero maskotu (gözlüklü Merci) bir kez üret
         var hm = document.getElementById("pro-hero-merci");
         if (hm && !hm.innerHTML && typeof merciSVGGlasses === "function")
@@ -8272,7 +8286,39 @@ function drawResultCard(opts) {
               console.log("RC configure hata", e);
             });
         },
+        // SDK'yı GİRİŞTEN BAĞIMSIZ yapılandırır (anonim appUserID ile).
+        // ⚠️ NEDEN VAR: configure() yalnız auth handler'da (user varsa) çağrılıyordu.
+        // Giriş yapmadan Pro ekranı açılınca SDK yapılandırılmamış oluyor,
+        // getOfferings() patlıyor, catch yutuyor ve kartlarda SABİT 49₺/399₺
+        // kalıyordu — mağazadaki gerçek fiyat başkayken. Apple bunu yanıltıcı
+        // fiyat sayıp reddeder (3.1.2). Kullanıcı sonra giriş yapınca
+        // configure() 'configured' true gördüğü için logIn() dalına girer →
+        // anonim RC kullanıcısı hesaba bağlanır, entitlement kaybolmaz.
+        ensureConfigured: function () {
+          if (this.configured) return Promise.resolve();
+          var P = this.plugin();
+          if (!this.inApp() || !P) return Promise.resolve();
+          var key = this.apiKey();
+          if (!key || key.indexOf("PLACEHOLDER") !== -1) return Promise.resolve();
+          var self = this;
+          return Promise.resolve(P.configure({ apiKey: key }))
+            .then(function () {
+              self.configured = true;
+            })
+            .catch(function (e) {
+              console.log("RC ensureConfigured hata", e);
+            });
+        },
         loadOfferings: function () {
+          var P = this.plugin();
+          if (!P) return Promise.resolve();
+          var self = this;
+          return this.ensureConfigured().then(function () {
+            if (!self.configured) return;
+            return self._fetchOfferings();
+          });
+        },
+        _fetchOfferings: function () {
           var P = this.plugin();
           if (!P) return Promise.resolve();
           var self = this;
@@ -18289,7 +18335,17 @@ function drawResultCard(opts) {
         <button class="pro-btn" id="pro-buy-btn" onclick="buyPro()">
           ⭐ Pro'ya Geç
         </button>
-        <div class="pro-trust">🔒 Google Play güvencesi · İstediğin an iptal</div>
+        <!-- ⚠️ Mağaza adı SABİT YAZILMAZ: iOS'ta "Google Play" yazması Apple'ın
+             başka platforma atıf reddini (3.1.1) tetikler. openProModal doldurur. -->
+        <div class="pro-trust" id="pro-trust-line">🔒 Google Play güvencesi · İstediğin an iptal</div>
+        <div class="pro-legal">
+          Abonelik otomatik yenilenir. Dönemin bitiminden 24 saat öncesine kadar
+          iptal etmezsen aynı ücretle uzar; iptali istediğin an mağaza hesabının
+          abonelik ayarlarından yapabilirsin.<br />
+          <span onclick="document.getElementById('modal-terms').classList.add('on')">Kullanım Koşulları</span>
+          ·
+          <span onclick="document.getElementById('modal-privacy').classList.add('on')">Gizlilik Politikası</span>
+        </div>
         <span class="pro-skip" id="pro-skip-btn">Belki sonra… →</span>
         <div style="text-align: center; margin-top: 12px">
           <span
