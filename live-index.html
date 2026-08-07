@@ -4133,6 +4133,28 @@
         height: 200px !important;
         display: block;
       }
+      /* Çark göbeği: beyaz disk + Merci. pointer-events yok ki çarka dokunuşu engellemesin. */
+      .mwhub {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        width: 58px;
+        height: 58px;
+        margin: -29px 0 0 -29px;
+        border-radius: 50%;
+        background: #fff;
+        box-shadow: 0 3px 12px rgba(var(--ac-shadow), 0.35);
+        display: grid;
+        place-items: center;
+        overflow: hidden;
+        pointer-events: none;
+        z-index: 3;
+      }
+      .mwhub svg {
+        width: 44px;
+        height: auto;
+        display: block;
+      }
       /* Beraberlik mini çarkı (200px) + sonuç kartı toplamı kısa ekranda (banner +
          edge-to-edge → azalan yükseklik) taşabiliyordu; .mbox'ta scroll olmadığı için
          "Harika!" butonu + kazanan yazısı ekran ALTINDA kalıp erişilemiyordu (küre
@@ -5385,6 +5407,8 @@
         ></canvas>
         <div class="mwheel-stage" id="mw-stage">
           <div class="mwptr"></div>
+          <!-- Göbekteki Merci: dönerken heyecanlı, durunca kutluyor (animMW doldurur) -->
+          <div class="mwhub" id="mw-hub"></div>
           <canvas
             id="mw-canvas"
             width="200"
@@ -5949,6 +5973,8 @@
                 /><button class="abtn" id="add-online-opt">+</button>
               </div>
               <div class="ogrid" id="vol"></div>
+              <!-- Ekleme geri bildirimi: tekrar atlandı / üst sınır (JS doldurur) -->
+              <div id="vo-note" class="empty" style="display: none"></div>
               <div id="voe" class="empty">
                 Seçenek ekle, arkadaşların oylasın! 📡
               </div>
@@ -8719,6 +8745,14 @@ function drawResultCard(opts) {
         totals = {};
       var tbItems = [],
         tbType = "",
+        // Beraberlik modalında kutlama YAPILDI mı? Yapıldıysa sonuç ekranında
+        // (closeTb / showOnlineWinner) TEKRAR kutlanmaz — kullanıcı çarktan
+        // sonra kaydırınca kazanan sesinin ikinci kez çalmasından şikâyetçiydi.
+        // openTb her yeni beraberlikte sıfırlar.
+        tbCelebrated = false,
+        // Çarkta GÖSTERİLEN dilimler (tbItems'ın eşit tekrarlanmış hâli).
+        // Kazanan HER ZAMAN tbItems üzerinden çekilir — tekrarlar fazladan şans vermez.
+        tbSlices = [],
         tbAngle = 0,
         amHost = false,
         tbAnimKey = "";
@@ -10760,9 +10794,10 @@ function drawResultCard(opts) {
           updW();
         } else {
           if (voteMode === "online") {
-            cat.i.forEach((x) => {
-              if (onlineOpts.indexOf(x) < 0) onlineOpts.push(x);
-            });
+            // Kategori yükleme de üst sınıra ve tekrar elemesine uysun.
+            // (Firestore'dan oda GERİ YÜKLEME bilerek sınırlanmıyor — mevcut
+            //  odalarda daha fazla seçenek olabilir, kırpmak durumu bozardı.)
+            addOnlineOpts(cat.i.join("\n"));
             renderOnlineOpts();
           } else {
             // Mod seçilmemişse kategori yükleme
@@ -11109,6 +11144,48 @@ function drawResultCard(opts) {
         ctx.arc(cx, cy, 7, 0, Math.PI * 2);
         ctx.fillStyle = "#7c3aed";
         ctx.fill();
+      }
+      // ═══ BERABERLİK ÇARKI YARDIMCILARI (7 Ağu) ═══
+      // Küre (2 seçenek) kaldırıldı; her beraberlik çarkla çözülüyor. Az seçenekle
+      // çark boş görünmesin diye dilimler TEKRARLANIYOR — ama her seçenek EŞİT
+      // sayıda, yoksa çark bir seçeneği kayırır ve adalet bozulur.
+      // 2 seçenek → 3'er dilim (6), 3 → 2'şer (6), 4+ → 1'er.
+      function tbBuildSlices(items) {
+        var n = items.length;
+        if (!n) return [];
+        var reps = n >= 6 ? 1 : Math.floor(6 / n);
+        if (reps < 1) reps = 1;
+        var out = [];
+        // Tur tur ekle → aynı seçenek yan yana gelmez (A,B,A,B,A,B)
+        for (var r = 0; r < reps; r++)
+          for (var i = 0; i < n; i++) out.push(items[i]);
+        return out;
+      }
+      // wfA'nın TERSİ: k. dilimin iğneye gelmesi için gereken açı.
+      // wfA: rel = (p - a) mod 2π, index = floor(rel/sl) → rel = (k+0.5)*sl merkez.
+      // jit (0..1) dilim içinde kenara değmeyen küçük bir kayma verir; aynı jit
+      // her cihazda aynı sonucu üretsin diye tohumdan türetilir (senkron şart).
+      function tbAngleForSlice(k, N, turns, jit) {
+        var sl = (Math.PI * 2) / N,
+          p = -Math.PI / 2,
+          off = (k + 0.5 + (jit - 0.5) * 0.5) * sl;
+        return turns * Math.PI * 2 + (p - off);
+      }
+      // Bir tohumdan 0..1 arası DETERMİNİSTİK sayı — aynı tohum her cihazda
+      // aynı sonucu verir (çevrim içi senkron için şart, Math.random OLMAZ).
+      function tbJit(seed) {
+        var x = Math.sin(seed * 12.9898) * 43758.5453;
+        return x - Math.floor(x);
+      }
+      // Kazananın dilimlerinden birine oturan açı üretir.
+      function tbSeedForWinner(winner, jit) {
+        var N = tbSlices.length || 1,
+          idx = [];
+        for (var i = 0; i < N; i++) if (tbSlices[i] === winner) idx.push(i);
+        if (!idx.length) idx = [0];
+        var k = idx[Math.floor(jit * idx.length) % idx.length],
+          turns = 5 + Math.floor(jit * 3); // 5..7 tur
+        return tbAngleForSlice(k, N, turns, jit);
       }
       function wfA(a, n) {
         var sl = (Math.PI * 2) / n,
@@ -12017,56 +12094,41 @@ function drawResultCard(opts) {
       function openTb(items, hostMode) {
         var isHost = hostMode !== false;
         tbItems = items.slice();
-        tbType = items.length === 2 ? "globe" : "wheel";
+        // 7 Ağu: küre (globe) kaldırıldı — 2 seçenekli beraberlik de çarkla çözülüyor.
+        // animGlobe fonksiyonu duruyor ama artık çağrılmıyor.
+        tbType = "wheel";
+        tbSlices = tbBuildSlices(tbItems);
+        tbCelebrated = false;
         document.getElementById("tb-result").style.display = "none";
         document.getElementById("tb-canvas").style.display = "none";
         document.getElementById("mw-stage").style.display = "none";
         var sb = document.getElementById("tb-start-btn");
         sb.style.display = isHost ? "" : "none";
         setM("tb-merci", 80);
-        if (tbType === "globe") {
-          document.getElementById("tb-title").textContent = "Beraberlik! 🔮";
-          document.getElementById("tb-sub").textContent = isHost
-            ? '"' + items[0] + '" vs "' + items[1] + '"'
-            : '"' + items[0] + '" vs "' + items[1] + '" — Host çözüyor...';
-          if (isHost) sb.textContent = "🔮 Küreye Bak!";
-        } else {
-          document.getElementById("tb-title").textContent = "Beraberlik! 🎡";
-          document.getElementById("tb-sub").textContent = isHost
-            ? items.length + " seçenek eşit!"
-            : items.length + " seçenek eşit! — Host çözüyor...";
-          if (isHost) sb.textContent = "🎡 Çarkı Çevir!";
-        }
+        document.getElementById("tb-title").textContent = "Beraberlik! 🎡";
+        document.getElementById("tb-sub").textContent =
+          items.length + " seçenek eşit!" + (isHost ? "" : " — Host çözüyor...");
+        if (isHost) sb.textContent = "🎡 Çarkı Çevir!";
         document.getElementById("tb-modal").classList.add("on");
         snd("ding");
       }
       function startTb() {
         if (shareCode && !amHost) return; // only the host may trigger/broadcast the spin
         document.getElementById("tb-start-btn").style.display = "none";
+        // ⭐ Kazanan ÖNCE, tbItems üzerinden tek-tip çekilir; animasyon sonradan
+        // o kazanana yöneltilir. Böylece tekrarlanan dilimler kimseye fazladan
+        // şans vermez ve "çark nereye denk gelirse" belirsizliği kalmaz.
+        var w = tbItems[~~(Math.random() * tbItems.length)],
+          jit = Math.random(),
+          seed = tbSeedForWinner(w, jit);
         if (shareCode) {
-          // Online: host decides the result + spin seed, then broadcasts so every device animates identically.
-          if (tbType === "globe") {
-            var gw = tbItems[~~(Math.random() * tbItems.length)];
-            db.collection("rooms")
-              .doc(shareCode)
-              .update({ tbSpin: gw, tbSeed: null })
-              .catch(() => {});
-          } else {
-            var n = tbItems.length;
-            var seed = avoidEdge(
-              (4 + Math.random() * 3.5) * Math.PI * 2 +
-                Math.random() * Math.PI * 2,
-              n,
-            );
-            var ww = tbItems[wfA(seed, n)];
-            db.collection("rooms")
-              .doc(shareCode)
-              .update({ tbSpin: ww, tbSeed: seed })
-              .catch(() => {});
-          }
+          // Online: host kazananı + tohumu yayınlar, her cihaz aynı animasyonu oynatır.
+          db.collection("rooms")
+            .doc(shareCode)
+            .update({ tbSpin: w, tbSeed: seed })
+            .catch(() => {});
         } else {
-          var w = tbItems[~~(Math.random() * tbItems.length)];
-          tbType === "globe" ? animGlobe(w) : animMW();
+          animMW(seed, w);
         }
       }
       // Synchronized animation triggered on every device (host + participants) when host broadcasts tbSpin.
@@ -12084,34 +12146,42 @@ function drawResultCard(opts) {
         if (!document.getElementById("tb-modal").classList.contains("on"))
           openTb(items, amHost);
         tbItems = items.slice();
-        tbType = tbItems.length === 2 ? "globe" : "wheel";
+        tbType = "wheel";
+        tbSlices = tbBuildSlices(tbItems);
         document.getElementById("tb-start-btn").style.display = "none";
         document.getElementById("tb-result").style.display = "none";
-        tbType === "globe" ? animGlobe(data.tbSpin, true) : animMW(data.tbSeed);
+        // Kazanan adı da geçiliyor: açı bir sebeple kazananın dilimine denk
+        // gelmezse (eski sürüm cihaz, farklı dilim düzeni) animMW açıyı
+        // kazanana göre yeniden hesaplar → herkes AYNI sonucu görür.
+        animMW(data.tbSeed, data.tbSpin);
       }
-      function animMW(seed) {
+      function animMW(seed, winnerName) {
         document.getElementById("mw-stage").style.display = "block";
-        var n = tbItems.length;
+        if (!tbSlices.length) tbSlices = tbBuildSlices(tbItems);
+        var n = tbSlices.length;
         tbAngle = 0;
         var target =
-          seed != null
-            ? seed
-            : avoidEdge(
-                (4 + Math.random() * 3.5) * Math.PI * 2 +
-                  Math.random() * Math.PI * 2,
-                n,
-              );
+          seed != null ? seed : tbSeedForWinner(tbItems[0], Math.random());
+        // Güvence: açı kazananın dilimine oturmuyorsa açıyı kazanana göre
+        // yeniden üret. Tohumdan türeyen jit sayesinde bu düzeltme her
+        // cihazda AYNI sonucu verir.
+        if (winnerName && tbSlices[wfA(target, n)] !== winnerName) {
+          target = tbSeedForWinner(winnerName, tbJit(seed || 1));
+        }
         var wi = wfA(target, n),
           t0 = performance.now(),
           dur = seed != null ? 7000 : 6000 + Math.random() * 2000,
           li = -1;
+        // Göbekteki Merci: dönerken heyecanlı, durunca kutluyor
+        var hub = document.getElementById("mw-hub");
+        if (hub) setM("mw-hub", 44, "scared");
         function ease(t) {
           return 1 - Math.pow(1 - t, 4);
         }
         (function fr(now) {
           var t = Math.min((now - t0) / dur, 1);
           tbAngle = target * ease(t);
-          drawW("mw-canvas", tbItems, tbAngle, -1);
+          drawW("mw-canvas", tbSlices, tbAngle, -1);
           var idx = wfA(tbAngle, n);
           if (idx !== li) {
             li = idx;
@@ -12120,8 +12190,9 @@ function drawResultCard(opts) {
           }
           if (t < 1) requestAnimationFrame(fr);
           else {
-            drawW("mw-canvas", tbItems, tbAngle, wi);
-            tbDone(tbItems[wi]);
+            drawW("mw-canvas", tbSlices, tbAngle, wi);
+            if (hub) setM("mw-hub", 44, "celebrate");
+            tbDone(tbSlices[wi]);
           }
         })(t0);
       }
@@ -12213,6 +12284,8 @@ function drawResultCard(opts) {
             () => burstAt(document.querySelector("#tb-modal .mbox")),
             120,
           );
+          // Kutlama burada yapıldı → sonuç ekranı tekrar kutlamasın
+          tbCelebrated = true;
         }
         if (shareCode) {
           // Online: only the host writes the final closed result. Participants just watch and wait for the snapshot.
@@ -12275,9 +12348,12 @@ function drawResultCard(opts) {
           void vn.offsetWidth;
           vn.classList.add("shine");
           celebM("v-merci", 58);
-          winSound();
-          hSuccess();
-          confetti();
+          // Beraberlik çarkı zaten kutladıysa ikinci kez ses/konfeti YOK
+          if (!tbCelebrated) {
+            winSound();
+            hSuccess();
+            confetti();
+          }
           setTimeout(() => {
             burstAt(card);
             card.scrollIntoView({ behavior: "smooth", block: "center" });
@@ -14394,9 +14470,12 @@ function drawResultCard(opts) {
           "Çevrim İçi Oylama",
           say + " (" + pts + " puan, " + cnt + " kişi)",
         );
-        winSound();
-        hSuccess();
-        confetti();
+        // Beraberlik çarkı zaten kutladıysa ikinci kez ses/konfeti YOK
+        if (!tbCelebrated) {
+          winSound();
+          hSuccess();
+          confetti();
+        }
         // Online oylama sonucunda non-PRO'ya geçiş reklamı
         if (!isPremium && typeof KM_AD !== "undefined" && KM_AD.showInterstitial)
           setTimeout(function () {
@@ -16686,29 +16765,71 @@ function drawResultCard(opts) {
       bind("ro-ask-merci", () =>
         roSendAI(document.getElementById("ro-ai-ctx").value.trim()),
       );
+      // ═══ SEÇENEK EKLEME (8 Ağu) ═══
+      // Tek yol: hem "+" butonu hem Enter hem de yapıştırma buradan geçer.
+      // • Virgül / noktalı virgül / satır sonu ile ayrılmış metin tek tek eklenir
+      //   ("pizza, lahmacun, burger" yapıştır → üç seçenek).
+      // • Tekrarlar sessizce elenir, kaç tanesinin elendiği söylenir.
+      // • Üst sınır 12: çark dilimleri okunur kalsın ve oy verirken yorulmasın.
+      var ONLINE_OPT_MAX = 12;
+      function addOnlineOpts(raw) {
+        var parts = String(raw || "")
+            .split(/[,;\n]+/)
+            .map(function (s) {
+              return s.trim();
+            })
+            .filter(Boolean),
+          added = 0,
+          dup = 0,
+          full = 0;
+        parts.forEach(function (v) {
+          if (onlineOpts.length >= ONLINE_OPT_MAX) {
+            full++;
+            return;
+          }
+          if (onlineOpts.indexOf(v) >= 0) {
+            dup++;
+            return;
+          }
+          onlineOpts.push(v);
+          added++;
+        });
+        var note = document.getElementById("vo-note");
+        if (note) {
+          var msg = [];
+          if (dup) msg.push(dup + " tekrar atlandı");
+          if (full)
+            msg.push(full + " tanesi sınıra takıldı (en fazla " + ONLINE_OPT_MAX + ")");
+          note.textContent = msg.join(" · ");
+          note.style.display = msg.length ? "" : "none";
+        }
+        if (added) {
+          renderOnlineOpts();
+          snd("add");
+        }
+        return added;
+      }
       bind("add-online-opt", () => {
-        var inp = document.getElementById("voi"),
-          v = inp.value.trim();
-        if (!v) return;
-        if (onlineOpts.indexOf(v) < 0) onlineOpts.push(v);
+        var inp = document.getElementById("voi");
+        if (!inp || !inp.value.trim()) return;
+        addOnlineOpts(inp.value);
         inp.value = "";
-        renderOnlineOpts();
-        snd("add");
+        // İmleç kutuda kalsın → yaz, Enter, yaz, Enter akıcı olsun
+        try {
+          inp.focus();
+        } catch (e) {}
       });
       (function () {
         var el = document.getElementById("voi");
-        if (el)
-          el.addEventListener("keydown", (e) => {
-            if (e.key === "Enter") {
-              var inp = document.getElementById("voi"),
-                v = inp ? inp.value.trim() : "";
-              if (!v) return;
-              if (onlineOpts.indexOf(v) < 0) onlineOpts.push(v);
-              if (inp) inp.value = "";
-              renderOnlineOpts();
-              snd("add");
-            }
-          });
+        if (!el) return;
+        el.addEventListener("keydown", (e) => {
+          if (e.key === "Enter") {
+            e.preventDefault();
+            if (!el.value.trim()) return;
+            addOnlineOpts(el.value);
+            el.value = "";
+          }
+        });
       })();
       (function () {
         var el = document.getElementById("join-input");
@@ -16809,12 +16930,26 @@ function drawResultCard(opts) {
         onlineOpts.forEach((item) => {
           var d = document.createElement("div");
           d.className = "chip";
-          d.innerHTML =
-            "<span>" +
-            item +
-            '</span><button class="chx" onclick="onlineOpts=onlineOpts.filter(x=>x!==\'' +
-            item +
-            "');renderOnlineOpts()\">×</button>";
+          // ⚠️ 8 Ağu — GERÇEK BUG DÜZELTİLDİ: metin eskiden satır içi onclick'e
+          // string olarak gömülüyordu. "Ali'nin evi" gibi KESME İŞARETLİ bir
+          // seçenek üretilen JS'i bozuyor ve × butonu HİÇ çalışmıyordu; çift
+          // tırnak ise chip'i tamamen bozuyordu. Türkçe'de bu çok sık.
+          // Artık metin textContent ile yazılıyor, silme olay dinleyicisiyle.
+          var s = document.createElement("span");
+          s.textContent = item;
+          var b = document.createElement("button");
+          b.className = "chx";
+          b.type = "button";
+          b.textContent = "×";
+          b.setAttribute("aria-label", item + " seçeneğini sil");
+          b.addEventListener("click", function () {
+            onlineOpts = onlineOpts.filter(function (x) {
+              return x !== item;
+            });
+            renderOnlineOpts();
+          });
+          d.appendChild(s);
+          d.appendChild(b);
           l.appendChild(d);
         });
       }
