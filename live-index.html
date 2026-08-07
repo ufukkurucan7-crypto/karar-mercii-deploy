@@ -2364,6 +2364,28 @@
         letter-spacing: 8px;
         margin: 4px 0 2px;
       }
+      /* 8 Ağu: oda kodu tek blok yerine HANE HANE kutucuklarda — uzaktan
+         okunması ve karşıdakine söylenmesi kolay olsun. Harf aralığı
+         kutucuklarda anlamsız kaldığı için sıfırlanıyor. */
+      .share-code.tiles {
+        display: flex;
+        gap: 7px;
+        justify-content: center;
+        letter-spacing: 0;
+        margin: 7px 0 4px;
+      }
+      .share-code.tiles span {
+        min-width: 42px;
+        padding: 8px 4px;
+        border-radius: 12px;
+        background: var(--ac-bg2);
+        border: 1.5px solid var(--ac-bd);
+        font-size: 26px;
+        font-weight: 900;
+        line-height: 1.1;
+        color: var(--ac-dd);
+        font-variant-numeric: tabular-nums;
+      }
       /* Oda kodu etiketi + ipucu (Deploy #8) */
       .code-eyebrow {
         font-size: 10px;
@@ -4524,6 +4546,23 @@
         gap: 6px;
         margin: 6px 0 2px;
         justify-content: center;
+      }
+      /* Avatar + isim tek çipte hizalı dursun */
+      .pname-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+      }
+      .pname-ava {
+        display: inline-flex;
+        width: 22px;
+        height: 22px;
+        border-radius: 7px;
+        overflow: hidden;
+        flex: 0 0 22px;
+      }
+      .pname-ava svg {
+        display: block;
       }
       .pname-chip {
         padding: 4px 10px;
@@ -10223,7 +10262,8 @@ function drawResultCard(opts) {
             settle: 320,
             pose: "default",
             title: "⭐ Seçenek + yıldız",
-            body: "Örnek: her seçeneğe <b>dokunarak 1–5 yıldız</b> ver. En çok yıldızı toplayan kazanır 🏆 (Gerçekte seçenekleri yukarıdan sen eklersin.)",
+            // 8 Ağu: puanlama zorunlu değil — tur metni de bunu söylüyor artık.
+            body: "Beğendiğin seçeneğe <b>1–5 yıldız</b> ver. <b>Hepsine vermek zorunda değilsin</b>; dokunmadığın 0 sayılır. En çok yıldızı toplayan kazanır 🏆 (Gerçekte seçenekleri yukarıdan sen eklersin.)",
             skipIf: function () {
               return tourVoteBusy();
             },
@@ -14029,7 +14069,7 @@ function drawResultCard(opts) {
           if (_nro) _nro.style.display = "none";
           var _vrCard = document.getElementById("vr");
           if (_vrCard) _vrCard.style.display = "none";
-          document.getElementById("share-code").textContent = code;
+          renderShareCode(code);
           document.getElementById("room-title-display").textContent =
             name + " — Oda açık";
           renderHostVoteList();
@@ -14109,7 +14149,7 @@ function drawResultCard(opts) {
           if (_nro) _nro.style.display = "none";
           var _vrCard = document.getElementById("vr");
           if (_vrCard) _vrCard.style.display = "none";
-          document.getElementById("share-code").textContent = code;
+          renderShareCode(code);
           document.getElementById("room-title-display").textContent =
             (data.name || "Oylama") + " — Oda açık";
           renderHostVoteList();
@@ -14172,9 +14212,97 @@ function drawResultCard(opts) {
         } catch (e) {}
       }
 
+      // Oy listesinin başına açıklama: puanlama ZORUNLU DEĞİL.
+      // Mekanik zaten böyleydi (puanlar 0'dan başlıyor, aynı yıldıza tekrar
+      // basınca sıfırlanıyor) ama kullanıcıya hiç söylenmiyordu — istemediği
+      // seçeneğe de puan vermek zorunda sanılıyordu.
+      function voteHintEl() {
+        var h = document.createElement("div");
+        h.className = "empty";
+        h.style.cssText =
+          "padding:2px 0 8px;font-size:11.5px;font-weight:700;line-height:1.45";
+        h.textContent =
+          "İstemediğine dokunma — boş bıraktığın 0 puan sayılır. Aynı yıldıza tekrar basınca puan silinir.";
+        return h;
+      }
+      // ═══ MERCİ AVATARI (8 Ağu) ═══
+      // Katılımcıları baş harfle göstermek yetersizdi: aynı harfle başlayan
+      // isimler ayırt edilemiyordu. Profil kurdurmak da akışı öldürürdü
+      // (uygulama anonim çalışıyor, gücü bu). Çözüm: isimden TÜRETİLEN
+      // deterministik bir Merci yüzü — aynı kişi her yerde aynı görünür,
+      // kimse kurulum ekranı görmez, depolama maliyeti sıfır.
+      function _avaHash(s) {
+        var h = 0,
+          t = String(s || "");
+        for (var i = 0; i < t.length; i++) h = (h * 31 + t.charCodeAt(i)) % 100000;
+        return h;
+      }
+      function merciAvatar(seed, size) {
+        var h = _avaHash(seed),
+          hue = h % 360,
+          mood = h % 4,
+          w = size || 26,
+          id = "av" + h + "_" + (mc = (mc || 0) + 1);
+        var mouth =
+          mood === 0
+            ? '<path d="M316 312Q340 336 364 312" fill="none" stroke="#26215C" stroke-width="10" stroke-linecap="round"/>'
+            : mood === 1
+              ? '<ellipse cx="340" cy="316" rx="14" ry="17" fill="#26215C"/>'
+              : mood === 2
+                ? '<path d="M320 314Q340 322 360 314" fill="none" stroke="#26215C" stroke-width="9" stroke-linecap="round"/>'
+                : '<path d="M318 310Q340 330 362 310" fill="none" stroke="#26215C" stroke-width="9" stroke-linecap="round"/>';
+        return (
+          '<svg width="' +
+          w +
+          '" height="' +
+          w +
+          '" viewBox="212 137 256 256" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">' +
+          '<defs><radialGradient id="' +
+          id +
+          '" cx="42%" cy="30%" r="64%">' +
+          '<stop offset="0%" stop-color="hsl(' +
+          hue +
+          ',62%,78%)"/><stop offset="58%" stop-color="hsl(' +
+          hue +
+          ',52%,64%)"/><stop offset="100%" stop-color="hsl(' +
+          hue +
+          ',46%,48%)"/></radialGradient></defs>' +
+          '<rect x="200" y="125" width="280" height="280" fill="url(#' +
+          id +
+          ')"/>' +
+          '<ellipse cx="340" cy="265" rx="132" ry="137" fill="url(#' +
+          id +
+          ')"/>' +
+          '<ellipse cx="302" cy="255" rx="33" ry="37" fill="#fff"/><ellipse cx="378" cy="255" rx="33" ry="37" fill="#fff"/>' +
+          '<circle cx="308" cy="262" r="19" fill="#26215C"/><circle cx="372" cy="262" r="19" fill="#26215C"/>' +
+          '<circle cx="301" cy="253" r="7" fill="#fff"/><circle cx="365" cy="253" r="7" fill="#fff"/>' +
+          mouth +
+          "</svg>"
+        );
+      }
+      // Oda kodunu hane hane kutucuklara yazar. Tek yerden geçiyor ki iki
+      // farklı çağrı (yeni oda / odaya yeniden bağlanma) ayrışmasın.
+      function renderShareCode(code) {
+        var el = document.getElementById("share-code");
+        if (!el) return;
+        var s = String(code == null ? "" : code);
+        el.innerHTML = "";
+        if (!s) {
+          el.classList.remove("tiles");
+          el.textContent = "----";
+          return;
+        }
+        el.classList.add("tiles");
+        s.split("").forEach(function (ch) {
+          var d = document.createElement("span");
+          d.textContent = ch;
+          el.appendChild(d);
+        });
+      }
       function renderHostVoteList() {
         var l = document.getElementById("host-vote-list");
         l.innerHTML = "";
+        l.appendChild(voteHintEl());
         onlineOpts.forEach((name) => {
           var r = hostVotes[name] || 0,
             st = "";
@@ -14258,15 +14386,24 @@ function drawResultCard(opts) {
             var voted = keys.filter((k) => parts[k].submitted === true).length;
             document.getElementById("participant-count").textContent =
               voted + "/" + data.maxParticipants + " kişi oy kullandı";
-            document.getElementById("participant-names").innerHTML = keys
-              .map(
-                (k) =>
-                  '<span class="pname-chip">' +
-                  (parts[k].submitted === true ? "✅ " : "⏳ ") +
-                  (parts[k].name || "?") +
-                  "</span>",
-              )
-              .join("");
+            // Avatar + isim + durum. İsim textContent ile yazılıyor: katılımcı
+            // adı kullanıcı girdisi, innerHTML'e gömmek güvenli değildi.
+            var _pn = document.getElementById("participant-names");
+            _pn.innerHTML = "";
+            keys.forEach(function (k) {
+              var nm = parts[k].name || "?",
+                chip = document.createElement("span");
+              chip.className = "pname-chip";
+              var av = document.createElement("span");
+              av.className = "pname-ava";
+              av.innerHTML = merciAvatar(k + "|" + nm, 22);
+              var tx = document.createElement("span");
+              tx.textContent =
+                (parts[k].submitted === true ? "✅ " : "⏳ ") + nm;
+              chip.appendChild(av);
+              chip.appendChild(tx);
+              _pn.appendChild(chip);
+            });
             // FAZ 2: canlı oy tablosu (host da kim oyladı/bekliyor görsün)
             renderVoteTable(parts, deviceId, data.hostId);
             if (data.status === "closed" && data.winner) {
@@ -14890,6 +15027,7 @@ function drawResultCard(opts) {
         var l = document.getElementById("participant-list");
         if (!l) return;
         l.innerHTML = "";
+        l.appendChild(voteHintEl());
         opts.forEach((name) => {
           var r = participantVotes[name] || 0,
             st = "";
