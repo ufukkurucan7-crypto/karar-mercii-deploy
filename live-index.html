@@ -523,6 +523,13 @@
       .info-modal.on {
         display: flex;
       }
+      /* ⚠️ Paywall'dan açılan Koşullar/Gizlilik: .pro-modal z-index 99999,
+         .info-modal 29999 → normalde Pro ekranının ARKASINDA kalır ve
+         "bağlantı tıklanmıyor" gibi görünür. Apple 3.1.2 bu bağlantıların
+         ÇALIŞMASINI şart koşuyor, sadece durmaları yetmez. */
+      .info-modal.over-pro {
+        z-index: 100001;
+      }
       .info-modal-box {
         background: #fff;
         border-radius: 20px;
@@ -16922,7 +16929,7 @@ function drawResultCard(opts) {
       })();
 
       // ── SCRIPT SONRASI HTML'Yİ DE KAPSAYAN BAĞLAMALAR ──
-      // modal-pro, sound-btn, pro-skip-btn script'ten SONRA HTML'de olduğu için
+      // modal-pro, sound-btn script'ten SONRA HTML'de olduğu için
       // window load sonrası bağlanmalı
       window.addEventListener("load", function () {
         // ── SES BUTONU ──
@@ -17093,29 +17100,16 @@ function drawResultCard(opts) {
 
         // ── PRO MODAL backdrop + skip ──
         var proModal = document.getElementById("modal-pro");
-        function closeProWithConfirm() {
-          showConfirm(
-            "Pro'dan çıkıyorsun",
-            "Merci mesaj hakkını, reklamsız kullanmayı kaybedeceksin. Emin misin?",
-            function () {
-              if (proModal) proModal.classList.remove("on");
-            },
-          );
-          // Başlığa üzgün Merci ekle
-          setTimeout(function () {
-            var ct = document.getElementById("confirm-title");
-            if (ct) ct.innerHTML = merciSVGSad(36) + "<br>Pro'dan çıkıyorsun";
-          }, 10);
+        // ⚠️ 7 Ağu: paywall'ı kapatmak artık ONAY SORMUYOR ve "Belki sonra…"
+        // bağlantısı kaldırıldı (üstteki ✕ zaten var, yazı da okunmuyordu).
+        // Kullanıcı kararı. Ayrıca abonelik ekranından çıkışı zorlaştıran
+        // "emin misin" akışı Apple'ın karanlık-desen itirazlarına açık kapıydı.
+        function closeProModal() {
+          if (proModal) proModal.classList.remove("on");
         }
         if (proModal) {
           proModal.addEventListener("click", function (e) {
-            if (e.target === proModal) closeProWithConfirm();
-          });
-        }
-        var proSkipBtn = document.getElementById("pro-skip-btn");
-        if (proSkipBtn) {
-          proSkipBtn.addEventListener("click", function () {
-            closeProWithConfirm();
+            if (e.target === proModal) closeProModal();
           });
         }
 
@@ -18342,11 +18336,10 @@ function drawResultCard(opts) {
           Abonelik otomatik yenilenir. Dönemin bitiminden 24 saat öncesine kadar
           iptal etmezsen aynı ücretle uzar; iptali istediğin an mağaza hesabının
           abonelik ayarlarından yapabilirsin.<br />
-          <span onclick="document.getElementById('modal-terms').classList.add('on')">Kullanım Koşulları</span>
+          <span onclick="document.getElementById('modal-terms').classList.add('over-pro','on')">Kullanım Koşulları</span>
           ·
-          <span onclick="document.getElementById('modal-privacy').classList.add('on')">Gizlilik Politikası</span>
+          <span onclick="document.getElementById('modal-privacy').classList.add('over-pro','on')">Gizlilik Politikası</span>
         </div>
-        <span class="pro-skip" id="pro-skip-btn">Belki sonra… →</span>
         <div style="text-align: center; margin-top: 12px">
           <span
             onclick="restorePro()"
