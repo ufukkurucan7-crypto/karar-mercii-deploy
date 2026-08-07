@@ -1006,6 +1006,13 @@
          bağlantıları ZORUNLU. Menüde olmaları yetmez, paywall'ın kendisinde olacak. */
       .pro-hero-body .pro-legal { margin-top: 10px; font-size: 9.5px; line-height: 1.45; text-align: center; color: var(--ac-l2); opacity: 0.85; }
       .pro-hero-body .pro-legal span { font-weight: 800; text-decoration: underline; cursor: pointer; white-space: nowrap; }
+      /* Mağaza fiyatı gelene kadar sabit 49₺/399₺ görünmesin (uygulama içi).
+         Yazıya değil görünürlüğe dokunuyoruz → kart boyu oynamaz, zıplama olmaz. */
+      .pro-modal.pro-price-loading .pro-plan-price,
+      .pro-modal.pro-price-loading .pro-plan-note,
+      .pro-modal.pro-price-loading .pro-plan-badge {
+        visibility: hidden;
+      }
       .pro-plan-badge {
         position: absolute;
         top: -10px;
@@ -8153,7 +8160,10 @@ function drawResultCard(opts) {
           return;
         }
         selectPlan("yearly");
-        if (typeof KM_RC !== "undefined") KM_RC.loadOfferings();
+        if (typeof KM_RC !== "undefined") {
+          KM_RC.maskPrices();
+          KM_RC.loadOfferings();
+        }
         // Mağaza adını platforma göre yaz (iOS'ta "Google Play" = Apple 3.1.1 reddi)
         var tl = document.getElementById("pro-trust-line");
         if (tl) {
@@ -8185,6 +8195,11 @@ function drawResultCard(opts) {
           typeof KM_RC !== "undefined" && KM_RC.priceStr
             ? KM_RC.priceStr[plan]
             : "";
+        // Mağaza fiyatı beklenirken butonda da sabit rakam gösterme
+        if (typeof KM_RC !== "undefined" && KM_RC._masking) {
+          btn.textContent = "⭐ Pro'ya Geç";
+          return;
+        }
         if (plan === "yearly") {
           btn.textContent = "⭐ Yıllık Pro — " + (sp || "399₺") + "/yıl";
         } else {
@@ -8320,10 +8335,16 @@ function drawResultCard(opts) {
           var P = this.plugin();
           if (!P) return Promise.resolve();
           var self = this;
-          return this.ensureConfigured().then(function () {
-            if (!self.configured) return;
-            return self._fetchOfferings();
-          });
+          return this.ensureConfigured()
+            .then(function () {
+              if (!self.configured) return;
+              return self._fetchOfferings();
+            })
+            // Hangi yoldan çıkarsa çıksın maske kalksın (yapılandırma yok,
+            // offering boş, hata — hepsinde sabit fiyat geri gelir).
+            .then(function () {
+              self.unmaskPrices();
+            });
         },
         _fetchOfferings: function () {
           var P = this.plugin();
@@ -8359,15 +8380,53 @@ function drawResultCard(opts) {
         // yanıltıcı sayıp reddedebilir). Artık kaynak mağazanın kendisi.
         // Fiyat okunamazsa HİÇBİR ŞEY yazmaz → mevcut sabit metin korunur (web/eski build regresyonu yok).
         priceStr: { monthly: "", yearly: "" },
+        // Mağaza fiyatı gelene kadar sabit rakamları gizle (yalnız uygulama içi).
+        // Web'de mağaza yok → maskeleme yapılmaz, sabit fiyat tek kaynaktır.
+        _masking: false,
+        _maskTimer: null,
+        maskPrices: function () {
+          if (!this.inApp()) return;
+          if (this.priceStr.monthly || this.priceStr.yearly) return; // zaten var
+          var m = document.getElementById("modal-pro");
+          if (!m) return;
+          this._masking = true;
+          m.classList.add("pro-price-loading");
+          var self = this;
+          clearTimeout(this._maskTimer);
+          // Emniyet ağı: mağaza cevap vermezse sabit fiyata dön, ekran boş kalmasın
+          this._maskTimer = setTimeout(function () {
+            self.unmaskPrices();
+          }, 5000);
+          if (typeof window.selectPlan === "function" && selectedPlan)
+            window.selectPlan(selectedPlan);
+        },
+        unmaskPrices: function () {
+          clearTimeout(this._maskTimer);
+          if (!this._masking) return;
+          this._masking = false;
+          var m = document.getElementById("modal-pro");
+          if (m) m.classList.remove("pro-price-loading");
+          if (typeof window.selectPlan === "function" && selectedPlan)
+            window.selectPlan(selectedPlan);
+        },
+        // ⚠️ KURUŞ/CENT'İ HER ZAMAN ATMA (7 Ağu, TestFlight'ta yakalandı):
+        // eskiden maximumFractionDigits hep 0'dı. TL'de sorun yoktu (399₺/12
+        // = 33₺, temiz görünüyordu) ama dolarda yıllığın aylık karşılığı
+        // 0.58 → "$1"e yuvarlanıyor ve kartta AYLIK fiyattan (0.99$) PAHALI
+        // görünüyordu — üstünde "%41 İNDİRİM" yazarken. Rozetin matematiği
+        // doğru, gösterilen rakam yanlıştı = Apple 3.1.2 yanıltıcı fiyat.
+        // Küçük tutarlarda ondalık korunur, büyüklerde (TL gibi) atılır.
         _fmtMoney: function (v, cur) {
+          var digits = v < 20 ? 2 : 0;
           try {
             return new Intl.NumberFormat("tr-TR", {
               style: "currency",
               currency: cur || "TRY",
-              maximumFractionDigits: 0,
+              minimumFractionDigits: digits,
+              maximumFractionDigits: digits,
             }).format(v);
           } catch (e) {
-            return Math.round(v) + "₺";
+            return (digits ? v.toFixed(2) : Math.round(v)) + "₺";
           }
         },
         applyPrices: function () {
