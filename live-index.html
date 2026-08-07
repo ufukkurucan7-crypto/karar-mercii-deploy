@@ -8120,7 +8120,19 @@ function drawResultCard(opts) {
               );
               return;
             }
-            alert("Apple ile giriş yapılamadı 🍎\nBirazdan tekrar dener misin?");
+            // ⚠️ Bu catch 4-5 ayrı arızayı (entitlement yok, Firebase'de
+            // sağlayıcı kapalı, ağ, iptal) tek mesaja indiriyordu ve teşhisi
+            // imkânsızlaştırıyordu. Kod parantez içinde gösteriliyor:
+            // kullanıcı için gürültü değil, destek için tek ipucu.
+            console.log("Apple giris hata", err);
+            var code = String((err && (err.code || err.message)) || "").slice(
+              0,
+              60,
+            );
+            alert(
+              "Apple ile giriş yapılamadı 🍎\nBirazdan tekrar dener misin?" +
+                (code ? "\n\n(" + code + ")" : ""),
+            );
           });
       }
       window.signInWithApple = signInWithApple;
