@@ -4687,31 +4687,13 @@
         content: "Bu!";
       }
 
-      /* ══ SONUÇ KAHRAMAN ALANI (onaylanan maketten) ══ */
-      .rcard {
-        border: 0;
-        color: #fff;
-        background: linear-gradient(160deg, var(--ac-dd), var(--ac-d2) 58%, var(--ac));
-        box-shadow: 0 16px 36px -14px rgba(var(--ac-shadow), 0.6);
-      }
-      .rcard .rlbl {
-        color: rgba(255, 255, 255, 0.78);
-      }
-      .rcard .rwin {
-        color: #fff;
-      }
-      .rcard .rsay {
-        color: rgba(255, 255, 255, 0.88);
-      }
-      .rcard .btn.ghost {
-        color: #fff;
-        border-color: rgba(255, 255, 255, 0.35);
-        background: rgba(255, 255, 255, 0.12);
-      }
-      /* Puan dökümü koyu zeminde okunsun */
-      .rcard #v-scores {
-        color: #fff;
-      }
+      /* ⚠️ 8 Ağu — GERİ ALINDI: .rcard mor gradyana çevrilmişti. Kartın İÇİNDEKİ
+         öğeler (altın "Karar verildi" rozeti, beyaz espri kutusu, Merci'ye sor
+         çipi) açık zemin için tasarlanmış; sadece kartın arka planını
+         koyulaştırınca beyaz üstüne beyaz yazı çıktı ve kart okunmaz oldu.
+         Kartın kendi açık/altın tasarımı zaten iyiydi — özgün hâline dönüldü.
+         Ders: bir kabın zeminini tersine çevirirken TÜM çocuk öğeler
+         gözden geçirilmeli, yoksa kontrast sessizce ölür. */
 
       /* ── ODA YAYINDA SAHNESİ (onaylanan maketten) ── */
       .share-box.live-stage {
@@ -6187,9 +6169,10 @@
                 <p class="v1-sub">Hazır konu seç ya da kendin ekle 👇</p>
               </div>
             </div>
-            <div class="wd-title">⚡ Hızlı Başlat</div>
-            <div class="wd-chips" id="wheel-daily"></div>
-            <div class="v1-divider">ya da</div>
+            <!-- 8 Ağu: "⚡ Hızlı Başlat" çipleri kaldırıldı. Aynı işi gören
+                 hazır paketler zaten aşağıda duruyor; iki ayrı öneri alanı
+                 kartı şişiriyor ve tekrar hissi veriyordu. Boş çarkta artık
+                 tek ve net bir yol var: Merci doldursun. -->
             <button
               id="merci-fill-btn"
               class="v1-merci-btn"
@@ -17196,6 +17179,16 @@ function drawResultCard(opts) {
               if (added) {
                 snd("add");
                 hImpact("LIGHT", 25);
+              } else {
+                // ⚠️ SESSİZ TUZAK (8 Ağu): Merci cevap veriyor ama gelenlerin
+                // hepsi zaten listedeyse veya çark doluysa hiçbir şey eklenmiyor
+                // ve kullanıcıya HİÇBİR ŞEY söylenmiyordu — "düşünüyor dedi,
+                // sonra hiçbir şey olmadı" şikâyeti tam olarak buydu.
+                alert(
+                  S.wheel.length >= 14
+                    ? "Çark dolu (en fazla 14 seçenek). Yer açmak için birkaçını sil."
+                    : "Merci'nin önerdiklerinin hepsi zaten listede. Konu kutusuna bir şey yazıp tekrar dene.",
+                );
               }
             } else {
               alert(data.error || "Merci seçenek üretemedi, tekrar dene.");
@@ -17347,14 +17340,17 @@ function drawResultCard(opts) {
       function renderDailySuggestions() {
         var wrap = document.getElementById("wheel-daily");
         var card = document.getElementById("wheel-empty-card");
-        if (!wrap || typeof WHEEL_SUGGESTIONS === "undefined" || !WHEEL_SUGGESTIONS)
-          return;
-        // Çark doluysa davet kartını tümüyle gizle
+        // ⚠️ Kart görünürlüğü ÖNCE hallediliyor: "Hızlı Başlat" çipleri
+        // kaldırıldığı için #wheel-daily artık yok ve fonksiyon eskiden burada
+        // erken çıkıyordu → boş çark kartı, çark dolduğunda bile ekranda
+        // kalıyordu. Çip yoksa yalnız çip kısmı atlanmalı, kart mantığı değil.
         if (S.wheel.length > 0) {
           if (card) card.style.display = "none";
           return;
         }
         if (card) card.style.display = "";
+        if (!wrap || typeof WHEEL_SUGGESTIONS === "undefined" || !WHEEL_SUGGESTIONS)
+          return;
         // Maskotu kart içine bas (bir kez)
         var m = document.getElementById("wheel-card-merci");
         if (m && !m.innerHTML && typeof merciSVG === "function")
