@@ -1670,14 +1670,39 @@
         height: 21px;
       }
 
-      /* Tabs */
+      /* Tabs — ⚠️ ARTIK EKRANIN ALTINDA (dock). 8 Ağu: ana ekran "hub"a
+         dönüştü, sekmeler başparmağa yakın olsun diye aşağı indi.
+         .tab[data-tab="..."] SEÇİCİSİ AYNEN DURUYOR — tur (startInteractiveTour),
+         _doSw() ve tıklama dinleyicisi bu seçiciyi okuyor, değiştirme.
+         Konum: position:fixed + bottom:var(--ad-bottom) → AdMob banner'ın
+         ÜSTÜNDE kalır (banner yüksekliğini KM_AD --ad-bottom'a yazıyor).
+         Yükseklik rezervi #scr-main { padding-bottom } ile veriliyor. */
       .tabs {
         display: grid;
         grid-template-columns: repeat(4, 1fr);
-        padding: 10px 8px 0;
         gap: 5px;
+        position: fixed;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 100%;
+        max-width: 420px;
+        bottom: var(--ad-bottom, 0px);
+        z-index: 60;
+        padding: 7px 8px calc(7px + env(safe-area-inset-bottom, 0px));
+        background: rgba(255, 255, 255, 0.93);
+        backdrop-filter: blur(16px) saturate(1.4);
+        -webkit-backdrop-filter: blur(16px) saturate(1.4);
+        border-top: 1.5px solid var(--ac-bg);
+        box-shadow: 0 -12px 28px -20px rgba(var(--ac-shadow), 0.7);
+      }
+      /* Sabit dock içeriğin üstüne binmesin diye yükseklik rezervi.
+         ⚠️ .app zaten padding-bottom: var(--ad-bottom) veriyor (banner) →
+         burada BANNER'I TEKRAR SAYMA, sadece çubuk + alt güvenli alan. */
+      #scr-main {
+        padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px));
       }
       .tab {
+        min-height: 56px; /* erişilebilir dokunma hedefi */
         padding: 9px 2px 7px;
         font-size: 9.5px;
         font-weight: 900;
@@ -1773,6 +1798,420 @@
       }
       #tab-ai:not(.on) {
         animation: tab-pulse 2.5s ease-in-out infinite;
+      }
+
+      /* ══════════════════ ANA EKRAN HUB (2×2 ızgara) ══════════════════
+         8 Ağu: sekmeler aşağı indi, ana ekran bir "kart merkezi" oldu.
+         YENİ DURUM: artık "hiçbir sekme açık değil" hâli var (hub).
+         → _doSw(null) hub'ı açar, sw(null) da tolere eder.
+         → Android donanım geri tuşu: moddayken hub'a düşer (kmBackButton).
+         Sınıflar km- önekli — mevcut .card/.sec/.dock/.stage/.badge ile
+         çakışmasın. Türkçe metin Nunito 800 (Fredoka YASAK: ş/ğ bozuluyor). */
+      #km-hub {
+        display: none;
+        padding: 14px 16px 24px;
+      }
+      #km-hub.on {
+        display: block;
+        animation: secIn 0.28s cubic-bezier(0.34, 1.56, 0.64, 1);
+      }
+      @keyframes kmSweep {
+        0%,
+        72% {
+          left: -60%;
+        }
+        100% {
+          left: 130%;
+        }
+      }
+      @keyframes kmPopIn {
+        from {
+          opacity: 0;
+          transform: scale(0.72);
+        }
+        to {
+          opacity: 1;
+          transform: none;
+        }
+      }
+      @keyframes kmSlowSpin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+
+      /* ── Karşılama sahnesi (Merci + "Nasıl karar verelim?") ── */
+      .km-hero {
+        position: relative;
+        overflow: hidden;
+        border-radius: 26px;
+        padding: 15px 16px 12px;
+        color: #fff;
+        background:
+          radial-gradient(120% 90% at 88% 8%, rgba(255, 255, 255, 0.2), transparent 55%),
+          radial-gradient(90% 70% at 10% 95%, rgba(251, 113, 133, 0.22), transparent 60%),
+          linear-gradient(155deg, var(--ac-l) -25%, var(--ac-d2) 38%, var(--ac-dd) 100%);
+        box-shadow:
+          0 1px 2px rgba(var(--ac-shadow), 0.4),
+          0 14px 30px -12px rgba(var(--ac-shadow), 0.6);
+      }
+      .km-hero::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background-image:
+          linear-gradient(rgba(255, 255, 255, 0.055) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(255, 255, 255, 0.055) 1px, transparent 1px);
+        background-size: 26px 26px;
+        -webkit-mask-image: radial-gradient(120% 90% at 50% 0%, #000, transparent 75%);
+        mask-image: radial-gradient(120% 90% at 50% 0%, #000, transparent 75%);
+        pointer-events: none;
+      }
+      .km-hero::after {
+        content: "";
+        position: absolute;
+        top: -40%;
+        left: -60%;
+        width: 70%;
+        height: 190%;
+        background: linear-gradient(100deg, transparent, rgba(255, 255, 255, 0.14), transparent);
+        transform: rotate(12deg);
+        animation: kmSweep 6.5s ease-in-out infinite;
+        pointer-events: none;
+      }
+      .km-hero > * {
+        position: relative;
+        z-index: 2;
+      }
+      .km-hero-row {
+        display: flex;
+        align-items: flex-end;
+        gap: 6px;
+      }
+      .km-hero-tx {
+        flex: 1 1 auto;
+        min-width: 0;
+        padding-bottom: 6px;
+      }
+      .km-hero-kick {
+        font-size: 9.5px;
+        font-weight: 900;
+        letter-spacing: 0.14em;
+        color: rgba(255, 255, 255, 0.75);
+      }
+      .km-hero-tx h2 {
+        margin: 7px 0 5px;
+        font-family: "Nunito", sans-serif;
+        font-size: 23px;
+        font-weight: 800;
+        letter-spacing: -0.03em;
+        line-height: 1.1;
+      }
+      .km-hero-tx p {
+        margin: 0;
+        font-size: 12px;
+        font-weight: 700;
+        color: rgba(255, 255, 255, 0.84);
+        line-height: 1.4;
+      }
+      .km-hero-merci {
+        flex: 0 0 auto;
+        width: 104px;
+        margin: 0 -6px -14px 0;
+      }
+      .km-hero-merci svg {
+        display: block;
+        width: 100%;
+        height: auto;
+        filter: drop-shadow(0 6px 14px rgba(20, 5, 60, 0.45));
+      }
+
+      /* ── "DÖRT YOL" ayırıcı ── */
+      .km-hubhead {
+        display: flex;
+        align-items: center;
+        gap: 9px;
+        margin: 16px 3px 10px;
+      }
+      .km-hubhead .km-l {
+        font-size: 10.5px;
+        font-weight: 900;
+        letter-spacing: 0.14em;
+        color: var(--ac);
+        opacity: 0.78;
+        white-space: nowrap;
+      }
+      .km-hubhead .km-line {
+        flex: 1 1 auto;
+        height: 1px;
+        background: var(--ac-bd);
+      }
+
+      /* ── 2×2 kart ızgarası (dördü eşit boy) ── */
+      .km-grid4 {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        grid-auto-rows: 1fr; /* dört kart BİREBİR aynı boyda kalsın */
+        gap: 10px;
+      }
+      .km-mcard {
+        position: relative;
+        width: 100%;
+        min-height: 152px;
+        display: flex;
+        flex-direction: column;
+        text-align: left;
+        overflow: hidden;
+        cursor: pointer;
+        font-family: "Nunito", sans-serif;
+        color: #1a1a2e;
+        border: 1.5px solid var(--ac-bd);
+        background: #fff;
+        border-radius: 22px;
+        padding: 14px;
+        box-shadow: 0 12px 26px -20px rgba(var(--ac-shadow), 0.9);
+        transition:
+          transform 0.14s,
+          box-shadow 0.22s,
+          border-color 0.22s;
+      }
+      .km-mcard:active {
+        transform: scale(0.97);
+      }
+      .km-mcard-top {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+      }
+      .km-mbadge {
+        width: 44px;
+        height: 44px;
+        border-radius: 15px;
+        flex: 0 0 auto;
+        display: grid;
+        place-items: center;
+        color: #fff;
+        background: linear-gradient(160deg, var(--ac-l), var(--ac-d));
+        box-shadow: 0 8px 16px -8px rgba(var(--ac-shadow), 0.95);
+      }
+      .km-mbadge .ic {
+        width: 23px;
+        height: 23px;
+      }
+      .km-mbadge.km-gold {
+        background: linear-gradient(160deg, #fde68a, #ea9a06);
+        color: #4a2c00;
+        box-shadow: 0 8px 16px -8px rgba(234, 154, 6, 0.9);
+      }
+      .km-mbadge.km-coral {
+        background: linear-gradient(160deg, #fda4af, #e11d48);
+        color: #fff;
+        box-shadow: 0 8px 16px -8px rgba(225, 29, 72, 0.8);
+      }
+      .km-mtitle {
+        font-size: 16px;
+        font-weight: 800;
+        letter-spacing: -0.02em;
+        margin-top: 11px;
+      }
+      .km-msub {
+        font-size: 11.5px;
+        font-weight: 700;
+        color: #6b6491;
+        margin-top: 3px;
+        line-height: 1.35;
+      }
+      .km-mspacer {
+        flex: 1 1 auto;
+      }
+      .km-mchev {
+        position: absolute;
+        right: 13px;
+        bottom: 11px;
+        color: var(--ac-l);
+        opacity: 0.75;
+        font-size: 20px;
+        font-weight: 900;
+        line-height: 1;
+      }
+
+      /* Küçük görsel ipuçları (yıldızlar / biletler / mini çark) */
+      .km-hintstars {
+        display: flex;
+        gap: 2px;
+        margin-top: 8px;
+        color: var(--gold);
+      }
+      .km-hintstars .ic {
+        width: 13px;
+        height: 13px;
+      }
+      .km-hintstars .ic.km-off {
+        color: var(--ac-bd);
+      }
+      .km-tickets {
+        display: flex;
+        gap: 3px;
+        margin-top: 8px;
+      }
+      .km-tickets i {
+        display: block;
+        width: 15px;
+        height: 19px;
+        border-radius: 4px;
+        background: linear-gradient(160deg, var(--ac-ll), var(--ac-l2));
+        box-shadow: inset 0 -3px 0 rgba(var(--ac-shadow), 0.18);
+      }
+      .km-tickets i:nth-child(2) {
+        background: linear-gradient(160deg, #fde68a, var(--gold));
+        transform: rotate(-7deg);
+      }
+      .km-tickets i:nth-child(3) {
+        background: linear-gradient(160deg, #fda4af, var(--coral));
+        transform: rotate(6deg);
+      }
+      /* Mini çark diski — bu renkler ÇARK PALETİDİR, accent değil (hex kalır) */
+      .km-disc {
+        position: relative;
+        width: 30px;
+        height: 30px;
+        border-radius: 50%;
+        flex: 0 0 auto;
+        display: block;
+        box-shadow: 0 6px 14px -6px rgba(20, 5, 60, 0.55);
+      }
+      .km-disc::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        border-radius: 50%;
+        background: conic-gradient(
+          #7c3aed 0 60deg,
+          #a855f7 0 120deg,
+          #fbbf24 0 180deg,
+          #fb7185 0 240deg,
+          #34d399 0 300deg,
+          #60a5fa 0 360deg
+        );
+        box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.85);
+        animation: kmSlowSpin 16s linear infinite;
+      }
+      .km-disc::after {
+        content: "";
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        width: 32%;
+        height: 32%;
+        margin: -16% 0 0 -16%;
+        border-radius: 50%;
+        background: #fff;
+      }
+
+      /* ── Merci kartı: boyutça eşit, karakterce ayrı (tab-merci-glow dili) ── */
+      .km-mcard.km-merci {
+        border: 1px solid rgba(255, 255, 255, 0.22);
+        color: #fff;
+        background:
+          radial-gradient(120% 120% at 88% 6%, rgba(251, 191, 36, 0.34), transparent 58%),
+          linear-gradient(155deg, var(--ac-dd), var(--ac-d2) 60%, var(--ac-l));
+        box-shadow: 0 16px 30px -14px rgba(var(--ac-shadow), 0.95);
+      }
+      .km-mcard.km-merci::after {
+        content: "";
+        position: absolute;
+        top: -40%;
+        left: -60%;
+        width: 60%;
+        height: 190%;
+        background: linear-gradient(100deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+        transform: rotate(12deg);
+        animation: kmSweep 5.5s ease-in-out infinite;
+        pointer-events: none;
+      }
+      .km-mcard.km-merci > * {
+        position: relative;
+        z-index: 2;
+      }
+      .km-mcard.km-merci .km-msub {
+        color: rgba(255, 255, 255, 0.84);
+      }
+      /* ⚠️ `.km-mcard.km-merci > *` yukarıda position:relative basıyor ve eşit
+         özgüllükte olduğu için chevron'un absolute'unu eziyordu (ok kartın SOL
+         altına düşüyordu). Burada geri alınıyor — bu bloğu silme. */
+      .km-mcard.km-merci .km-mchev {
+        position: absolute;
+        right: 13px;
+        bottom: 11px;
+        color: #fff;
+        opacity: 0.8;
+        z-index: 2;
+      }
+      .km-mav {
+        width: 46px;
+        height: 44px;
+        flex: 0 0 auto;
+        display: flex;
+        align-items: flex-end;
+        justify-content: center;
+      }
+      .km-mav svg {
+        display: block;
+        filter: drop-shadow(0 4px 8px rgba(20, 5, 60, 0.45));
+      }
+      .km-sparktag {
+        font-size: 9px;
+        font-weight: 900;
+        letter-spacing: 0.1em;
+        padding: 4px 8px;
+        border-radius: 999px;
+        white-space: nowrap;
+        background: rgba(255, 255, 255, 0.2);
+        border: 1px solid rgba(255, 255, 255, 0.34);
+        color: #fff;
+      }
+
+      /* ── Başlıktaki "‹" geri tuşu (yalnız bir MOD açıkken görünür) ── */
+      .km-back {
+        width: 40px;
+        height: 40px;
+        flex: 0 0 auto;
+        background: var(--ac-bg);
+        border: 2px solid var(--ac-ll);
+        border-radius: 12px;
+        color: var(--ac-d);
+        cursor: pointer;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        font-family: "Nunito", sans-serif;
+        animation: kmPopIn 0.28s cubic-bezier(0.2, 0.9, 0.3, 1.15) both;
+      }
+      .km-back.km-on {
+        display: flex;
+      }
+      .km-back:active {
+        transform: scale(0.94);
+      }
+      .km-back .ic {
+        width: 22px;
+        height: 22px;
+      }
+      /* Başlık metni esnesin → rozet/PRO/menü sağa yaslansın (eski .hdr-home'un
+         margin-left:auto görevini bu devraldı) */
+      .km-hdr-tx {
+        flex: 1 1 auto;
+        min-width: 0;
+      }
+      @media (prefers-reduced-motion: reduce) {
+        #km-hub.on,
+        .km-hero::after,
+        .km-mcard.km-merci::after,
+        .km-disc::before,
+        .km-back {
+          animation: none;
+        }
       }
 
       /* Sections */
@@ -7120,8 +7559,54 @@
         color: #b9addf;
       }
       html.dark .tabs {
-        background: #1a1330;
+        background: rgba(26, 19, 48, 0.94);
         border-top-color: #2a2140;
+      }
+      /* ── ANA EKRAN HUB — koyu tema ── */
+      html.dark .km-mcard {
+        background: #1e1733;
+        border-color: #342a4f;
+        color: #ece8f7;
+      }
+      html.dark .km-msub {
+        color: #a396cf;
+      }
+      html.dark .km-mchev {
+        color: var(--ac-l2);
+        opacity: 0.8;
+      }
+      html.dark .km-hubhead .km-l {
+        color: #c9b8ff;
+        opacity: 0.85;
+      }
+      html.dark .km-hubhead .km-line {
+        background: #342a4f;
+      }
+      html.dark .km-hintstars .ic.km-off {
+        color: #3a2f55;
+      }
+      html.dark .km-back {
+        background: #271d3f;
+        color: #d8cef5;
+        border-color: #3a2f55;
+      }
+      /* Merci kartı dark'ta da gradyanlı kalır (beyaz metin) — yalnız
+         gölge/kenar biraz sakinleşsin */
+      /* ⚠️ `html.dark .km-mcard` (0,2,1) yukarıda düz koyu zemin basıyor ve
+         Merci kartının gradyanını siliyordu → burada gradyan GERİ VERİLİYOR.
+         background satırını silme, kart diğer üçünden ayrılamaz hâle gelir. */
+      html.dark .km-mcard.km-merci {
+        border-color: rgba(255, 255, 255, 0.16);
+        color: #fff;
+        background:
+          radial-gradient(120% 120% at 88% 6%, rgba(251, 191, 36, 0.3), transparent 58%),
+          linear-gradient(155deg, var(--ac-dd), var(--ac-d2) 60%, var(--ac-l));
+      }
+      html.dark .km-mcard.km-merci .km-msub {
+        color: rgba(255, 255, 255, 0.84);
+      }
+      html.dark .km-mcard.km-merci .km-mchev {
+        color: #fff;
       }
       html.dark .tab {
         color: #c9bdf0;
@@ -7732,6 +8217,10 @@
         <g id="i-menu">
           <path d="M4 7h16M4 12h16M4 17h10" />
         </g>
+        <!-- Geri (‹) — ana ekran hub'ına dönüş. Sprite'ta başka i-back/i-chev yok. -->
+        <g id="i-back">
+          <path d="M14.5 5.5 8 12l6.5 6.5" />
+        </g>
         <!-- Çark (revize A): dolu ibre janta biner + jant içi dilim çentikleri + dolu göbek -->
         <g id="i-wheel">
           <path d="M9.4 2.4h5.2L12 7.9z" fill="currentColor" stroke="none" />
@@ -7741,6 +8230,16 @@
         </g>
         <g id="i-star">
           <path d="m12 3.7 2.5 5.1 5.6.8-4 4 .9 5.6-5-2.7-5 2.7.9-5.6-4-4 5.6-.8z" />
+        </g>
+        <!-- Dolu yıldız — hub'daki Oylama kartının mini ipucu (i-star'ın dolu hâli) -->
+        <g id="i-star-fill">
+          <path
+            d="m12 3.7 2.5 5.1 5.6.8-4 4 .9 5.6-5-2.7-5 2.7.9-5.6-4-4 5.6-.8z"
+            fill="currentColor"
+            stroke="currentColor"
+            stroke-width="1.6"
+            stroke-linejoin="round"
+          />
         </g>
         <g id="i-party">
           <path d="M8.4 11 3.6 20.4l9.4-4.7z" />
@@ -7987,19 +8486,94 @@
       </div>
       <div class="screen" id="scr-main">
         <div class="hdr">
+          <!-- ⚠️ id="home-btn" BİLEREK KORUNDU: mevcut bind("home-btn") akışı
+               (açık oda/masa oylaması onayı) aynen çalışsın diye. Görevi artık
+               "ana ekran hub'ına dön"; ikonu ‹, yeri en sol. Sadece bir MOD
+               açıkken .km-on ile görünür (kmSetHdr). -->
+          <button class="km-back" id="home-btn" aria-label="Ana ekrana dön"><svg class="ic" viewBox="0 0 24 24"><use href="#i-back"/></svg></button>
           <div id="hdr-merci" class="m-idle"></div>
-          <div>
+          <div class="km-hdr-tx">
             <div class="hdr-title">Karar Mercii</div>
             <div class="hdr-sub">Nasıl karar verelim?</div>
           </div>
           <div class="hdr-badge" id="hdr-badge" style="display: none"></div>
           <div class="hdr-pro" id="hdr-pro" style="display: none">⭐ PRO</div>
-          <button class="hdr-home" id="home-btn" aria-label="Ana ekran"><svg class="ic" viewBox="0 0 24 24"><use href="#i-home"/></svg></button>
           <button class="menu-btn" id="menu-btn" aria-label="Menü"><svg class="ic" viewBox="0 0 24 24"><use href="#i-menu"/></svg></button>
         </div>
 
+        <!-- ══════════ ANA EKRAN HUB (2×2) ══════════
+             Sekmeler aşağı indi; burası "hiçbir sekme açık değil" hâli.
+             Karta dokununca _doSw(mod) → hub gizlenir, o sekme yanar,
+             başlıkta ‹ belirir. Geri tuşu da buraya düşer. -->
+        <div id="km-hub" class="on">
+          <section class="km-hero">
+            <div class="km-hero-row">
+              <div class="km-hero-tx">
+                <div class="km-hero-kick">MERHABA 👋</div>
+                <h2>Nasıl karar verelim?</h2>
+                <p>Dört yoldan birini seç, gerisini bana bırak.</p>
+              </div>
+              <div class="km-hero-merci m-idle" id="km-hero-merci"></div>
+            </div>
+          </section>
+
+          <div class="km-hubhead">
+            <span class="km-l">DÖRT YOL</span><span class="km-line"></span>
+          </div>
+
+          <div class="km-grid4">
+            <button class="km-mcard" type="button" data-hubgo="wheel">
+              <span class="km-mcard-top">
+                <span class="km-mbadge"><svg class="ic" viewBox="0 0 24 24"><use href="#i-wheel"/></svg></span>
+                <span class="km-disc"></span>
+              </span>
+              <span class="km-mtitle">Çark</span>
+              <span class="km-msub">Kararı şansa bırak</span>
+              <span class="km-mspacer"></span>
+              <span class="km-mchev">›</span>
+            </button>
+
+            <button class="km-mcard" type="button" data-hubgo="vote">
+              <span class="km-mcard-top">
+                <span class="km-mbadge km-gold"><svg class="ic" viewBox="0 0 24 24"><use href="#i-star"/></svg></span>
+              </span>
+              <span class="km-mtitle">Oylama</span>
+              <span class="km-msub">Herkes puan versin</span>
+              <span class="km-mspacer"></span>
+              <span class="km-hintstars">
+                <svg class="ic" viewBox="0 0 24 24"><use href="#i-star-fill"/></svg>
+                <svg class="ic" viewBox="0 0 24 24"><use href="#i-star-fill"/></svg>
+                <svg class="ic" viewBox="0 0 24 24"><use href="#i-star-fill"/></svg>
+                <svg class="ic" viewBox="0 0 24 24"><use href="#i-star-fill"/></svg>
+                <svg class="ic km-off" viewBox="0 0 24 24"><use href="#i-star-fill"/></svg>
+              </span>
+            </button>
+
+            <button class="km-mcard" type="button" data-hubgo="cekilis">
+              <span class="km-mcard-top">
+                <span class="km-mbadge km-coral"><svg class="ic" viewBox="0 0 24 24"><use href="#i-party"/></svg></span>
+              </span>
+              <span class="km-mtitle">Çekiliş</span>
+              <span class="km-msub">Adil talihli çek</span>
+              <span class="km-mspacer"></span>
+              <span class="km-tickets"><i></i><i></i><i></i></span>
+            </button>
+
+            <button class="km-mcard km-merci" type="button" data-hubgo="ai">
+              <span class="km-mcard-top">
+                <span class="km-mav m-idle" id="km-hub-merci"></span>
+                <span class="km-sparktag">✨ AI</span>
+              </span>
+              <span class="km-mtitle">Merci</span>
+              <span class="km-msub">Ne yesek, bana sor</span>
+              <span class="km-mspacer"></span>
+              <span class="km-mchev">›</span>
+            </button>
+          </div>
+        </div>
+
         <div class="tabs">
-          <div class="tab on" data-tab="wheel">
+          <div class="tab" data-tab="wheel">
             <span class="tab-icon"><svg class="ic" viewBox="0 0 24 24"><use href="#i-wheel"/></svg></span>
             <span class="tab-label">Çark</span>
           </div>
@@ -8018,8 +8592,9 @@
           </div>
         </div>
 
-        <!-- ÇARK -->
-        <div class="sec on" id="s-wheel">
+        <!-- ÇARK — ⚠️ açılışta "on" YOK: ana ekran artık hub (#km-hub.on).
+             Bir mod ancak karta/sekmeye dokununca (_doSw) açılır. -->
+        <div class="sec" id="s-wheel">
           <!-- Boş çark — Davet Kartı (empty-state) -->
           <div class="v1-card" id="wheel-empty-card">
             <div class="v1-head">
@@ -10417,6 +10992,98 @@
         ) {
           window.Capacitor.Plugins.App.addListener("resume", function () {
             kmRefreshEntitlement();
+          });
+        }
+      } catch (e) {}
+
+      // ═══════════ ANDROID DONANIM GERİ TUŞU ═══════════
+      // ⚠️ ZORUNLU. Ana ekran artık bir HUB; bir moda girince "geri" beklentisi
+      // hub'a dönmektir. Bu dinleyici olmasaydı Capacitor'ün varsayılanı devreye
+      // girer (history boş → UYGULAMA KAPANIR) ve kullanıcı her mod içinde geri
+      // bastığında uygulamadan atılırdı.
+      // Sıra: açık katman (tur/modal/çekmece) → mod → hub → çıkış.
+      window.kmHandleBack = function () {
+        // 1) İnteraktif tur açıksa turu kapat
+        var tour = document.getElementById("km-tour");
+        if (tour) {
+          try {
+            document.documentElement.classList.remove("tour-lock");
+          } catch (e) {}
+          if (tour.parentNode) tour.parentNode.removeChild(tour);
+          return true;
+        }
+        // 2) Onay kutusu → "Hayır" say
+        var cf = document.getElementById("confirm-modal");
+        if (cf && cf.classList.contains("on")) {
+          var nb = document.getElementById("confirm-no-btn");
+          if (nb) nb.click();
+          else cf.classList.remove("on");
+          return true;
+        }
+        // 3) Paywall kutusu
+        if (document.getElementById("paywall-wrap")) {
+          try {
+            hidePaywall();
+          } catch (e) {
+            var pw = document.getElementById("paywall-wrap");
+            if (pw && pw.parentNode) pw.parentNode.removeChild(pw);
+          }
+          return true;
+        }
+        // 4) Sohbet geçmişi katmanı (dinamik oluşuyor)
+        var ch = document.getElementById("chat-hist-overlay");
+        if (ch && ch.parentNode) {
+          ch.parentNode.removeChild(ch);
+          return true;
+        }
+        // 5) Diğer açık katmanlar → .on'u kaldır (DOM'daki SON açık olan üstte)
+        var lay = document.querySelectorAll(
+          ".modal-overlay.on, .info-modal.on, .pro-modal.on, .auth-modal.on, .settings-panel.on, #modal-settings.on",
+        );
+        if (lay.length) {
+          lay[lay.length - 1].classList.remove("on");
+          return true;
+        }
+        // 6) Menü çekmecesi
+        var md = document.getElementById("menu-drawer");
+        if (md && md.classList.contains("on")) {
+          md.classList.remove("on");
+          var mo = document.getElementById("menu-overlay");
+          if (mo) mo.classList.remove("on");
+          var ms = document.getElementById("modal-settings");
+          if (ms) ms.classList.remove("on");
+          return true;
+        }
+        // 7) Ana ekranda BİR MOD açıksa → hub'a dön (uygulamadan ÇIKMA!)
+        var main = document.getElementById("scr-main");
+        if (main && main.classList.contains("on") && kmMode) {
+          if (typeof window.kmGoHub === "function") window.kmGoHub();
+          else _doSw(null);
+          return true;
+        }
+        // 8) Hub'dayız (ya da onboarding) → çağırana bırak: uygulamadan çık
+        return false;
+      };
+      try {
+        if (
+          window.Capacitor &&
+          typeof window.Capacitor.isPluginAvailable === "function" &&
+          window.Capacitor.isPluginAvailable("App") &&
+          window.Capacitor.Plugins &&
+          window.Capacitor.Plugins.App
+        ) {
+          var _kmApp = window.Capacitor.Plugins.App;
+          _kmApp.addListener("backButton", function () {
+            var handled = false;
+            try {
+              handled = window.kmHandleBack();
+            } catch (e) {
+              handled = false;
+            }
+            if (handled) return;
+            try {
+              _kmApp.exitApp();
+            } catch (e) {}
           });
         }
       } catch (e) {}
@@ -13175,6 +13842,28 @@ function drawResultCard(opts) {
             title: "Selam, ben Merci! 🐙",
             body: "30 saniyede tüm uygulamayı gezdireyim — hadi 👇",
           },
+          // 8 Ağu: ana ekran 2×2 hub oldu, sekmeler AŞAĞI indi → tur da yeni
+          // arayüzü anlatıyor (eski tur "yukarıdaki sekmeler" dünyasındaydı).
+          {
+            tab: null,
+            sel: "#km-hub .km-grid4",
+            settle: 260,
+            pose: "wave",
+            title: "🏠 Ana ekran: dört yol",
+            body: "Ana ekranda dört kart var: <b>Çark</b>, <b>Oylama</b>, <b>Çekiliş</b> ve <b>Merci</b>. Karta dokun, o mod açılsın. Başlıktaki <b>‹</b> ile (ya da telefonun geri tuşuyla) buraya dönersin.",
+            open: function () {
+              try {
+                _doSw(null);
+              } catch (e) {}
+            },
+          },
+          {
+            sel: ".tabs",
+            settle: 200,
+            pose: "default",
+            title: "⬇️ Sekmeler aşağıda",
+            body: "Aynı dört mod <b>ekranın altındaki çubukta</b> da duruyor — başparmağının altında. Modlar arasında oradan tek dokunuşla geçersin.",
+          },
           {
             tab: "wheel",
             sel: '.tab[data-tab="wheel"]',
@@ -13519,9 +14208,10 @@ function drawResultCard(opts) {
         function end() {
           // Kilidi kaldır + kullanıcıyı tur öncesi kaldığı yere döndür
           cleanup();
-          // Tur bitince ANA SAYFAYA (çark) dön — Merci sekmesinde kalmasın (Deploy #14)
+          // Tur bitince ANA EKRANA (hub) dön — Merci sekmesinde kalmasın.
+          // 8 Ağu: hedef artık "wheel" değil hub (null) — sekmeler aşağı indi.
           try {
-            if (typeof _doSw === "function") _doSw("wheel");
+            if (typeof _doSw === "function") _doSw(null);
           } catch (e) {}
           document.documentElement.classList.remove("tour-lock");
           try {
@@ -13860,6 +14550,17 @@ function drawResultCard(opts) {
         setM("ve-merci", 58, "curious");
         gentleFloat("hdr-merci");
         gentleFloat("merci-wheel");
+        // Ana ekrana giriş = HUB (hiçbir sekme açık değil). Bir mod açık
+        // kalmışsa (yeniden giriş) kapat ki kullanıcı hep hub'dan başlasın.
+        try {
+          if (kmMode) _doSw(null);
+          else {
+            kmSetHdr(null);
+            kmInitHubMerci();
+            var _h = document.getElementById("km-hub");
+            if (_h) _h.classList.add("on");
+          }
+        } catch (e) {}
         updW(); // Çarkı başta da çiz (boş bile olsa)
         snd("ding");
       }
@@ -20123,6 +20824,44 @@ function drawResultCard(opts) {
           } catch (e) {}
         }
       }
+      // ══════════ ANA EKRAN HUB ══════════
+      // 8 Ağu: sekmeler ekranın altına indi, üstte hub var. Artık "hiçbir mod
+      // açık değil" diye bir hâl var → kmMode === null.
+      // sw(null) / sw("hub") / sw() → hub'a dön. Bunu KALDIRMA: Android donanım
+      // geri tuşu ve başlıktaki ‹ tuşu bu yolu kullanıyor.
+      var kmMode = null; // null = hub | "wheel" | "vote" | "cekilis" | "ai"
+      function kmIsHub(m) {
+        return m === null || m === undefined || m === "hub";
+      }
+      // Başlık: hub'da marka adı, modda o modun adı + ‹ geri tuşu
+      var KM_MODE_TX = {
+        wheel: ["Çark", "Kararı şansa bırak"],
+        vote: ["Oylama", "Herkes puan versin"],
+        cekilis: ["Çekiliş", "Adil talihli çek"],
+        ai: ["Merci", "Ne yesek, bana sor"],
+      };
+      function kmSetHdr(m) {
+        try {
+          var t = document.querySelector("#scr-main .hdr-title");
+          var s = document.querySelector("#scr-main .hdr-sub");
+          var b = document.getElementById("home-btn");
+          var tx = kmIsHub(m)
+            ? ["Karar Mercii", "Nasıl karar verelim?"]
+            : KM_MODE_TX[m] || ["Karar Mercii", "Nasıl karar verelim?"];
+          if (t) t.textContent = tx[0];
+          if (s) s.textContent = tx[1];
+          if (b) b.classList.toggle("km-on", !kmIsHub(m));
+        } catch (e) {}
+      }
+      // Hub maskotları (hero + Merci kartı) — bir kez basılır, sonra dokunulmaz
+      function kmInitHubMerci() {
+        try {
+          var h = document.getElementById("km-hero-merci");
+          if (h && !h.innerHTML) setM("km-hero-merci", 104, "wave");
+          var c = document.getElementById("km-hub-merci");
+          if (c && !c.innerHTML) setM("km-hub-merci", 46, "glasses");
+        } catch (e) {}
+      }
       function sw(m) {
         // Oylama sekme koruma: online oda açıksa veya tek cihaz oylaması devam ediyorsa uyar
         if (m !== "vote") {
@@ -20155,12 +20894,49 @@ function drawResultCard(opts) {
         _doSw(m);
       }
       function _doSw(m) {
+        var _hub = document.getElementById("km-hub");
+        // ── HUB (hiçbir sekme açık değil) ──
+        if (kmIsHub(m)) {
+          kmMode = null;
+          ["wheel", "vote", "cekilis", "ai"].forEach((x) => {
+            var el = document.getElementById("s-" + x);
+            if (el) el.classList.remove("on");
+          });
+          document
+            .querySelectorAll(".tab")
+            .forEach((t) => t.classList.remove("on"));
+          if (_hub) _hub.classList.add("on");
+          kmSetHdr(null);
+          kmInitHubMerci();
+          if (!document.getElementById("km-tour")) {
+            try {
+              window.scrollTo(0, 0);
+            } catch (e) {}
+          }
+          snd("click");
+          return;
+        }
+        kmMode = m;
+        if (_hub) _hub.classList.remove("on");
+        kmSetHdr(m);
+        if (!document.getElementById("km-tour")) {
+          try {
+            window.scrollTo(0, 0);
+          } catch (e) {}
+        }
         ["wheel", "vote", "cekilis", "ai"].forEach((x) => {
           document.getElementById("s-" + x).classList.toggle("on", x === m);
           document
             .querySelectorAll(".tab")
             .forEach((t) => t.classList.toggle("on", t.dataset.tab === m));
         });
+        if (m === "wheel") {
+          // Hub'dan gelirken #s-wheel display:none idi → canvas 0 genişlikte
+          // ölçülmüş olabilir; görünür olur olmaz yeniden çiz.
+          try {
+            updW();
+          } catch (e) {}
+        }
         if (m === "cekilis") {
           var ch = document.getElementById("cekilis-hero-merci");
           if (ch && !ch.innerHTML) setM("cekilis-hero-merci", 84, "celebrate");
@@ -20175,7 +20951,7 @@ function drawResultCard(opts) {
           // Tab ikonunu da set et
           var tabIcon = document.getElementById("tab-ai-icon");
           if (tabIcon && !tabIcon.innerHTML) {
-            tabIcon.innerHTML = merciSVGGlasses(48);
+            tabIcon.innerHTML = merciSVGGlasses(36);
           }
           // Girişliyse ve konum henüz yoksa açıklamalı izin iste (bir kez)
           setTimeout(maybeAskLocation, 400);
@@ -20608,7 +21384,11 @@ function drawResultCard(opts) {
       }
       bind("go-ob2", () => showScreen("scr-ob2"));
       bind("guest-continue-btn", () => setCount(0));
-      bind("home-btn", () => {
+      // ⚠️ #home-btn artık başlıktaki "‹" GERİ tuşu ve varış noktası ANA EKRAN
+      // HUB'ı (eskiden Çark sekmesiydi). Android donanım geri tuşu da bu
+      // fonksiyonu çağırıyor (kmBackButton) — ikisi tek yerden yönetilsin diye
+      // window.kmGoHub olarak dışa açıldı.
+      window.kmGoHub = function () {
         var hasActiveOnline = !!(
           shareCode &&
           shareCode.length > 0 &&
@@ -20633,23 +21413,26 @@ function drawResultCard(opts) {
                 amHost = false;
                 clearTimerInterval();
               }
-              if (currentUser) {
-                setCount(0);
-                _doSw("wheel");
-              } else {
-                showScreen("scr-ob1");
-              }
+              kmResetCountBadge();
+              _doSw(null);
             },
           );
           return;
         }
-        if (currentUser) {
-          setCount(0);
-          _doSw("wheel");
-        } else {
-          showScreen("scr-ob1");
-        }
-      });
+        kmResetCountBadge();
+        _doSw(null);
+      };
+      // Not: setCount(0) ÇAĞIRMIYORUZ — o showScreen("scr-main") ile tüm ekranı
+      // yeniden fade'liyor (her geri basışında ekran yanıp sönerdi). Sadece
+      // "N kişi" rozetini sıfırlamak yeterli.
+      function kmResetCountBadge() {
+        try {
+          S.count = 0;
+          var b = document.getElementById("hdr-badge");
+          if (b) b.style.display = "none";
+        } catch (e) {}
+      }
+      bind("home-btn", () => window.kmGoHub());
 
       // Kayıt Ol / Giriş Yap toggle
       bind("ob-register-toggle", function () {
@@ -20840,26 +21623,41 @@ function drawResultCard(opts) {
             snd("click");
           });
       })();
+      // Sadece KULLANICI'nın mod değiştirmesinde, her 5 geçişte 1 reklam.
+      // Çark dönerken / çekiliş animasyonunda / tur sırasında ASLA gösterme.
+      // ⚠️ Hem alt sekme çubuğu HEM de ana ekran hub kartları buradan geçiyor —
+      // yoksa yalnız hub kartlarını kullanan kullanıcı hiç ara reklam görmezdi.
+      function kmCountModeSwitchAd() {
+        if (
+          !isPremium &&
+          !spinning &&
+          !cekilisSpinning &&
+          !document.getElementById("km-tour") &&
+          typeof KM_AD !== "undefined" &&
+          KM_AD.showInterstitial
+        ) {
+          window._tabSwitches = (window._tabSwitches || 0) + 1;
+          if (window._tabSwitches % 5 === 0)
+            setTimeout(function () {
+              if (!spinning && !cekilisSpinning) KM_AD.showInterstitial();
+            }, 400);
+        }
+      }
+      // ── ANA EKRAN HUB kartları → ilgili moda git ──
+      document.querySelectorAll("#km-hub [data-hubgo]").forEach(function (b) {
+        b.addEventListener("click", function () {
+          try {
+            hImpact("LIGHT", 12);
+          } catch (e) {}
+          kmCountModeSwitchAd();
+          sw(b.getAttribute("data-hubgo"));
+        });
+      });
       document
         .querySelectorAll(".tab")
         .forEach((b) =>
           b.addEventListener("click", () => {
-            // Sadece KULLANICI sekme tıklamasında, her 5 geçişte 1 reklam.
-            // Çark dönerken / çekiliş animasyonunda / tur sırasında ASLA gösterme.
-            if (
-              !isPremium &&
-              !spinning &&
-              !cekilisSpinning &&
-              !document.getElementById("km-tour") &&
-              typeof KM_AD !== "undefined" &&
-              KM_AD.showInterstitial
-            ) {
-              window._tabSwitches = (window._tabSwitches || 0) + 1;
-              if (window._tabSwitches % 5 === 0)
-                setTimeout(function () {
-                  if (!spinning && !cekilisSpinning) KM_AD.showInterstitial();
-                }, 400);
-            }
+            kmCountModeSwitchAd();
             sw(b.dataset.tab);
           }),
         );
@@ -21461,7 +22259,7 @@ function drawResultCard(opts) {
       // Tab ikonunu başta set et
       setTimeout(function () {
         var tabIcon = document.getElementById("tab-ai-icon");
-        if (tabIcon) tabIcon.innerHTML = merciSVGGlasses(48);
+        if (tabIcon) tabIcon.innerHTML = merciSVGGlasses(36);
       }, 100);
       // Pro modal + skip - window.load içinde bağlandı (HTML sonra geliyor)
       setM("splash-merci", 100);
