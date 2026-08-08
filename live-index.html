@@ -4611,6 +4611,30 @@
         }
       }
 
+      /* Karekod kutusu */
+      .qr-wrap {
+        margin: 10px auto 2px;
+        width: fit-content;
+        padding: 9px 9px 5px;
+        border-radius: 14px;
+        background: #fff;
+        border: 1.5px solid var(--ac-bd);
+      }
+      .qr-wrap canvas {
+        display: block;
+        width: 140px;
+        height: 140px;
+        image-rendering: pixelated;
+      }
+      .qr-cap {
+        margin-top: 4px;
+        font-size: 9.5px;
+        font-weight: 900;
+        letter-spacing: 0.5px;
+        color: var(--ac);
+        text-align: center;
+      }
+
       /* Oda sayaçları: Katıldı · Kalan süre · Oy */
       .room-stats {
         display: flex;
@@ -6251,7 +6275,13 @@
                 </p>
                 <div class="code-eyebrow">🔑 ODA KODU</div>
                 <div class="share-code" id="share-code">----</div>
-                <p class="code-help">Arkadaşların bu kodla odana katılır</p>
+                <!-- Karekod: masada oturan arkadaşlar kod yazmadan katılsın.
+                     KM_QR ile yerel üretiliyor (dış servis/istek YOK). -->
+                <div class="qr-wrap" id="qr-wrap" style="display: none">
+                  <canvas id="room-qr" width="140" height="140"></canvas>
+                  <div class="qr-cap">Okut ve katıl</div>
+                </div>
+                <p class="code-help">Kod, karekod ya da bağlantıyla katılırlar</p>
                 <!-- 8 Ağu: dağınık duran süre ve oy bilgisi tek bakışta okunan
                      üçlü sayaca alındı. Eleman id'leri korundu → startTimer ve
                      oda dinleyicisi aynen çalışıyor. -->
@@ -7009,6 +7039,306 @@
       // Bu yüzden paylaşıma giden HER link sabit kanonik alan adını kullanır.
       // (İç navigasyon — ör. ana sayfaya dönüş — origin kullanmaya devam
       // edebilir; orada bulunduğun dağıtımda kalmak DOĞRU davranış.)
+      // ═══ KM_QR — küçük QR kodlayıcı (byte modu, ECC seviye M, sürüm 1-10) ═══
+      // Oda katılım bağlantısı için yeterli: "https://kararmercii.com/?room=XXXX"
+      // ~35 karakter → sürüm 3. Sürüm 10'a kadar destek, ileride uzarsa diye.
+      (function (root) {
+        // Sürüm başına: [toplam kod sözcüğü, blok başına EC, [grup1 blok, grup1 veri, grup2 blok, grup2 veri]]
+        var SPEC = {
+          1: [26, 10, [1, 16, 0, 0]],
+          2: [44, 16, [1, 28, 0, 0]],
+          3: [70, 26, [1, 44, 0, 0]],
+          4: [100, 18, [2, 32, 0, 0]],
+          5: [134, 24, [2, 43, 0, 0]],
+          6: [172, 16, [4, 27, 0, 0]],
+          7: [196, 18, [4, 31, 0, 0]],
+          8: [242, 22, [2, 38, 2, 39]],
+          9: [292, 22, [3, 36, 2, 37]],
+          10: [346, 26, [4, 43, 1, 44]],
+        };
+        var ALIGN = {
+          1: [], 2: [6, 18], 3: [6, 22], 4: [6, 26], 5: [6, 30],
+          6: [6, 34], 7: [6, 22, 38], 8: [6, 24, 42], 9: [6, 26, 46], 10: [6, 28, 50],
+        };
+        // Kalan bitler (sürüm 2-6: 7, sürüm 7-13: 0)
+        function remainderBits(v) { return v === 1 ? 0 : v <= 6 ? 7 : 0; }
+
+        // ── GF(256) ──
+        var EXP = new Array(512), LOG = new Array(256);
+        (function () {
+          var x = 1;
+          for (var i = 0; i < 255; i++) { EXP[i] = x; LOG[x] = i; x <<= 1; if (x & 256) x ^= 0x11d; }
+          for (var j = 255; j < 512; j++) EXP[j] = EXP[j - 255];
+        })();
+        function gmul(a, b) { return a === 0 || b === 0 ? 0 : EXP[LOG[a] + LOG[b]]; }
+        function rsPoly(deg) {
+          var p = [1];
+          for (var i = 0; i < deg; i++) {
+            var np = new Array(p.length + 1).fill(0);
+            for (var j = 0; j < p.length; j++) {
+              np[j] ^= gmul(p[j], 1);
+              np[j + 1] ^= gmul(p[j], EXP[i]);
+            }
+            p = np;
+          }
+          return p;
+        }
+        function rsEncode(data, ecLen) {
+          var gen = rsPoly(ecLen), res = new Array(ecLen).fill(0);
+          for (var i = 0; i < data.length; i++) {
+            var f = data[i] ^ res[0];
+            res.shift(); res.push(0);
+            if (f !== 0) for (var j = 0; j < ecLen; j++) res[j] ^= gmul(gen[j + 1], f);
+          }
+          return res;
+        }
+
+        function utf8Bytes(str) {
+          var out = [];
+          for (var i = 0; i < str.length; i++) {
+            var c = str.charCodeAt(i);
+            if (c < 0x80) out.push(c);
+            else if (c < 0x800) { out.push(0xc0 | (c >> 6), 0x80 | (c & 63)); }
+            else { out.push(0xe0 | (c >> 12), 0x80 | ((c >> 6) & 63), 0x80 | (c & 63)); }
+          }
+          return out;
+        }
+
+        function pickVersion(len) {
+          for (var v = 1; v <= 10; v++) {
+            var s = SPEC[v], g = s[2];
+            var dataCw = g[0] * g[1] + g[2] * g[3];
+            // mod(4) + sayaç(8, sürüm<10) + veri*8 + sonlandırıcı
+            var need = 4 + (v < 10 ? 8 : 16) + len * 8;
+            if (dataCw * 8 >= need) return v;
+          }
+          return null;
+        }
+
+        function buildData(bytes, v) {
+          var s = SPEC[v], g = s[2];
+          var dataCw = g[0] * g[1] + g[2] * g[3];
+          var bits = [];
+          function push(val, n) { for (var i = n - 1; i >= 0; i--) bits.push((val >> i) & 1); }
+          push(4, 4);                       // byte modu
+          push(bytes.length, v < 10 ? 8 : 16);
+          bytes.forEach(function (b) { push(b, 8); });
+          // Sonlandırıcı (en fazla 4 bit)
+          var cap = dataCw * 8;
+          for (var t = 0; t < 4 && bits.length < cap; t++) bits.push(0);
+          while (bits.length % 8 !== 0) bits.push(0);
+          var cw = [];
+          for (var i = 0; i < bits.length; i += 8) {
+            var b = 0;
+            for (var k = 0; k < 8; k++) b = (b << 1) | bits[i + k];
+            cw.push(b);
+          }
+          // Dolgu: 0xEC / 0x11 dönüşümlü
+          var pad = [0xec, 0x11], pi = 0;
+          while (cw.length < dataCw) cw.push(pad[pi++ % 2]);
+          return cw;
+        }
+
+        function interleave(dataCw, v) {
+          var s = SPEC[v], ecLen = s[1], g = s[2];
+          var blocks = [], idx = 0, i;
+          for (i = 0; i < g[0]; i++) { blocks.push(dataCw.slice(idx, idx + g[1])); idx += g[1]; }
+          for (i = 0; i < g[2]; i++) { blocks.push(dataCw.slice(idx, idx + g[3])); idx += g[3]; }
+          var ecs = blocks.map(function (b) { return rsEncode(b, ecLen); });
+          var out = [], maxD = Math.max.apply(null, blocks.map(function (b) { return b.length; }));
+          for (i = 0; i < maxD; i++)
+            blocks.forEach(function (b) { if (i < b.length) out.push(b[i]); });
+          for (i = 0; i < ecLen; i++) ecs.forEach(function (e) { out.push(e[i]); });
+          return out;
+        }
+
+        // ── Matris ──
+        function newMatrix(size) {
+          var m = [], r;
+          for (r = 0; r < size; r++) m.push(new Array(size).fill(null));
+          return m;
+        }
+        function placeFinder(m, r, c) {
+          for (var i = -1; i <= 7; i++)
+            for (var j = -1; j <= 7; j++) {
+              var rr = r + i, cc = c + j;
+              if (rr < 0 || cc < 0 || rr >= m.length || cc >= m.length) continue;
+              var on = i >= 0 && i <= 6 && (j === 0 || j === 6) ||
+                       j >= 0 && j <= 6 && (i === 0 || i === 6) ||
+                       i >= 2 && i <= 4 && j >= 2 && j <= 4;
+              m[rr][cc] = on ? 1 : 0;
+            }
+        }
+        function placeAlign(m, v) {
+          var pos = ALIGN[v], last = pos.length - 1;
+          for (var a = 0; a < pos.length; a++)
+            for (var b = 0; b < pos.length; b++) {
+              // ⚠️ Yalnız ÜÇ KÖŞE atlanır (finder ile çakışanlar). Eskiden
+              // "hücre dolu mu" diye bakılıyordu; sürüm 7+'da 6. satır/sütundaki
+              // meşru hizalama desenleri zamanlama deseniyle çakıştığı için
+              // yanlışlıkla atlanıyordu.
+              if ((a === 0 && b === 0) || (a === 0 && b === last) || (a === last && b === 0))
+                continue;
+              var r = pos[a], c = pos[b];
+              for (var i = -2; i <= 2; i++)
+                for (var j = -2; j <= 2; j++)
+                  m[r + i][c + j] =
+                    Math.max(Math.abs(i), Math.abs(j)) !== 1 ? 1 : 0;
+            }
+        }
+        function reserveFormat(m) {
+          var n = m.length, i;
+          for (i = 0; i < 9; i++) {
+            if (m[8][i] === null) m[8][i] = 0;
+            if (m[i][8] === null) m[i][8] = 0;
+          }
+          for (i = 0; i < 8; i++) {
+            if (m[8][n - 1 - i] === null) m[8][n - 1 - i] = 0;
+            if (m[n - 1 - i][8] === null) m[n - 1 - i][8] = 0;
+          }
+          m[n - 8][8] = 1; // koyu modül
+        }
+        function buildBase(v) {
+          var n = v * 4 + 17, m = newMatrix(n), i;
+          placeFinder(m, 0, 0); placeFinder(m, 0, n - 7); placeFinder(m, n - 7, 0);
+          for (i = 8; i < n - 8; i++) { m[6][i] = i % 2 === 0 ? 1 : 0; m[i][6] = i % 2 === 0 ? 1 : 0; }
+          placeAlign(m, v);
+          reserveFormat(m);
+          return m;
+        }
+        function placeData(m, cw, v) {
+          var n = m.length, bits = [];
+          cw.forEach(function (b) { for (var i = 7; i >= 0; i--) bits.push((b >> i) & 1); });
+          for (var r = 0; r < remainderBits(v); r++) bits.push(0);
+          var idx = 0, up = true;
+          for (var col = n - 1; col > 0; col -= 2) {
+            if (col === 6) col--; // zamanlama sütunu atlanır
+            for (var k = 0; k < n; k++) {
+              var row = up ? n - 1 - k : k;
+              for (var c2 = 0; c2 < 2; c2++) {
+                var cc = col - c2;
+                if (m[row][cc] !== null) continue;
+                m[row][cc] = idx < bits.length ? bits[idx] : 0;
+                idx++;
+              }
+            }
+            up = !up;
+          }
+        }
+        var MASKS = [
+          function (r, c) { return (r + c) % 2 === 0; },
+          function (r) { return r % 2 === 0; },
+          function (r, c) { return c % 3 === 0; },
+          function (r, c) { return (r + c) % 3 === 0; },
+          function (r, c) { return (Math.floor(r / 2) + Math.floor(c / 3)) % 2 === 0; },
+          function (r, c) { return ((r * c) % 2) + ((r * c) % 3) === 0; },
+          function (r, c) { return (((r * c) % 2) + ((r * c) % 3)) % 2 === 0; },
+          function (r, c) { return (((r + c) % 2) + ((r * c) % 3)) % 2 === 0; },
+        ];
+        function isFunction(v, r, c) {
+          var n = v * 4 + 17;
+          if (r === 6 || c === 6) return true;
+          if (r < 9 && c < 9) return true;
+          if (r < 9 && c >= n - 8) return true;
+          if (r >= n - 8 && c < 9) return true;
+          var pos = ALIGN[v];
+          for (var a = 0; a < pos.length; a++)
+            for (var b = 0; b < pos.length; b++) {
+              var pr = pos[a], pc = pos[b];
+              if (pr <= 8 && pc <= 8) continue;
+              if (pr <= 8 && pc >= n - 9) continue;
+              if (pr >= n - 9 && pc <= 8) continue;
+              if (Math.abs(r - pr) <= 2 && Math.abs(c - pc) <= 2) return true;
+            }
+          return false;
+        }
+        function fmtBits(ec, mask) {
+          var d = (ec << 3) | mask, rem = d;
+          for (var i = 0; i < 10; i++) rem = (rem << 1) ^ (((rem >> 9) & 1) * 0x537);
+          var v = (((d << 10) | rem) ^ 0x5412) & 0x7fff;
+          // ⚠️ Yerleşim sırası: spesifikasyon format bitlerini MSB'den başlatır.
+          // Aşağıdaki applyFormat i=0'dan okuduğu için değeri 15 bit içinde
+          // TERS ÇEVİRİYORUZ. (Referans kütüphaneyle karşılaştırmada 8 modülün
+          // tamamı format konumlarındaydı ve değer birebir ters çıkmıştı.)
+          var r = 0;
+          for (var k = 0; k < 15; k++) r = (r << 1) | ((v >> k) & 1);
+          return r;
+        }
+        function applyFormat(m, ec, mask) {
+          var n = m.length, bits = fmtBits(ec, mask), i;
+          for (i = 0; i <= 5; i++) m[8][i] = (bits >> i) & 1;
+          m[8][7] = (bits >> 6) & 1;
+          m[8][8] = (bits >> 7) & 1;
+          m[7][8] = (bits >> 8) & 1;
+          for (i = 9; i <= 14; i++) m[14 - i][8] = (bits >> i) & 1;
+          // ⚠️ İkinci kopya: DİKEY kısım yalnız bit 0-6 (satır n-1 → n-7),
+          // (n-8,8) KOYU MODÜL, YATAY kısım bit 7'den başlar (sütun n-8 → n-1).
+          // Yatayı 8'den başlatmak (n-8) sütununu boş bırakıyordu — referansla
+          // karşılaştırmada tam olarak o tek modül farklı çıkmıştı.
+          for (i = 0; i <= 6; i++) m[n - 1 - i][8] = (bits >> i) & 1;
+          for (i = 7; i <= 14; i++) m[8][n - 15 + i] = (bits >> i) & 1;
+          m[n - 8][8] = 1;
+        }
+        function penalty(m) {
+          var n = m.length, p = 0, r, c, i;
+          // Kural 1: aynı renkten 5+ ardışık
+          for (r = 0; r < n; r++)
+            for (var dir = 0; dir < 2; dir++) {
+              var run = 1, prev = -1;
+              for (c = 0; c < n; c++) {
+                var v = dir === 0 ? m[r][c] : m[c][r];
+                if (v === prev) { run++; if (run === 5) p += 3; else if (run > 5) p += 1; }
+                else { run = 1; prev = v; }
+              }
+            }
+          // Kural 2: 2x2 aynı renk
+          for (r = 0; r < n - 1; r++)
+            for (c = 0; c < n - 1; c++) {
+              var a = m[r][c];
+              if (a === m[r][c + 1] && a === m[r + 1][c] && a === m[r + 1][c + 1]) p += 3;
+            }
+          // Kural 3: 1:1:3:1:1 deseni
+          var pat1 = [1, 0, 1, 1, 1, 0, 1, 0, 0, 0, 0], pat2 = [0, 0, 0, 0, 1, 0, 1, 1, 1, 0, 1];
+          function match(line, pat) {
+            for (var k = 0; k < pat.length; k++) if (line[k] !== pat[k]) return false;
+            return true;
+          }
+          for (r = 0; r < n; r++)
+            for (c = 0; c + 11 <= n; c++) {
+              var row = [], col = [];
+              for (i = 0; i < 11; i++) { row.push(m[r][c + i]); col.push(m[c + i][r]); }
+              if (match(row, pat1) || match(row, pat2)) p += 40;
+              if (match(col, pat1) || match(col, pat2)) p += 40;
+            }
+          // Kural 4: koyu oranı
+          var dark = 0;
+          for (r = 0; r < n; r++) for (c = 0; c < n; c++) if (m[r][c]) dark++;
+          var pct = (dark * 100) / (n * n);
+          p += Math.floor(Math.abs(pct - 50) / 5) * 10;
+          return p;
+        }
+
+        // ecLevel: 'M' (0b00 -> format biti 0)
+        function encode(text) {
+          var bytes = utf8Bytes(String(text)), v = pickVersion(bytes.length);
+          if (!v) return null;
+          var cw = interleave(buildData(bytes, v), v);
+          var best = null, bestP = Infinity;
+          for (var mask = 0; mask < 8; mask++) {
+            var m = buildBase(v);
+            placeData(m, cw, v);
+            for (var r = 0; r < m.length; r++)
+              for (var c = 0; c < m.length; c++)
+                if (!isFunction(v, r, c) && MASKS[mask](r, c)) m[r][c] ^= 1;
+            applyFormat(m, 0, mask); // 0 = ECC seviye M
+            var p = penalty(m);
+            if (p < bestP) { bestP = p; best = m; }
+          }
+          return { size: best.length, version: v, modules: best };
+        }
+        root.KM_QR = { encode: encode };
+      })(window);
+
       var KM_ORIGIN = "https://kararmercii.com";
       function roomLink(code) {
         return KM_ORIGIN + "/?room=" + encodeURIComponent(String(code || ""));
@@ -14500,6 +14830,45 @@ function drawResultCard(opts) {
           d.textContent = ch;
           el.appendChild(d);
         });
+        renderRoomQR(s);
+      }
+      // Odanın katılım bağlantısını karekoda çevirir. Üretim tamamen yerel
+      // (KM_QR) — dış servise istek yok, çevrimdışıyken de çalışır.
+      // Herhangi bir sebeple üretilemezse kutu gizli kalır; kod ve bağlantı
+      // yolları zaten duruyor, yani karekod bir EK yol, tek yol değil.
+      function renderRoomQR(code) {
+        var wrap = document.getElementById("qr-wrap"),
+          cv = document.getElementById("room-qr");
+        if (!wrap || !cv) return;
+        try {
+          var res = window.KM_QR && KM_QR.encode(roomLink(code));
+          if (!res) {
+            wrap.style.display = "none";
+            return;
+          }
+          var n = res.size,
+            quiet = 4,
+            total = n + quiet * 2,
+            scale = 4;
+          cv.width = total * scale;
+          cv.height = total * scale;
+          var ctx = cv.getContext("2d");
+          ctx.fillStyle = "#fff";
+          ctx.fillRect(0, 0, cv.width, cv.height);
+          ctx.fillStyle = "#1a1a2e";
+          for (var r = 0; r < n; r++)
+            for (var c = 0; c < n; c++)
+              if (res.modules[r][c])
+                ctx.fillRect(
+                  (c + quiet) * scale,
+                  (r + quiet) * scale,
+                  scale,
+                  scale,
+                );
+          wrap.style.display = "";
+        } catch (e) {
+          wrap.style.display = "none";
+        }
       }
       function renderHostVoteList() {
         var l = document.getElementById("host-vote-list");
