@@ -920,7 +920,7 @@
         gap: 4px;
       }
       .pcmp-head {
-        font-size: 10px; font-weight: 900; text-transform: uppercase;
+        font-size: 10px; font-weight: 900;
         letter-spacing: 0.3px; padding: 0 2px 6px;
       }
       .pcmp-head .pcmp-free { text-align: center; color: var(--ac-l2); }
@@ -1795,12 +1795,16 @@
           animation: none;
         }
       }
+      /* ⚠️ text-transform: uppercase KALDIRILDI. İki ayrı sorun çıkarıyordu:
+         (1) Türkçe'de i → I'ya dönüp "KAÇ KİŞİ" yerine "KAÇ KISI" gibi noktasız
+             harfler üretiyordu (tarayıcı dil eşlemesine bakılıyor),
+         (2) "KAÇ KİŞİ OY VERECEK? (SEN DAHİL)" gibi bağıran etiketler çıkıyordu.
+         Etiketler artık ekranda nasıl görünmesi isteniyorsa ÖYLE yazılıyor. */
       .lbl {
-        font-size: 10px;
+        font-size: 11px;
         font-weight: 900;
         color: var(--ac);
-        letter-spacing: 0.8px;
-        text-transform: uppercase;
+        letter-spacing: 0.2px;
         margin-bottom: 8px;
       }
       .cats {
@@ -2104,34 +2108,9 @@
       .irow input:focus {
         border-color: var(--ac);
       }
-      /* Özel oda süresi: küçük saat + dakika kutuları (eski kocaman "dakika" kutusu yerine) */
-      .ct-box {
-        flex: 0 0 54px !important;
-        width: 54px;
-        text-align: center;
-        padding: 9px 4px !important;
-        -moz-appearance: textfield;
-        appearance: textfield;
-      }
-      .ct-box::-webkit-outer-spin-button,
-      .ct-box::-webkit-inner-spin-button {
-        -webkit-appearance: none;
-        margin: 0;
-      }
-      .ct-unit {
-        font-family: "Nunito", sans-serif;
-        font-size: 12px;
-        font-weight: 800;
-        color: var(--ac);
-        letter-spacing: 0.2px;
-      }
-      .ct-hint {
-        font-family: "Nunito", sans-serif;
-        font-size: 10px;
-        font-weight: 700;
-        color: var(--ac-l2);
-        margin-top: 5px;
-      }
+      /* .ct-box / .ct-unit / .ct-hint KALDIRILDI — özel süre kutuları artık
+         maket düzenindeki .km-mini / .km-unit / .km-hint sınıflarını kullanıyor
+         (#online-setup bloğunda). Hiçbir öğe bu adları taşımıyordu. */
       .abtn {
         padding: 11px 16px;
         background: var(--ac);
@@ -2390,9 +2369,9 @@
       .code-eyebrow {
         font-size: 10px;
         font-weight: 900;
-        letter-spacing: 1.4px;
+        letter-spacing: 0.6px;
         color: var(--ac);
-        text-transform: uppercase;
+        /* uppercase YOK (Türkçe İ/I) — metin zaten "Oda kodu" olarak yazılı */
         margin-top: 6px;
       }
       html.dark .code-eyebrow { color: var(--ac-l2); }
@@ -2560,7 +2539,8 @@
         font-size: 10.5px;
         font-weight: 900;
         letter-spacing: 1px;
-        text-transform: uppercase;
+        /* uppercase YOK — Türkçe i/İ eşlemesi bozuluyor; metinler zaten
+           istenen yazımla ("Kazanan 🏆") yazılıyor. */
         color: #b47908;
         background: linear-gradient(180deg, #fff4d6, #ffe9ad);
         border: 1px solid #f3d489;
@@ -2871,8 +2851,8 @@
       .rw-panel-h {
         font-size: 10.5px;
         font-weight: 900;
-        letter-spacing: 1.2px;
-        text-transform: uppercase;
+        letter-spacing: 0.4px;
+        /* uppercase YOK (Türkçe İ/I) */
         color: var(--ac);
         opacity: 0.75;
         margin: 0 0 10px 2px;
@@ -4295,8 +4275,8 @@
         font-size: 10px;
         font-weight: 900;
         color: var(--ac);
-        text-transform: uppercase;
-        letter-spacing: 0.06em;
+        /* uppercase YOK (Türkçe İ/I) */
+        letter-spacing: 0.02em;
         margin-bottom: 8px;
         text-align: center;
       }
@@ -4481,6 +4461,8 @@
       html.dark .vqs-title { color:var(--ac-ll); }
       /* Kategori çipleri kart içinde sarmalı görünsün (yatay scroll yerine) */
       .vqs-card .cats { flex-wrap:wrap; overflow:visible; -webkit-mask-image:none; mask-image:none; padding-right:0; margin-bottom:0; }
+      /* Çip rafı kaldırıldı → kart tek butondan ibaret, dar dursun */
+      .vqs-card.vqs-solo { padding:10px 12px; }
       .vqs-div { display:flex; align-items:center; gap:10px; margin:14px 0 10px; color:#aab; font-size:11px; font-weight:700; }
       .vqs-div::before, .vqs-div::after { content:""; flex:1; height:1px; background:var(--ac-bd); }
       html.dark .vqs-div { color:#6b6582; }
@@ -4744,6 +4726,26 @@
         background: rgba(255, 255, 255, 0.18);
         color: #fff;
       }
+      /* Maket ekran 5: kazananın başında altın taç.
+         ⚠️ Taç rengi ACCENT DEĞİL (her temada altın kalır) → sabit hex doğru.
+         SVG data-URI: raster üretilmiyor, dosyaya gömülü vektör. */
+      .rcard .rmerci {
+        position: relative;
+      }
+      .rcard .rmerci::before {
+        content: "";
+        position: absolute;
+        top: -13px;
+        left: 50%;
+        width: 38px;
+        height: 27px;
+        transform: translateX(-52%) rotate(-7deg);
+        background: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 46'><path d='M6 40 L4 11 L18.5 23 L32 5 L45.5 23 L60 11 L58 40 Z' fill='%23fbbf24' stroke='%23b45309' stroke-width='2.4' stroke-linejoin='round'/><circle cx='32' cy='4' r='4' fill='%23fde68a' stroke='%23b45309' stroke-width='1.8'/></svg>")
+          center / contain no-repeat;
+        filter: drop-shadow(0 2px 4px rgba(40, 20, 0, 0.4));
+        z-index: 3;
+        pointer-events: none;
+      }
       /* Kazanan adı kartın zeminine yazıyor → beyaz olmalı */
       .rcard .rwin {
         color: #fff;
@@ -4803,8 +4805,44 @@
         -webkit-mask-image: radial-gradient(ellipse at 25% 0%, #000, transparent 70%);
         mask-image: radial-gradient(ellipse at 25% 0%, #000, transparent 70%);
       }
+      /* Maketteki gezinen ışık lekesi — düz mor blok yerine "yayında" hissi */
+      .live-stage::after {
+        content: "";
+        position: absolute;
+        top: -40%;
+        left: -60%;
+        width: 70%;
+        height: 190%;
+        pointer-events: none;
+        transform: rotate(12deg);
+        background: linear-gradient(100deg, transparent, rgba(255, 255, 255, 0.14), transparent);
+        animation: kmSweep 6.5s ease-in-out infinite;
+      }
       .live-stage > * {
         position: relative;
+        z-index: 2;
+      }
+      /* Başlık + Merci yan yana (maket ekran 2) */
+      .ls-head {
+        display: flex;
+        align-items: flex-end;
+        gap: 6px;
+        margin-top: 9px;
+      }
+      .ls-htxt {
+        flex: 1 1 auto;
+        min-width: 0;
+      }
+      .ls-head .ls-title {
+        margin-top: 0;
+      }
+      .ls-head .km-vs-merci {
+        margin: 0 -4px -13px 0;
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .live-stage::after {
+          animation: none;
+        }
       }
       .ls-top {
         display: flex;
@@ -4828,7 +4866,14 @@
         height: 6px;
         border-radius: 50%;
         background: #fff;
-        animation: sbPulse 1.6s infinite;
+        /* kmPulse: eski sbPulse ile aynı; .setup-stage bloğu kaldırılınca
+           tek bir yerde toplandı (aşağıda #online-setup CSS'inde tanımlı). */
+        animation: kmPulse 1.6s infinite;
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .ls-dot {
+          animation: none;
+        }
       }
       .ls-step {
         font-size: 9.5px;
@@ -4943,58 +4988,110 @@
         margin: 0;
       }
 
-      /* ── ODA KURULUM SAHNESİ (onaylanan maketten) ── */
-      .setup-stage {
+      /* ── ODA KURULUM SAHNESİ — eski sürüm KALDIRILDI ──
+         Yerini aşağıdaki "#online-setup .km-*" bloğu aldı (maketin birebir
+         aktarımı). Buradaki .setup-stage / .setup-in / .setup-l / .setup-note
+         / .setup-sub / .setup-badge / .sb-dot / .setup-step kuralları artık
+         HİÇBİR öğe tarafından kullanılmıyordu, bu yüzden silindi. */
+      /* ══════════ ODA KUR EKRANI — onaylanan maketin birebir aktarımı ══════════
+         ⚠️ Sınıf adları km- önekli VE #online-setup altına kapsanmış. Üretimde
+         .card / .field / .inp / .pills / .note / .sec / .quick gibi GENEL adlar
+         zaten var; çakışsalardı başka ekranlar sessizce bozulurdu.
+         ⚠️ Renkler yalnız var(--ac*) → mavi/yeşil/pembe PRO temaları da doğru boyanır.
+         ⚠️ text-transform: uppercase YOK — Türkçe İ/I bozuluyor, etiketler
+            doğrudan istenen yazımla yazıldı.
+         ⚠️ Bu dosyada genel bir [hidden] kuralı YOKTU; flex/grid sınıfları
+            hidden özniteliğini ezdiği için bölüme özel olarak tanımlanıyor.
+         (Yukarıdaki .setup-stage* kuralları bu blokla değiştirildi, artık
+          kullanılmıyor — HTML'de hiçbir öğe o sınıfları taşımıyor.) */
+      #online-setup [hidden] {
+        display: none !important;
+      }
+      #online-setup :focus-visible {
+        outline: 3px solid var(--ac-l);
+        outline-offset: 2px;
+        border-radius: 10px;
+      }
+
+      /* ── Sahne kartı ── */
+      #online-setup .km-stage {
         position: relative;
         overflow: hidden;
-        border-radius: 20px;
-        padding: 14px;
-        margin-bottom: 14px;
+        border-radius: 22px;
+        padding: 14px 14px 13px;
+        margin-bottom: 16px;
         color: #fff;
-        background: linear-gradient(155deg, var(--ac-dd), var(--ac-d2) 58%, var(--ac));
-        box-shadow: 0 12px 28px -12px rgba(var(--ac-shadow), 0.6);
+        background:
+          radial-gradient(120% 90% at 88% 6%, rgba(255, 255, 255, 0.22), transparent 55%),
+          linear-gradient(155deg, var(--ac-d2), var(--ac-dd) 62%, var(--ac-d));
+        box-shadow:
+          0 1px 2px rgba(var(--ac-shadow), 0.4),
+          0 14px 30px -10px rgba(var(--ac-shadow), 0.55);
       }
-      /* İnce ızgara dokusu — düz mor bloktan çıkarır */
-      .setup-stage::before {
+      #online-setup .km-stage::before {
         content: "";
         position: absolute;
         inset: 0;
-        opacity: 0.16;
         pointer-events: none;
-        background-image: linear-gradient(rgba(255, 255, 255, 0.55) 1px, transparent 1px),
-          linear-gradient(90deg, rgba(255, 255, 255, 0.55) 1px, transparent 1px);
-        background-size: 20px 20px;
-        -webkit-mask-image: radial-gradient(ellipse at 25% 0%, #000, transparent 70%);
-        mask-image: radial-gradient(ellipse at 25% 0%, #000, transparent 70%);
+        background-image: linear-gradient(rgba(255, 255, 255, 0.09) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(255, 255, 255, 0.09) 1px, transparent 1px);
+        background-size: 22px 22px;
+        -webkit-mask-image: radial-gradient(120% 90% at 50% 0%, #000, transparent 75%);
+        mask-image: radial-gradient(120% 90% at 50% 0%, #000, transparent 75%);
       }
-      .setup-stage > * {
+      #online-setup .km-stage::after {
+        content: "";
+        position: absolute;
+        top: -40%;
+        left: -60%;
+        width: 70%;
+        height: 190%;
+        pointer-events: none;
+        transform: rotate(12deg);
+        background: linear-gradient(100deg, transparent, rgba(255, 255, 255, 0.14), transparent);
+        animation: kmSweep 6.5s ease-in-out infinite;
+      }
+      @keyframes kmSweep {
+        0%,
+        72% {
+          left: -60%;
+        }
+        100% {
+          left: 130%;
+        }
+      }
+      #online-setup .km-stage > * {
         position: relative;
+        z-index: 2;
       }
-      .setup-stage-top {
+      #online-setup .km-stage-top {
         display: flex;
         align-items: center;
         justify-content: space-between;
         gap: 8px;
       }
-      .setup-badge {
+      #online-setup .km-badge {
         display: inline-flex;
         align-items: center;
-        gap: 5px;
+        gap: 6px;
         font-size: 9.5px;
         font-weight: 900;
         letter-spacing: 0.9px;
-        background: rgba(255, 255, 255, 0.18);
-        padding: 5px 9px;
+        background: rgba(255, 255, 255, 0.15);
+        border: 1px solid rgba(255, 255, 255, 0.26);
+        padding: 5px 10px;
         border-radius: 999px;
+        -webkit-backdrop-filter: blur(6px);
+        backdrop-filter: blur(6px);
       }
-      .sb-dot {
+      #online-setup .km-dot {
         width: 6px;
         height: 6px;
         border-radius: 50%;
         background: var(--gold);
-        animation: sbPulse 2s infinite;
+        animation: kmPulse 2s infinite;
       }
-      @keyframes sbPulse {
+      @keyframes kmPulse {
         0%,
         100% {
           opacity: 1;
@@ -5003,94 +5100,1214 @@
           opacity: 0.3;
         }
       }
-      @media (prefers-reduced-motion: reduce) {
-        .sb-dot {
-          animation: none;
-        }
-      }
-      .setup-step {
+      #online-setup .km-step {
         font-size: 9.5px;
         font-weight: 900;
         letter-spacing: 0.9px;
         opacity: 0.72;
       }
-      .setup-f {
+      #online-setup .km-stage-head {
+        display: flex;
+        align-items: flex-end;
+        gap: 6px;
+        margin-top: 10px;
+      }
+      #online-setup .km-stage-txt {
+        flex: 1 1 auto;
+        min-width: 0;
+      }
+      #online-setup .km-stage-title {
+        margin: 0 0 4px;
+        font-family: "Fredoka", "Nunito", sans-serif;
+        font-size: 20px;
+        font-weight: 700;
+        line-height: 1.15;
+        letter-spacing: -0.2px;
+        overflow-wrap: anywhere;
+      }
+      #online-setup .km-stage-sub {
+        margin: 0;
+        font-size: 11.5px;
+        font-weight: 700;
+        line-height: 1.45;
+        color: rgba(255, 255, 255, 0.8);
+      }
+      #online-setup .km-stage-merci {
+        flex: 0 0 auto;
+        width: 86px;
+        margin: 0 -4px -13px 0;
+        animation: kmBreathe 4.2s ease-in-out infinite;
+      }
+      #online-setup .km-stage-merci svg {
+        display: block;
+        width: 100%;
+        height: auto;
+        filter: drop-shadow(0 6px 14px rgba(20, 5, 60, 0.45));
+      }
+      @keyframes kmBreathe {
+        0%,
+        100% {
+          transform: translateY(0) rotate(0);
+        }
+        50% {
+          transform: translateY(-5px) rotate(-1.5deg);
+        }
+      }
+
+      /* Kontrol paneli ölçerleri: kişi / süre / seçenek */
+      #online-setup .km-meters {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 7px;
         margin-top: 12px;
       }
-      .setup-l {
-        font-size: 9px;
+      #online-setup .km-meter {
+        background: rgba(255, 255, 255, 0.1);
+        border: 1px solid rgba(255, 255, 255, 0.18);
+        border-radius: 13px;
+        padding: 7px 8px;
+        -webkit-backdrop-filter: blur(6px);
+        backdrop-filter: blur(6px);
+      }
+      #online-setup .km-mk {
+        font-size: 9.5px;
+        font-weight: 800;
+        color: rgba(255, 255, 255, 0.66);
+      }
+      #online-setup .km-mv {
+        font-size: 16px;
         font-weight: 900;
-        letter-spacing: 1.1px;
-        opacity: 0.72;
-      }
-      .setup-l .req {
-        opacity: 0.75;
-        font-weight: 800;
-        letter-spacing: 0.4px;
-      }
-      .setup-in {
-        width: 100%;
-        background: transparent;
-        border: 0;
-        border-bottom: 2px dashed rgba(255, 255, 255, 0.32);
-        color: #fff;
-        font-family: inherit;
-        font-size: 15px;
-        font-weight: 800;
-        padding: 3px 0 6px;
-        outline: none;
-      }
-      .setup-in-big {
-        font-size: 19px;
+        margin-top: 2px;
         letter-spacing: -0.2px;
       }
-      .setup-in::placeholder {
-        color: rgba(255, 255, 255, 0.45);
-      }
-      .setup-in:focus {
-        border-bottom-color: #fff;
-        border-bottom-style: solid;
-      }
-      .setup-note {
-        font-size: 9.5px;
+      #online-setup .km-mv small {
+        font-size: 10px;
         font-weight: 700;
-        opacity: 0.6;
-        margin-top: 4px;
+        opacity: 0.7;
+        margin-left: 2px;
       }
-      .setup-sub {
-        font-size: 10.5px;
-        font-weight: 700;
-        opacity: 0.75;
-        margin-top: 12px;
+
+      /* "Yayına hazırlık" çubuğu + tik rozetleri */
+      #online-setup .km-ready {
+        margin-top: 11px;
       }
-      /* Kişi/süre seçicileri sahne kartının İÇİNDE → koyu zemine uyarlanır.
-         (Makette de kartın içindeydiler; dışarıda kalınca ekran ikiye
-         bölünmüş gibi duruyordu.) */
-      .setup-stage .lbl {
-        color: rgba(255, 255, 255, 0.72);
-        margin: 14px 0 7px;
+      #online-setup .km-ready-top {
+        display: flex;
+        justify-content: space-between;
+        font-size: 10px;
+        font-weight: 800;
+        color: rgba(255, 255, 255, 0.8);
+        margin-bottom: 5px;
       }
-      .setup-stage .onl-sel-btn {
-        background: rgba(255, 255, 255, 0.1);
-        border-color: rgba(255, 255, 255, 0.24);
+      #online-setup .km-bar {
+        height: 7px;
+        border-radius: 99px;
+        background: rgba(0, 0, 0, 0.25);
+        overflow: hidden;
+      }
+      #online-setup .km-bar > i {
+        display: block;
+        height: 100%;
+        width: 0%;
+        border-radius: 99px;
+        position: relative;
+        overflow: hidden;
+        background: linear-gradient(90deg, var(--ac-ll), var(--gold));
+        transition: width 0.45s cubic-bezier(0.2, 0.8, 0.25, 1);
+      }
+      #online-setup .km-bar > i::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.6), transparent);
+        animation: kmShimmer 1.8s linear infinite;
+      }
+      @keyframes kmShimmer {
+        0% {
+          transform: translateX(-100%);
+        }
+        100% {
+          transform: translateX(100%);
+        }
+      }
+      #online-setup .km-checks {
+        display: flex;
+        gap: 5px;
+        margin-top: 9px;
+        flex-wrap: wrap;
+      }
+      #online-setup .km-chk {
+        font-size: 10px;
+        font-weight: 800;
+        padding: 4px 9px;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.08);
+        border: 1px solid rgba(255, 255, 255, 0.16);
+        color: rgba(255, 255, 255, 0.62);
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        transition: background 0.2s, color 0.2s, border-color 0.2s;
+      }
+      #online-setup .km-tick {
+        width: 13px;
+        height: 13px;
+        border-radius: 50%;
+        display: grid;
+        place-items: center;
+        font-size: 8px;
+        font-style: normal;
+        border: 1px solid rgba(255, 255, 255, 0.35);
+      }
+      #online-setup .km-chk.ok {
+        background: rgba(255, 255, 255, 0.2);
+        border-color: rgba(255, 255, 255, 0.45);
         color: #fff;
       }
-      .setup-stage .onl-sel-btn.on {
+      #online-setup .km-chk.ok .km-tick {
+        background: var(--gold);
+        border-color: var(--gold);
+        color: var(--ac-dd);
+        font-weight: 900;
+      }
+
+      /* ── Numaralı bölümler ── */
+      #online-setup .km-sec {
+        margin-top: 14px;
+      }
+      #online-setup .km-sechead {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin: 0 2px 9px;
+      }
+      #online-setup .km-num {
+        width: 21px;
+        height: 21px;
+        border-radius: 7px;
+        flex: 0 0 auto;
+        background: var(--ac-bg3);
+        color: var(--ac-d);
+        font-size: 11px;
+        font-weight: 900;
+        display: grid;
+        place-items: center;
+      }
+      #online-setup .km-sechead h3 {
+        margin: 0;
+        font-family: "Fredoka", "Nunito", sans-serif;
+        font-size: 13.5px;
+        font-weight: 700;
+        letter-spacing: 0.2px;
+        color: #1a1a2e;
+      }
+      #online-setup .km-sechint {
+        margin-left: auto;
+        font-size: 11px;
+        font-weight: 800;
+        color: var(--ac-d2);
+        opacity: 0.75;
+      }
+      #online-setup .km-card {
+        background: var(--ac-bg2);
+        border: 1.5px solid var(--ac-bd);
+        border-radius: 18px;
+        padding: 12px;
+      }
+      #online-setup .km-field + .km-field {
+        margin-top: 13px;
+      }
+      #online-setup .km-lab {
+        font-size: 12px;
+        font-weight: 900;
+        color: var(--ac-d);
+        margin: 0 0 6px 3px;
+        display: flex;
+        gap: 6px;
+        align-items: center;
+      }
+      #online-setup .km-req {
+        color: var(--coral);
+        font-weight: 800;
+      }
+      #online-setup .km-inp {
+        width: 100%;
+        padding: 12px 13px;
+        border-radius: 13px;
+        border: 1.5px solid var(--ac-bd);
         background: #fff;
-        border-color: #fff;
+        color: #1a1a2e;
+        font-family: "Nunito", sans-serif;
+        font-size: 14.5px;
+        font-weight: 700;
+        outline: none;
+      }
+      #online-setup .km-inp::placeholder {
+        color: #a79fc4;
+        font-weight: 600;
+      }
+      #online-setup .km-inp:focus {
+        border-color: var(--ac-l);
+        box-shadow: 0 0 0 4px rgba(var(--ac-shadow), 0.15);
+      }
+      #online-setup .km-inp:disabled {
+        opacity: 0.5;
+        background: var(--ac-bg2);
+        cursor: not-allowed;
+      }
+      #online-setup .km-micro {
+        font-size: 10px;
+        font-weight: 700;
+        color: var(--ac-d2);
+        opacity: 0.62;
+        margin: 5px 0 0 4px;
+        line-height: 1.35;
+      }
+
+      /* ── Kişi / süre hapları (birimli, tek satıra sığar, taşarsa sarar) ── */
+      #online-setup .km-pills {
+        display: flex;
+        gap: 5px;
+        flex-wrap: wrap;
+      }
+      #online-setup .km-pill {
+        flex: 1 1 0;
+        min-width: 40px;
+        padding: 8px 3px;
+        border-radius: 12px;
+        border: 1.5px solid var(--ac-bd);
+        background: #fff;
+        color: var(--ac-d);
+        font-family: "Nunito", sans-serif;
+        font-size: 13px;
+        font-weight: 900;
+        line-height: 1.15;
+        text-align: center;
+        cursor: pointer;
+        transition: transform 0.12s, background 0.18s, color 0.18s, border-color 0.18s;
+      }
+      #online-setup .km-pill small {
+        display: block;
+        font-size: 9px;
+        font-weight: 700;
+        opacity: 0.6;
+        margin-top: 2px;
+      }
+      #online-setup .km-pill:active {
+        transform: scale(0.95);
+      }
+      /* .onl-sel-btn.on üretimde !important taşıyor → id'li seçiciyle geçiyoruz */
+      #online-setup .km-pill.on {
+        background: linear-gradient(160deg, var(--ac-l), var(--ac-d)) !important;
+        border-color: var(--ac-d) !important;
+        color: #fff !important;
+        box-shadow: 0 4px 10px rgba(var(--ac-shadow), 0.3);
+      }
+      #online-setup .km-pill.on small {
+        opacity: 0.85;
+      }
+      #online-setup .km-pen {
+        flex: 0 0 auto;
+        min-width: 40px;
+        font-size: 15px;
+        padding: 8px 6px;
+      }
+      #online-setup .km-pen.has-val {
+        flex: 1 1 0;
+        min-width: 48px;
+        font-size: 13px;
+        padding: 8px 3px;
+      }
+
+      /* ── ✏️ ile açılan düzenleme satırı ── */
+      #online-setup .km-editrow {
+        display: flex;
+        gap: 7px;
+        align-items: center;
+        flex-wrap: wrap;
+        margin-top: 9px;
+        padding: 9px 10px;
+        border-radius: 14px;
+        background: #fff;
+        border: 1.5px dashed var(--ac-ll);
+        animation: kmSlideIn 0.28s cubic-bezier(0.2, 0.9, 0.3, 1.1) both;
+      }
+      @keyframes kmSlideIn {
+        from {
+          opacity: 0;
+          transform: translateY(-7px) scale(0.97);
+        }
+        to {
+          opacity: 1;
+          transform: none;
+        }
+      }
+      #online-setup .km-mini {
+        width: 64px;
+        padding: 9px 10px;
+        border-radius: 10px;
+        border: 1.5px solid var(--ac-bd);
+        background: var(--ac-bg2);
+        color: #1a1a2e;
+        font-family: "Nunito", sans-serif;
+        font-size: 14px;
+        font-weight: 900;
+        outline: none;
+        -moz-appearance: textfield;
+        appearance: textfield;
+      }
+      #online-setup .km-mini::-webkit-outer-spin-button,
+      #online-setup .km-mini::-webkit-inner-spin-button {
+        -webkit-appearance: none;
+        margin: 0;
+      }
+      #online-setup .km-mini:focus {
+        border-color: var(--ac-l);
+        box-shadow: 0 0 0 4px rgba(var(--ac-shadow), 0.15);
+      }
+      #online-setup .km-unit {
+        font-size: 11.5px;
+        font-weight: 800;
+        color: var(--ac-d2);
+      }
+      /* "Tamam" mor ailesinden — sarı DEĞİL (makette bilerek böyle) */
+      #online-setup .km-ok {
+        margin-left: auto;
+        padding: 10px 15px;
+        border-radius: 11px;
+        border: none;
+        cursor: pointer;
+        background: linear-gradient(160deg, var(--ac-l), var(--ac-d));
+        color: #fff;
+        font-family: "Nunito", sans-serif;
+        font-size: 13px;
+        font-weight: 900;
+        box-shadow: 0 4px 10px rgba(var(--ac-shadow), 0.32);
+      }
+      #online-setup .km-ok:active {
+        transform: scale(0.95);
+      }
+      #online-setup .km-ok:disabled {
+        opacity: 0.45;
+        box-shadow: none;
+        cursor: not-allowed;
+      }
+      #online-setup .km-hint {
+        font-size: 11px;
+        font-weight: 700;
+        color: var(--ac-d2);
+        opacity: 0.85;
+      }
+      #online-setup .km-hint-b {
+        display: block;
+        margin: 7px 0 0 3px;
+        line-height: 1.4;
+      }
+
+      /* ── Seçenek ekleme ── */
+      #online-setup .km-addrow {
+        display: flex;
+        gap: 8px;
+      }
+      #online-setup .km-addrow .km-inp {
+        flex: 1 1 auto;
+        min-width: 0;
+      }
+      #online-setup .km-add {
+        flex: 0 0 auto;
+        width: 48px;
+        border-radius: 13px;
+        border: none;
+        cursor: pointer;
+        background: linear-gradient(160deg, var(--ac-l), var(--ac-d));
+        color: #fff;
+        font-family: "Nunito", sans-serif;
+        font-size: 22px;
+        font-weight: 700;
+        box-shadow: 0 4px 10px rgba(var(--ac-shadow), 0.32);
+      }
+      #online-setup .km-add:active {
+        transform: scale(0.94);
+      }
+      #online-setup .km-add:disabled {
+        opacity: 0.4;
+        box-shadow: none;
+        cursor: not-allowed;
+      }
+      #online-setup .km-toolrow {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-top: 8px;
+      }
+      #online-setup .km-link {
+        background: none;
+        border: none;
+        cursor: pointer;
+        padding: 4px 2px;
+        font-family: "Nunito", sans-serif;
+        font-size: 11.5px;
+        font-weight: 900;
+        color: var(--ac-d2);
+        text-decoration: underline;
+        text-underline-offset: 3px;
+      }
+      #online-setup .km-link:active {
+        transform: scale(0.96);
+      }
+
+      /* ── Toplu ekleme + canlı önizleme ── */
+      #online-setup .km-bulk {
+        margin-top: 9px;
+        animation: kmSlideIn 0.28s cubic-bezier(0.2, 0.9, 0.3, 1.1) both;
+      }
+      #online-setup .km-bulk textarea {
+        width: 100%;
+        min-height: 84px;
+        resize: vertical;
+        padding: 11px 12px;
+        border-radius: 13px;
+        border: 1.5px solid var(--ac-bd);
+        background: #fff;
+        color: #1a1a2e;
+        font-family: "Nunito", sans-serif;
+        font-size: 13.5px;
+        font-weight: 700;
+        line-height: 1.5;
+        outline: none;
+      }
+      #online-setup .km-bulk textarea::placeholder {
+        color: #a79fc4;
+        font-weight: 600;
+      }
+      #online-setup .km-bulk textarea:focus {
+        border-color: var(--ac-l);
+        box-shadow: 0 0 0 4px rgba(var(--ac-shadow), 0.15);
+      }
+      #online-setup .km-bprev {
+        margin-top: 9px;
+        background: #fff;
+        border: 1.5px solid var(--ac-bd);
+        border-radius: 13px;
+        padding: 10px 11px;
+        animation: kmSlideIn 0.24s cubic-bezier(0.2, 0.9, 0.3, 1.1) both;
+      }
+      #online-setup .km-bptop {
+        display: flex;
+        align-items: baseline;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+      #online-setup .km-bptop b {
+        font-size: 12.5px;
+        font-weight: 900;
         color: var(--ac-d);
       }
-      .setup-stage .ct-unit {
-        color: rgba(255, 255, 255, 0.85);
+      #online-setup .km-bptop span {
+        font-size: 11px;
+        font-weight: 800;
+        color: var(--ac-d2);
+        opacity: 0.78;
       }
-      .setup-stage .ct-hint {
-        color: rgba(255, 255, 255, 0.7);
+      #online-setup .km-bptop span.warn {
+        color: var(--coral);
+        opacity: 1;
       }
-      .setup-stage .ct-box,
-      .setup-stage #maxp-custom-inp {
-        background: rgba(255, 255, 255, 0.94);
-        border-color: transparent;
-        color: #1a1a2e;
+      #online-setup .km-bpchips {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 5px;
+        margin-top: 8px;
+      }
+      #online-setup .km-bpchips i {
+        font-style: normal;
+        font-size: 11px;
+        font-weight: 800;
+        padding: 4px 9px;
+        border-radius: 999px;
+        background: var(--ac-bg3);
+        color: var(--ac-d);
+        max-width: 100%;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      #online-setup .km-bactions {
+        display: flex;
+        gap: 7px;
+        margin-top: 8px;
+      }
+      #online-setup .km-bactions .km-ok {
+        margin-left: 0;
+        flex: 1 1 auto;
+      }
+      #online-setup .km-soft {
+        padding: 10px 14px;
+        border-radius: 11px;
+        cursor: pointer;
+        border: 1.5px solid var(--ac-bd);
+        background: #fff;
+        color: var(--ac-d2);
+        font-family: "Nunito", sans-serif;
+        font-size: 13px;
+        font-weight: 900;
+      }
+      #online-setup .km-soft:active {
+        transform: scale(0.95);
+      }
+
+      /* ── Üst sınır uyarısı, not, hayalet satırlar ── */
+      #online-setup .km-limit {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        margin-top: 9px;
+        font-size: 11.5px;
+        font-weight: 800;
+        color: var(--ac-d2);
+        background: #fff;
+        border: 1px dashed var(--ac-ll);
+        border-radius: 11px;
+        padding: 8px 10px;
+      }
+      #online-setup .km-limit i {
+        font-style: normal;
+        flex: 0 0 auto;
+      }
+      #online-setup .km-note {
+        margin-top: 9px;
+        padding: 0 3px;
+        font-size: 11px;
+        font-weight: 800;
+        color: var(--ac-d2);
+        opacity: 0.85;
+        line-height: 1.4;
+      }
+      #online-setup .km-empty {
+        text-align: center;
+        padding: 10px;
+        font-size: 12px;
+        font-weight: 700;
+        color: var(--ac-l2);
+      }
+      #online-setup #online-daily {
+        margin-top: 10px;
+      }
+      #online-setup #vol {
+        margin: 10px 0 0;
+      }
+      #online-setup .km-ghost {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 10px 11px;
+        margin-top: 7px;
+        border: 1.5px dashed var(--ac-ll);
+        border-radius: 14px;
+        color: var(--ac-d2);
+        font-size: 12.5px;
+        font-weight: 700;
+        opacity: 0.68;
+        background: rgba(255, 255, 255, 0.5);
+        animation: kmSlideIn 0.3s cubic-bezier(0.2, 0.9, 0.3, 1.1) both;
+      }
+      #online-setup .km-ghost i {
+        width: 24px;
+        height: 24px;
+        border-radius: 8px;
+        flex: 0 0 auto;
+        font-style: normal;
+        border: 1.5px dashed var(--ac-ll);
+        display: grid;
+        place-items: center;
+        font-size: 11.5px;
+        font-weight: 900;
+      }
+
+      /* ── Alt sabit çubuk (yapışkan; AdMob bandının üstünde kalır) ── */
+      #online-setup .km-dock {
+        position: sticky;
+        bottom: var(--ad-bottom, 0px);
+        z-index: 5;
+        margin-top: 16px;
+        padding: 10px 0;
+        background: rgba(255, 255, 255, 0.9);
+        -webkit-backdrop-filter: blur(12px) saturate(1.3);
+        backdrop-filter: blur(12px) saturate(1.3);
+        border-top: 1px solid var(--ac-bd);
+      }
+      #online-setup .km-dock-top {
+        display: flex;
+        justify-content: flex-end;
+        margin-bottom: 8px;
+      }
+      #online-setup .km-dock-r {
+        font-size: 11px;
+        font-weight: 900;
+        color: var(--coral);
+        text-align: right;
+      }
+      #online-setup .km-dock-r.ok {
+        color: #16a34a;
+      }
+      #online-setup .km-go {
+        position: relative;
+        overflow: hidden;
+        width: 100%;
+        padding: 15px 14px;
+        border-radius: 17px;
+        border: none;
+        cursor: pointer;
+        font-family: "Nunito", sans-serif;
+        font-size: 15.5px;
+        font-weight: 900;
+        color: #fff;
+        background: linear-gradient(160deg, var(--ac-l) 0%, var(--ac) 45%, var(--ac-d) 100%);
+        box-shadow:
+          0 1px 2px rgba(var(--ac-shadow), 0.4),
+          0 8px 18px -4px rgba(var(--ac-shadow), 0.5),
+          inset 0 1px 0 rgba(255, 255, 255, 0.3);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 9px;
+        transition: transform 0.12s, box-shadow 0.2s, filter 0.2s;
+      }
+      #online-setup .km-go::after {
+        content: "";
+        position: absolute;
+        top: -50%;
+        left: -70%;
+        width: 45%;
+        height: 200%;
+        pointer-events: none;
+        transform: rotate(14deg);
+        background: linear-gradient(100deg, transparent, rgba(255, 255, 255, 0.35), transparent);
+        animation: kmSweep 4.5s ease-in-out infinite;
+      }
+      #online-setup .km-go:active {
+        transform: scale(0.975);
+      }
+      #online-setup .km-go:disabled {
+        filter: grayscale(0.55) brightness(1.1);
+        box-shadow: none;
+        cursor: not-allowed;
+      }
+      #online-setup .km-go:disabled::after {
+        display: none;
+      }
+      #online-setup .km-go-ic {
+        font-size: 16px;
+      }
+
+      /* ── Koyu tema karşılıkları ── */
+      html.dark #online-setup .km-sechead h3 {
+        color: #ece8f7;
+      }
+      html.dark #online-setup .km-num {
+        background: #2a2140;
+        color: var(--ac-ll);
+      }
+      html.dark #online-setup .km-sechint,
+      html.dark #online-setup .km-lab,
+      html.dark #online-setup .km-link {
+        color: var(--ac-ll);
+      }
+      html.dark #online-setup .km-card {
+        background: #1a1430;
+        border-color: #33285a;
+      }
+      html.dark #online-setup .km-micro,
+      html.dark #online-setup .km-hint,
+      html.dark #online-setup .km-unit,
+      html.dark #online-setup .km-note,
+      html.dark #online-setup .km-limit,
+      html.dark #online-setup .km-ghost {
+        color: #a99fc4;
+      }
+      html.dark #online-setup .km-inp,
+      html.dark #online-setup .km-bulk textarea {
+        background: #241b3a;
+        border-color: #3a2f55;
+        color: #ece8f7;
+      }
+      html.dark #online-setup .km-inp::placeholder,
+      html.dark #online-setup .km-bulk textarea::placeholder {
+        color: #6b6582;
+      }
+      html.dark #online-setup .km-pill {
+        background: #241b3a;
+        border-color: #3a2f55;
+        color: var(--ac-ll);
+      }
+      html.dark #online-setup .km-editrow,
+      html.dark #online-setup .km-bprev,
+      html.dark #online-setup .km-limit,
+      html.dark #online-setup .km-soft {
+        background: #241b3a;
+        border-color: #3d3460;
+      }
+      html.dark #online-setup .km-ghost {
+        background: rgba(255, 255, 255, 0.03);
+        border-color: #3d3460;
+      }
+      html.dark #online-setup .km-ghost i {
+        border-color: #3d3460;
+      }
+      html.dark #online-setup .km-mini {
+        background: #1a1430;
+        border-color: #3a2f55;
+        color: #ece8f7;
+      }
+      html.dark #online-setup .km-soft {
+        color: var(--ac-ll);
+      }
+      html.dark #online-setup .km-bpchips i {
+        background: #2a2140;
+        color: var(--ac-ll);
+      }
+      html.dark #online-setup .km-dock {
+        background: rgba(16, 12, 32, 0.92);
+        border-top-color: #33285a;
+      }
+      @media (prefers-reduced-motion: reduce) {
+        #online-setup .km-stage::after,
+        #online-setup .km-stage-merci,
+        #online-setup .km-dot,
+        #online-setup .km-bar > i::after,
+        #online-setup .km-go::after,
+        #online-setup .km-editrow,
+        #online-setup .km-bulk,
+        #online-setup .km-bprev,
+        #online-setup .km-ghost {
+          animation: none !important;
+        }
+        #online-setup .km-bar > i {
+          transition: none !important;
+        }
+      }
+
+      /* ══════════ OY VER EKRANI — maketin birebir aktarımı ══════════
+         Üç yerde birden kullanılıyor: host'un "Senin Oyun" bölümü,
+         katılımcı ekranı (#online-participant) ve linkle gelenin overlay'i
+         (#ro-vote-step). Oy satırlarının kendisi (.oitem/.oname/.stars/.star)
+         BEŞ ayrı yerde kullanıldığı için HİÇ DEĞİŞTİRİLMEDİ — bu blok yalnız
+         satırların ÜSTÜNE gelen sahne/ölçer/ipucu/cetvel ve alt çubuğu ekler.
+         Sınıflar km-v önekli: .stage/.badge/.meter/.dock/.legend gibi genel
+         adlar üretim dosyasında zaten var. */
+      .km-vstage {
+        position: relative;
+        overflow: hidden;
+        border-radius: 22px;
+        padding: 13px 14px 12px;
+        margin-bottom: 12px;
+        color: #fff;
+        background:
+          radial-gradient(120% 90% at 88% 6%, rgba(255, 255, 255, 0.22), transparent 55%),
+          linear-gradient(155deg, var(--ac-d2), var(--ac-dd) 62%, var(--ac-d));
+        box-shadow:
+          0 1px 2px rgba(var(--ac-shadow), 0.4),
+          0 14px 30px -10px rgba(var(--ac-shadow), 0.55);
+      }
+      .km-vstage::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+        background-image: linear-gradient(rgba(255, 255, 255, 0.09) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(255, 255, 255, 0.09) 1px, transparent 1px);
+        background-size: 22px 22px;
+        -webkit-mask-image: radial-gradient(120% 90% at 50% 0%, #000, transparent 75%);
+        mask-image: radial-gradient(120% 90% at 50% 0%, #000, transparent 75%);
+      }
+      .km-vstage::after {
+        content: "";
+        position: absolute;
+        top: -40%;
+        left: -60%;
+        width: 70%;
+        height: 190%;
+        pointer-events: none;
+        transform: rotate(12deg);
+        background: linear-gradient(100deg, transparent, rgba(255, 255, 255, 0.14), transparent);
+        animation: kmSweep 6.5s ease-in-out infinite;
+      }
+      .km-vstage > * {
+        position: relative;
+        z-index: 2;
+      }
+      .km-vs-top {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+      }
+      .km-vs-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 9.5px;
+        font-weight: 900;
+        letter-spacing: 0.9px;
+        background: rgba(251, 113, 133, 0.26);
+        border: 1px solid rgba(251, 113, 133, 0.55);
+        padding: 5px 10px;
+        border-radius: 999px;
+      }
+      .km-vs-dot {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: var(--coral);
+        animation: kmPulse 1.2s infinite;
+      }
+      .km-vs-step {
+        font-size: 9.5px;
+        font-weight: 900;
+        letter-spacing: 0.9px;
+        opacity: 0.72;
+      }
+      .km-vs-head {
+        display: flex;
+        align-items: flex-end;
+        gap: 6px;
+        margin-top: 10px;
+      }
+      .km-vs-txt {
+        flex: 1 1 auto;
+        min-width: 0;
+      }
+      .km-vs-txt h2 {
+        margin: 0 0 4px;
+        font-family: "Fredoka", "Nunito", sans-serif;
+        font-size: 20px;
+        font-weight: 700;
+        line-height: 1.15;
+        letter-spacing: -0.2px;
+      }
+      .km-vs-txt p {
+        margin: 0;
+        font-size: 11.5px;
+        font-weight: 700;
+        line-height: 1.45;
+        color: rgba(255, 255, 255, 0.8);
+      }
+      .km-vs-merci {
+        flex: 0 0 auto;
+        width: 78px;
+        margin: 0 -4px -12px 0;
+        animation: kmBreathe 4.2s ease-in-out infinite;
+      }
+      .km-vs-merci svg {
+        display: block;
+        width: 100%;
+        height: auto;
+        filter: drop-shadow(0 6px 14px rgba(20, 5, 60, 0.45));
+      }
+      .km-vmeta {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 7px;
+        margin-top: 12px;
+      }
+      .km-vm {
+        background: rgba(0, 0, 0, 0.2);
+        border: 1px solid rgba(255, 255, 255, 0.14);
+        border-radius: 13px;
+        padding: 7px 9px;
+        min-width: 0;
+      }
+      .km-vm-k {
+        font-size: 9.5px;
+        font-weight: 800;
+        color: rgba(255, 255, 255, 0.62);
+      }
+      .km-vm-v {
+        font-size: 16px;
+        font-weight: 900;
+        margin-top: 2px;
+        font-variant-numeric: tabular-nums;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .km-vm-v.warn {
+        color: var(--gold);
+      }
+      /* Sayacın kendi kutusu var; ölçerin içinde çıplak yazıya dönüşsün */
+      .km-vm .timer-bar {
+        background: transparent;
+        color: inherit; /* .km-vm-v.warn'ın altın rengini alsın */
+        padding: 0;
+        margin: 0;
+        border-radius: 0;
+        text-align: left;
+        letter-spacing: 0;
+        font-size: 16px;
+        font-weight: 900;
+      }
+      .km-vm .timer-bar.urgent {
+        background: transparent;
+        color: var(--gold);
+        animation: tpulse 0.7s infinite;
+      }
+      /* Bilgi kutusu: "puansız bıraktığın 0 sayılır" */
+      .km-vhint {
+        display: flex;
+        gap: 9px;
+        align-items: flex-start;
+        margin-bottom: 9px;
+        background: var(--ac-bg2);
+        border: 1px solid var(--ac-bd);
+        border-radius: 15px;
+        padding: 10px 11px;
+      }
+      .km-vhint i {
+        flex: 0 0 auto;
+        width: 21px;
+        height: 21px;
+        border-radius: 8px;
+        display: grid;
+        place-items: center;
+        font-style: normal;
+        background: linear-gradient(150deg, var(--ac-l), var(--ac-d));
+        color: #fff;
+        font-size: 12px;
+        font-weight: 900;
+      }
+      .km-vhint p {
+        margin: 0;
+        font-size: 11.5px;
+        line-height: 1.5;
+        color: var(--ac-dd);
+        font-weight: 700;
+      }
+      .km-vhint p b {
+        font-weight: 900;
+      }
+      /* Puan cetveli: 1 Olmaz … 5 Bu! */
+      .km-vlegend {
+        display: flex;
+        gap: 4px;
+        flex-wrap: wrap;
+        margin-bottom: 10px;
+      }
+      .km-vlegend span {
+        font-size: 9.5px;
+        font-weight: 900;
+        color: var(--ac-d2);
+        background: var(--ac-bg2);
+        border: 1px solid var(--ac-bd);
+        padding: 4px 8px;
+        border-radius: 999px;
+        white-space: nowrap;
+      }
+      .km-vlegend span b {
+        color: var(--ac-d);
+      }
+      /* Alt sabit çubuk — "Oyumu Gönder" */
+      .km-vdock {
+        position: sticky;
+        bottom: var(--ad-bottom, 0px);
+        z-index: 5;
+        margin-top: 12px;
+        padding: 10px 0;
+        background: rgba(255, 255, 255, 0.9);
+        -webkit-backdrop-filter: blur(12px) saturate(1.3);
+        backdrop-filter: blur(12px) saturate(1.3);
+        border-top: 1px solid var(--ac-bd);
+      }
+      .km-vdock-top {
+        display: flex;
+        justify-content: space-between;
+        gap: 8px;
+        margin-bottom: 8px;
+        font-size: 11px;
+        font-weight: 900;
+      }
+      .km-vdock-top .l {
+        color: var(--ac-d2);
+      }
+      .km-vdock-top .r {
+        color: var(--coral);
+        text-align: right;
+      }
+      .km-vdock-top .r.ok {
+        color: #16a34a;
+      }
+      .km-vgo {
+        position: relative;
+        overflow: hidden;
+        width: 100%;
+        margin: 0;
+        padding: 15px 14px;
+        border-radius: 17px;
+        border: none;
+        cursor: pointer;
+        font-family: "Nunito", sans-serif;
+        font-size: 15.5px;
+        font-weight: 900;
+        color: #fff;
+        background: linear-gradient(160deg, var(--ac-l) 0%, var(--ac) 45%, var(--ac-d) 100%);
+        box-shadow:
+          0 1px 2px rgba(var(--ac-shadow), 0.4),
+          0 8px 18px -4px rgba(var(--ac-shadow), 0.5),
+          inset 0 1px 0 rgba(255, 255, 255, 0.3);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 9px;
+        transition: transform 0.12s, box-shadow 0.2s, filter 0.2s;
+      }
+      .km-vgo::after {
+        content: "";
+        position: absolute;
+        top: -50%;
+        left: -70%;
+        width: 45%;
+        height: 200%;
+        pointer-events: none;
+        transform: rotate(14deg);
+        background: linear-gradient(100deg, transparent, rgba(255, 255, 255, 0.35), transparent);
+        animation: kmSweep 4.5s ease-in-out infinite;
+      }
+      .km-vgo:active {
+        transform: scale(0.975);
+      }
+      .km-vgo:disabled {
+        filter: grayscale(0.55) brightness(1.1);
+        box-shadow: none;
+        cursor: not-allowed;
+      }
+      .km-vgo:disabled::after {
+        display: none;
+      }
+      /* Oy gönderilince mevcut kod SADECE butonu gizliyor (8+ ayrı yerde).
+         Çubuğun durum yazısı yalnız başına asılı kalmasın diye çubuk da
+         onunla birlikte kapanır. :has() desteklenmezse yalnız durum yazısı
+         görünür kalır — zararsız düşüş. */
+      .km-vdock:has(> .km-vgo[style*="display: none"]),
+      .km-vdock:has(> .km-vgo[style*="display:none"]) {
+        display: none;
+      }
+      html.dark .km-vhint {
+        background: #1a1430;
+        border-color: #33285a;
+      }
+      html.dark .km-vhint p {
+        color: #ece8f7;
+      }
+      html.dark .km-vlegend span {
+        background: #241b3a;
+        border-color: #3a2f55;
+        color: var(--ac-ll);
+      }
+      html.dark .km-vlegend span b {
+        color: #ece8f7;
+      }
+      html.dark .km-vdock {
+        background: rgba(16, 12, 32, 0.92);
+        border-top-color: #33285a;
+      }
+      html.dark .km-vdock-top .l {
+        color: #a99fc4;
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .km-vstage::after,
+        .km-vs-merci,
+        .km-vs-dot,
+        .km-vgo::after,
+        .km-vm .timer-bar.urgent {
+          animation: none !important;
+        }
+      }
+
+      /* ══════════ BERABERLİK — rozet satırı + eşitlik çipleri (maket ekran 4) ══════════
+         Çark, ibre ve göbekteki Merci zaten vardı; makette olup eksik olan
+         "kimler eşit kaldı" bilgisiydi. Çipin renk kutusu çarktaki dilim
+         rengiyle aynı (COLS) → hangi dilim kim, bakışta anlaşılıyor. */
+      .km-tbtop {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        margin-bottom: 10px;
+      }
+      .km-tbbadge {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 9.5px;
+        font-weight: 900;
+        letter-spacing: 0.9px;
+        padding: 5px 10px;
+        border-radius: 999px;
+        background: rgba(251, 191, 36, 0.22);
+        border: 1px solid rgba(251, 191, 36, 0.6);
+        color: #a26a00;
+      }
+      .km-tbdot {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: var(--gold);
+        animation: kmPulse 1.8s infinite;
+      }
+      .km-tbstep {
+        font-size: 9.5px;
+        font-weight: 900;
+        letter-spacing: 0.9px;
+        color: var(--ac-d2);
+        opacity: 0.7;
+      }
+      .km-tbchips {
+        display: flex;
+        gap: 6px;
+        flex-wrap: wrap;
+        justify-content: center;
+        margin: 10px 0 2px;
+      }
+      .km-tbchips span {
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        max-width: 100%;
+        padding: 5px 11px;
+        border-radius: 999px;
+        background: var(--ac-bg2);
+        border: 1px solid var(--ac-bd);
+        font-size: 11.5px;
+        font-weight: 900;
+        color: var(--ac-dd);
+      }
+      .km-tbchips span i {
+        width: 10px;
+        height: 10px;
+        border-radius: 4px;
+        flex: 0 0 auto;
+      }
+      .km-tbchips span b {
+        font-weight: 900;
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      html.dark .km-tbbadge {
+        color: var(--gold);
+      }
+      html.dark .km-tbstep {
+        color: #a99fc4;
+      }
+      html.dark .km-tbchips span {
+        background: #241b3a;
+        border-color: #3a2f55;
+        color: #ece8f7;
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .km-tbdot {
+          animation: none;
+        }
       }
 
       /* Karekod kutusu */
@@ -5278,12 +6495,9 @@
         border: 2px solid var(--ac-ll);
         color: var(--ac-d);
       }
-      .onl-sel-row {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 6px;
-        margin-bottom: 12px;
-      }
+      /* .onl-sel-row KALDIRILDI — süre hapları .km-pills'e geçti. .onl-sel-btn
+         DURUYOR: #masa-people-row hâlâ kullanıyor ve setMaxP/setTimeLimit
+         seçili hapı ".onl-sel-btn" + ".on" ile buluyor. */
       .onl-sel-btn {
         padding: 7px 12px;
         background: var(--ac-bg);
@@ -5353,10 +6567,9 @@
       html.dark .online-leave-btn { border-color: #33285a; color: #8a83a0; }
       .online-leave-btn .onl-sub { font-size: 9.5px; font-weight: 700; opacity: .8; }
       /* Kişi sayısı — küçük tek satır kompakt segmentler (Deploy #8) */
-      .pcount-row { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 12px; }
-      .pcount-row .onl-sel-btn { flex: 1; min-width: 34px; padding: 8px 4px; border-width: 1.5px; border-radius: 9px; font-size: 12.5px; line-height: 1; text-align: center; }
-      .pcount-row .onl-sel-btn.other { flex: 0 0 auto; min-width: 44px; display: inline-flex; align-items: center; justify-content: center; gap: 3px; font-size: 11px; }
-      .pcount-row .onl-sel-btn.other svg { width: 12px; height: 12px; stroke: currentColor; fill: none; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
+      /* .pcount-row KALDIRILDI — kişi sayısı hapları artık maket düzenindeki
+         .km-pills / .km-pill sınıflarını kullanıyor (#online-setup bloğu).
+         data-val ve .onl-sel-btn KORUNDU: setMaxP hapları onlarla buluyor. */
       /* ── ONLINE SETUP POPUP MODAL ── */
       .online-popup-overlay {
         display: none;
@@ -6140,9 +7353,16 @@
     <!-- TIEBREAKER MODAL -->
     <div class="modal-overlay" id="tb-modal">
       <div class="mbox">
+        <!-- Maket ekran 4: rozet satırı + eşit kalan seçeneklerin renkli çipleri
+             (çipin rengi çarktaki dilim rengiyle AYNI → hangi dilim kim, bakışta belli) -->
+        <div class="km-tbtop">
+          <span class="km-tbbadge"><i class="km-tbdot"></i>EŞİTLİK</span>
+          <span class="km-tbstep">Çark karar versin</span>
+        </div>
         <div id="tb-merci" class="rmerci" style="margin-bottom: 8px"></div>
         <div class="mtitle" id="tb-title"></div>
         <div class="msub" id="tb-sub"></div>
+        <div class="km-tbchips" id="tb-chips"></div>
         <canvas
           id="tb-canvas"
           width="180"
@@ -6592,11 +7812,12 @@
             </div>
           </div>
 
-          <!-- Hızlı Başlat kartı (çark empty-card diliyle tutarlı) — mod seçilince görünür -->
-          <div id="cats-vote-wrap" class="vqs-card" style="display: none">
-            <div class="vqs-title">⚡ Hızlı Başlat</div>
-            <div class="cats" id="cats-vote"></div>
-            <div class="vqs-div">ya da</div>
+          <!-- "⚡ Hızlı Başlat" ÇİP RAFI KALDIRILDI (kullanıcı kararı):
+               oda kurmada zaten saate göre hazır paketler (#online-daily) var,
+               aynı işi iki yerde yapmak ekranı kalabalıklaştırıyordu.
+               Kart ve id KORUNDU (#cats-vote-wrap'i gösterip gizleyen 8 ayrı
+               yer + tur adımı var), içinde yalnız "Merci doldursun" kaldı. -->
+          <div id="cats-vote-wrap" class="vqs-card vqs-solo" style="display: none">
             <button
               class="vqs-merci-btn"
               id="vote-merci-fill"
@@ -6714,126 +7935,212 @@
                  custom wrap'ler) → setMaxP/setTimeLimit/toggleCustomTime/
                  applyCustomTime/createRoom hiç değişmeden çalışmaya devam ediyor. -->
             <div id="online-setup" style="display: none">
-              <!-- Sahne kartı: onaylanan maketin görsel dili. Ayarlar mor
-                   zemin üzerinde toplanıyor, seçenekler altında beyaz alanda
-                   kalıyor → "oda kuruyorum" hissi ekranın kendisinden geliyor. -->
-              <div class="setup-stage">
-                <div class="setup-stage-top">
-                  <span class="setup-badge"><span class="sb-dot"></span> Hazırlık</span>
-                  <span class="setup-step">Adım 1 / 2</span>
+              <!-- ⚠️ id'ler ve satır içi onclick'ler BİLEREK korundu:
+                   setMaxP / setTimeLimit / toggleMaxPCustom / applyMaxPCustom /
+                   toggleCustomTime / applyCustomTime / addOnlineOpts /
+                   renderOnlineOpts / createRoom hiç değişmeden çalışıyor.
+                   kmSetupSync() yalnızca ARKADAN görseli tazeler (ölçerler,
+                   hazırlık çubuğu, ✏️ hap etiketi, alt çubuk durumu). -->
+              <div class="km-stage">
+                <div class="km-stage-top">
+                  <span class="km-badge"><i class="km-dot"></i>HAZIRLIK</span>
+                  <span class="km-step">Adım 1 / 2</span>
                 </div>
-                <div class="setup-f">
-                  <div class="setup-l">Oda adı <span class="req">• zorunlu</span></div>
-                  <input
-                    id="room-name"
-                    class="setup-in setup-in-big"
-                    type="text"
-                    placeholder="Akşam nereye gidiyoruz?"
-                  />
-                  <div class="setup-note">Odaya katılanlar bu adı görür</div>
+                <div class="km-stage-head">
+                  <div class="km-stage-txt">
+                    <h2 class="km-stage-title" id="km-stage-title">Yeni oda</h2>
+                    <p class="km-stage-sub">Kod, karekod ya da bağlantıyla katılırlar.</p>
+                  </div>
+                  <div class="km-stage-merci" id="km-stage-merci" aria-hidden="true"></div>
                 </div>
-                <div class="setup-f">
-                  <div class="setup-l">Senin adın <span class="req">• zorunlu</span></div>
-                  <input
-                    id="host-name"
-                    class="setup-in"
-                    type="text"
-                    placeholder="Adın"
-                  />
-                  <div class="setup-note">Oy verirken arkadaşların bu adı görür</div>
+                <div class="km-meters">
+                  <div class="km-meter">
+                    <div class="km-mk">Kişi</div>
+                    <div class="km-mv"><span id="km-m-cap">4</span><small>kişilik</small></div>
+                  </div>
+                  <div class="km-meter">
+                    <div class="km-mk">Süre</div>
+                    <div class="km-mv"><span id="km-m-dur">24</span><small id="km-m-duru">saat</small></div>
+                  </div>
+                  <div class="km-meter">
+                    <div class="km-mk">Seçenek</div>
+                    <div class="km-mv"><span id="km-m-opt">0</span><small id="km-m-optmax">/ 12</small></div>
+                  </div>
                 </div>
-                <div class="setup-sub">Kod, karekod ya da bağlantıyla katılırlar</div>
-                <p class="lbl">Kaç kişi oy verecek? (sen dahil)</p>
-              <div class="pcount-row" id="maxp-row" style="margin-bottom: 4px">
-                <!-- Karar (7 Ağu): hazır seçenekler 2·3·4·5·10, gerisi "Diğer".
-                     6 ve 8 kaldırıldı; sık kullanılmıyor ve satırı kalabalıklaştırıyordu. -->
-                <button class="onl-sel-btn" data-val="2" onclick="setMaxP(2)">2</button>
-                <button class="onl-sel-btn" data-val="3" onclick="setMaxP(3)">3</button>
-                <button class="onl-sel-btn" data-val="4" onclick="setMaxP(4)">4</button>
-                <button class="onl-sel-btn" data-val="5" onclick="setMaxP(5)">5</button>
-                <button class="onl-sel-btn" data-val="10" onclick="setMaxP(10)">10</button>
-                <button
-                  class="onl-sel-btn other"
-                  id="maxp-custom-btn"
-                  title="Diğer"
-                  onclick="toggleMaxPCustom()"
-                >
-                  <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Diğer
+                <div class="km-ready">
+                  <div class="km-ready-top">
+                    <span>Yayına hazırlık</span><span id="km-pct">%0</span>
+                  </div>
+                  <div class="km-bar"><i id="km-bar-fill"></i></div>
+                  <div class="km-checks">
+                    <span class="km-chk" id="km-ck1"><i class="km-tick">✓</i>Oda adı</span>
+                    <span class="km-chk" id="km-ck2"><i class="km-tick">✓</i>Senin adın</span>
+                    <span class="km-chk" id="km-ck3"><i class="km-tick">✓</i>En az 2 seçenek</span>
+                  </div>
+                </div>
+              </div>
+
+              <section class="km-sec">
+                <div class="km-sechead"><span class="km-num">1</span><h3>Yayın bilgileri</h3></div>
+                <div class="km-card">
+                  <div class="km-field">
+                    <div class="km-lab">Oda adı <span class="km-req">• zorunlu</span></div>
+                    <input
+                      id="room-name"
+                      class="km-inp"
+                      type="text"
+                      maxlength="40"
+                      autocomplete="off"
+                      placeholder="Akşam nereye gidiyoruz?"
+                    />
+                    <p class="km-micro">Odaya katılanlar bu adı görür</p>
+                  </div>
+                  <div class="km-field">
+                    <div class="km-lab">Senin adın <span class="km-req">• zorunlu</span></div>
+                    <input
+                      id="host-name"
+                      class="km-inp"
+                      type="text"
+                      maxlength="20"
+                      autocomplete="off"
+                      placeholder="Adın"
+                    />
+                    <p class="km-micro">Oy verirken arkadaşların bu adı görür</p>
+                  </div>
+                </div>
+              </section>
+
+              <section class="km-sec">
+                <div class="km-sechead"><span class="km-num">2</span><h3>Oda ayarları</h3></div>
+                <div class="km-card">
+                  <div class="km-field">
+                    <div class="km-lab">Kişi</div>
+                    <!-- Karar (7 Ağu): hazır değerler 2·3·4·5·10, gerisi ✏️ ile.
+                         data-val ZORUNLU — setMaxP seçili hapı bununla buluyor. -->
+                    <div class="km-pills" id="maxp-row">
+                      <button type="button" class="onl-sel-btn km-pill" data-val="2" onclick="setMaxP(2);kmSetupSync()">2<small>kişi</small></button>
+                      <button type="button" class="onl-sel-btn km-pill" data-val="3" onclick="setMaxP(3);kmSetupSync()">3<small>kişi</small></button>
+                      <button type="button" class="onl-sel-btn km-pill" data-val="4" onclick="setMaxP(4);kmSetupSync()">4<small>kişi</small></button>
+                      <button type="button" class="onl-sel-btn km-pill" data-val="5" onclick="setMaxP(5);kmSetupSync()">5<small>kişi</small></button>
+                      <button type="button" class="onl-sel-btn km-pill" data-val="10" onclick="setMaxP(10);kmSetupSync()">10<small>kişi</small></button>
+                      <button
+                        type="button"
+                        class="onl-sel-btn km-pill km-pen"
+                        id="maxp-custom-btn"
+                        aria-label="Kişi sayısını kendin yaz"
+                        title="Kendin yaz"
+                        onclick="toggleMaxPCustom()"
+                      >✏️</button>
+                    </div>
+                    <div id="maxp-custom-wrap" class="km-editrow" style="display: none">
+                      <input
+                        id="maxp-custom-inp"
+                        class="km-mini"
+                        type="number"
+                        min="2"
+                        max="50"
+                        inputmode="numeric"
+                        placeholder="Kişi"
+                      />
+                      <span class="km-hint">2 – 50 kişi</span>
+                      <button type="button" class="km-ok" onclick="applyMaxPCustom();kmSetupSync()">Tamam</button>
+                    </div>
+                  </div>
+
+                  <div class="km-field">
+                    <div class="km-lab">Süre</div>
+                    <!-- data-tval ZORUNLU — setTimeLimit seçili hapı bununla buluyor.
+                         "Sınırsız" YOK: süresiz odalar kapanmayıp Firestore okuma
+                         kotasını yakıyordu, tavan 24 saat. -->
+                    <div class="km-pills" id="time-row">
+                      <button type="button" class="onl-sel-btn km-pill" data-tval="15" onclick="setTimeLimit(15);kmSetupSync()">15<small>dk</small></button>
+                      <button type="button" class="onl-sel-btn km-pill" data-tval="30" onclick="setTimeLimit(30);kmSetupSync()">30<small>dk</small></button>
+                      <button type="button" class="onl-sel-btn km-pill" data-tval="60" onclick="setTimeLimit(60);kmSetupSync()">1<small>saat</small></button>
+                      <button type="button" class="onl-sel-btn km-pill" data-tval="360" onclick="setTimeLimit(360);kmSetupSync()">6<small>saat</small></button>
+                      <button type="button" class="onl-sel-btn km-pill on" data-tval="1440" onclick="setTimeLimit(1440);kmSetupSync()">24<small>saat</small></button>
+                      <button
+                        type="button"
+                        class="onl-sel-btn km-pill km-pen"
+                        data-tval="custom"
+                        id="time-custom-btn"
+                        aria-label="Süreyi kendin yaz"
+                        title="Kendin yaz"
+                        onclick="toggleCustomTime()"
+                      >✏️</button>
+                    </div>
+                    <!-- İKİ KÜÇÜK KUTU: sol SAAT, sağ DAKİKA. Toplam = saat*60 + dk. -->
+                    <div id="custom-time-wrap" class="km-editrow" style="display: none">
+                      <input id="custom-time-h" class="km-mini" type="number" min="0" max="24" inputmode="numeric" placeholder="0" />
+                      <span class="km-unit">saat</span>
+                      <input id="custom-time-m" class="km-mini" type="number" min="0" max="59" inputmode="numeric" placeholder="0" />
+                      <span class="km-unit">dk</span>
+                      <button type="button" class="km-ok" onclick="applyCustomTime();kmSetupSync()">Tamam</button>
+                    </div>
+                    <span class="km-hint km-hint-b">En fazla 24 saat · süre dolunca kazanan açıklanır</span>
+                  </div>
+                </div>
+              </section>
+
+              <section class="km-sec">
+                <div class="km-sechead">
+                  <span class="km-num">3</span><h3>Seçenekler</h3>
+                  <span class="km-sechint" id="km-opt-hint">0 / 12</span>
+                </div>
+                <div class="km-card">
+                  <div class="km-addrow">
+                    <input
+                      id="voi"
+                      class="km-inp"
+                      type="text"
+                      maxlength="48"
+                      autocomplete="off"
+                      placeholder="Seçenek yaz…"
+                    /><button class="km-add" id="add-online-opt" aria-label="Seçeneği ekle">+</button>
+                  </div>
+                  <div class="km-toolrow">
+                    <button type="button" class="km-link" id="km-bulk-toggle" aria-expanded="false">Birden fazla ekle</button>
+                  </div>
+
+                  <!-- Toplu ekleme: yazdıkça canlı önizleme (kaç tanesi eklenecek,
+                       kaç tekrar atlanacak) → kullanıcı "Ekle"ye basmadan görür. -->
+                  <div class="km-bulk" id="km-bulk" hidden>
+                    <textarea id="km-bulk-txt" placeholder="Pizza, Lahmacun&#10;Sushi&#10;Makarna"></textarea>
+                    <div class="km-bprev" id="km-bulk-prev" hidden>
+                      <div class="km-bptop">
+                        <b id="km-bp-count">0 seçenek eklenecek</b>
+                        <span id="km-bp-note" hidden></span>
+                      </div>
+                      <div class="km-bpchips" id="km-bp-chips"></div>
+                    </div>
+                    <div class="km-bactions">
+                      <button type="button" class="km-ok" id="km-bulk-add" disabled>Hepsini Ekle</button>
+                      <button type="button" class="km-soft" id="km-bulk-cancel">Vazgeç</button>
+                    </div>
+                  </div>
+
+                  <div class="km-limit" id="km-limit" hidden><i>⛔</i><span>12 seçenek üst sınır</span></div>
+                  <!-- Ekleme geri bildirimi: tekrar atlandı / üst sınır (JS doldurur) -->
+                  <div id="vo-note" class="km-note" style="display: none"></div>
+                  <!-- Hazır paketler: çarkın SAATE GÖRE öneri altyapısı burada da
+                       kullanılıyor. Yalnız liste boşken görünür. -->
+                  <div class="wd-chips" id="online-daily" style="display: none"></div>
+                  <div class="ogrid" id="vol"></div>
+                  <!-- Hayalet satırlar: 2'den az seçenekken "burada ne eksik" der -->
+                  <div id="km-ghosts"></div>
+                  <div id="voe" class="km-empty">
+                    Seçenek ekle, arkadaşların oylasın! 📡
+                  </div>
+                </div>
+              </section>
+
+              <div class="km-dock">
+                <div class="km-dock-top">
+                  <span class="km-dock-r" id="km-dock-r">Oda adı, adın ve 2 seçenek gerekli</span>
+                </div>
+                <button class="km-go" id="create-room-btn">
+                  <span class="km-go-ic">📡</span><span>Odayı Oluştur</span>
                 </button>
               </div>
-              <div id="maxp-custom-wrap" style="display: none; margin-bottom: 8px">
-                <div class="irow" style="align-items: center">
-                  <input
-                    id="maxp-custom-inp"
-                    type="number"
-                    min="2"
-                    max="50"
-                    placeholder="Kişi sayısı..."
-                    style="width: 100%"
-                  />
-                  <button
-                    class="abtn"
-                    onclick="applyMaxPCustom()"
-                    style="font-size: 13px; padding: 11px 14px"
-                  >
-                    ✓
-                  </button>
-                </div>
-              </div>
-              <p class="lbl" style="margin-top: 8px">Süre Limiti</p>
-              <div class="onl-sel-row" id="time-row" style="margin-bottom: 4px">
-                <!-- Karar (7 Ağu): 15dk · 30dk · 1sa · 6sa · 24sa + Diğer.
-                     5dk/10dk çıkarıldı (oda kurulup paylaşılmadan doluyordu),
-                     6 saat eklendi (akşam planı için en çok istenen aralık). -->
-                <button class="onl-sel-btn" data-tval="15" onclick="setTimeLimit(15)">15 dk</button>
-                <button class="onl-sel-btn" data-tval="30" onclick="setTimeLimit(30)">30 dk</button>
-                <button class="onl-sel-btn" data-tval="60" onclick="setTimeLimit(60)">1 saat</button>
-                <button class="onl-sel-btn" data-tval="360" onclick="setTimeLimit(360)">6 saat</button>
-                <!-- "Sınırsız" KALDIRILDI → 24 saat (varsayılan). Süresiz odalar hiç kapanmayıp
-                     Firestore okuma kotasını yakıyordu. -->
-                <button class="onl-sel-btn on" data-tval="1440" onclick="setTimeLimit(1440)">24 saat</button>
-                <button
-                  class="onl-sel-btn"
-                  data-tval="custom"
-                  id="time-custom-btn"
-                  onclick="toggleCustomTime()"
-                >
-                  <svg viewBox="0 0 24 24" style="width:12px;height:12px;fill:none;stroke:currentColor;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round;vertical-align:-1px;margin-right:1px"><path d="M12 5v14M5 12h14"/></svg>Diğer
-                </button>
-              </div>
-              <div id="custom-time-wrap" style="display: none; margin-bottom: 8px">
-                <!-- İKİ KÜÇÜK KUTU: sol SAAT, sağ DAKİKA. Toplam = saat*60 + dk, tavan 24 saat. -->
-                <div class="irow" style="align-items: center; gap: 6px; margin-bottom: 0">
-                  <input id="custom-time-h" class="ct-box" type="number" min="0" max="24" inputmode="numeric" placeholder="0" />
-                  <span class="ct-unit">saat</span>
-                  <input id="custom-time-m" class="ct-box" type="number" min="0" max="59" inputmode="numeric" placeholder="0" />
-                  <span class="ct-unit">dk</span>
-                  <button class="abtn" onclick="applyCustomTime()" style="font-size: 13px; padding: 9px 13px">✓</button>
-                </div>
-                <div class="ct-hint">En fazla 24 saat</div>
-              </div>
-              </div>
-              <p class="lbl" style="margin-top: 14px">Seçenek Ekle (min 2)</p>
-              <div class="irow">
-                <input
-                  id="voi"
-                  type="text"
-                  placeholder="Seçenek ekle..."
-                /><button class="abtn" id="add-online-opt">+</button>
-              </div>
-              <div class="ogrid" id="vol"></div>
-              <!-- Ekleme geri bildirimi: tekrar atlandı / üst sınır (JS doldurur) -->
-              <div id="vo-note" class="empty" style="display: none"></div>
-              <!-- Hazır paketler: çarkın SAATE GÖRE öneri altyapısı burada da
-                   kullanılıyor (sabah kahvaltı, akşam yemek/aktivite...).
-                   Yalnız liste boşken görünür, ilk seçenek eklenince kaybolur. -->
-              <div class="wd-chips" id="online-daily" style="display: none"></div>
-              <div id="voe" class="empty">
-                Seçenek ekle, arkadaşların oylasın! 📡
-              </div>
-              <button class="btn gold" id="create-room-btn">
-                📡 Odayı Oluştur ve Kodu Al
-              </button>
             </div>
             <!-- Host view -->
             <div id="online-host" style="display: none">
@@ -6845,8 +8152,14 @@
                   <span class="ls-badge"><span class="ls-dot"></span> Yayında</span>
                   <span class="ls-step">Adım 2 / 2</span>
                 </div>
-                <div class="ls-title" id="room-title-display">Oda hazır!</div>
-                <div class="ls-sub">Kod, karekod ya da bağlantıyla katılırlar</div>
+                <!-- Maket ekran 2: başlık + alt yazı solda, Merci sağda -->
+                <div class="ls-head">
+                  <div class="ls-htxt">
+                    <div class="ls-title" id="room-title-display">Oda hazır!</div>
+                    <div class="ls-sub">Kod, karekod ya da bağlantıyla katılırlar</div>
+                  </div>
+                  <div class="km-vs-merci" id="ls-merci" aria-hidden="true"></div>
+                </div>
 
                 <div class="ls-code-row">
                   <div class="ls-code-left">
@@ -6890,7 +8203,36 @@
                 <div id="participant-names" class="pname-list"></div>
               </div>
               <div id="host-vote-section">
-                <p class="lbl">Senin Oyun</p>
+                <!-- OY VER sahnesi (maket ekran 3). Ölçerler kmVoteSync ile
+                     dolar; #hv-clock yukarıdaki #host-timer'ın AYNASIDIR
+                     (ikinci bir sayaç kurulmuyor, metni kopyalanıyor). -->
+                <div class="km-vstage">
+                  <div class="km-vs-top">
+                    <span class="km-vs-badge"><i class="km-vs-dot"></i>OYLAMA AÇIK</span>
+                    <span class="km-vs-step">Senin oyun</span>
+                  </div>
+                  <div class="km-vs-head">
+                    <div class="km-vs-txt">
+                      <h2>Sen ne dersin?</h2>
+                      <p>Yıldız kadar puan.</p>
+                    </div>
+                    <div class="km-vs-merci" id="hv-merci" aria-hidden="true"></div>
+                  </div>
+                  <div class="km-vmeta">
+                    <div class="km-vm">
+                      <div class="km-vm-k">Puanladın</div>
+                      <div class="km-vm-v"><span id="hv-done">0</span> / <span id="hv-total">0</span></div>
+                    </div>
+                    <div class="km-vm">
+                      <div class="km-vm-k">Kalan süre</div>
+                      <div class="km-vm-v warn" id="hv-clock">—</div>
+                    </div>
+                    <div class="km-vm">
+                      <div class="km-vm-k">Toplam</div>
+                      <div class="km-vm-v" id="hv-sum">0</div>
+                    </div>
+                  </div>
+                </div>
                 <div class="olist" id="host-vote-list"></div>
                 <button class="btn" id="close-voting-btn">
                   🏆 Oylamayı Kapat
@@ -6987,25 +8329,51 @@
             </div>
             <!-- Participant voting -->
             <div id="online-participant" style="display: none">
-              <div class="ai-intro" style="margin-bottom: 14px">
-                <div>
-                  <div class="ai-intro-txt" id="participant-room-name">
-                    Oylama
+              <!-- OY VER sahnesi (maket ekran 3). #p-timer-display sayacın
+                   ÖZGÜN id'si — taşındı ama korundu, startTimer aynen çalışır. -->
+              <div class="km-vstage">
+                <div class="km-vs-top">
+                  <span class="km-vs-badge"><i class="km-vs-dot"></i>OYLAMA AÇIK</span>
+                  <span class="km-vs-step">Oy ver</span>
+                </div>
+                <div class="km-vs-head">
+                  <div class="km-vs-txt">
+                    <h2>Sen ne dersin?</h2>
+                    <p><span id="participant-room-name">Oylama</span> · Yıldız kadar puan.</p>
                   </div>
-                  <div class="ai-intro-sub">Yıldız ver ve oyunu ilet!</div>
+                  <div class="km-vs-merci" id="pv-merci" aria-hidden="true"></div>
+                </div>
+                <div class="km-vmeta">
+                  <div class="km-vm">
+                    <div class="km-vm-k">Puanladın</div>
+                    <div class="km-vm-v"><span id="pv-done">0</span> / <span id="pv-total">0</span></div>
+                  </div>
+                  <div class="km-vm">
+                    <div class="km-vm-k">Kalan süre</div>
+                    <div class="km-vm-v warn">
+                      <div id="p-timer-display" class="timer-bar" style="display: none"></div>
+                    </div>
+                  </div>
+                  <div class="km-vm">
+                    <div class="km-vm-k">Toplam</div>
+                    <div class="km-vm-v" id="pv-sum">0</div>
+                  </div>
                 </div>
               </div>
-              <div
-                id="p-timer-display"
-                class="timer-bar"
-                style="display: none"
-              ></div>
               <div class="olist" id="participant-list"></div>
               <!-- CANLI OY TABLOSU (şeffaflık) — renderVoteTable() doldurur.
                    FAZ 2: listenRoomAsParticipant() içindeki onSnapshot'ta
                    renderVoteTable(data.participants, deviceId, data.hostId) çağrılacak. -->
               <div id="vote-table" class="voter-board" style="display: none"></div>
-              <button class="btn" id="submit-vote-btn">✅ Oyumu İlet</button>
+              <div class="km-vdock" id="pv-dock">
+                <div class="km-vdock-top">
+                  <span class="l" id="pv-dock-l">Henüz puan vermedin</span>
+                  <span class="r" id="pv-dock-r">En az bir seçeneğe puan ver</span>
+                </div>
+                <button class="km-vgo" id="submit-vote-btn">
+                  <span>✓</span><span>Oyumu Gönder</span>
+                </button>
+              </div>
               <button
                 class="btn ghost"
                 style="margin-top: 6px"
@@ -7383,15 +8751,54 @@
           <button class="btn" id="ro-name-btn">Oylamaya Katıl</button>
         </div>
         <div id="ro-vote-step" style="display: none">
-          <div class="ai-intro" style="margin-bottom: 14px">
+          <!-- ⚠️ .ai-intro sarmalayıcısı KORUNDU: #ro-vote-step .ai-intro /
+               .ai-intro-txt kuralları sonuç modunda (ro-result-mode) bu kutuyu
+               yeniden biçimliyor. Sahne kartı onun İÇİNE değil, YANINA eklendi. -->
+          <div class="ai-intro" style="margin-bottom: 12px">
             <div>
               <div class="ai-intro-txt" id="ro-room-name">Oylama</div>
               <div class="ai-intro-sub">Yıldız ver ve oyunu ilet!</div>
             </div>
           </div>
-          <div id="ro-timer" class="timer-bar" style="display: none"></div>
+          <div class="km-vstage" id="ro-vstage">
+            <div class="km-vs-top">
+              <span class="km-vs-badge"><i class="km-vs-dot"></i>OYLAMA AÇIK</span>
+              <span class="km-vs-step">Oy ver</span>
+            </div>
+            <div class="km-vs-head">
+              <div class="km-vs-txt">
+                <h2>Sen ne dersin?</h2>
+                <p>Yıldız kadar puan.</p>
+              </div>
+              <div class="km-vs-merci" id="rv-merci" aria-hidden="true"></div>
+            </div>
+            <div class="km-vmeta">
+              <div class="km-vm">
+                <div class="km-vm-k">Puanladın</div>
+                <div class="km-vm-v"><span id="rv-done">0</span> / <span id="rv-total">0</span></div>
+              </div>
+              <div class="km-vm">
+                <div class="km-vm-k">Kalan süre</div>
+                <div class="km-vm-v warn">
+                  <div id="ro-timer" class="timer-bar" style="display: none"></div>
+                </div>
+              </div>
+              <div class="km-vm">
+                <div class="km-vm-k">Toplam</div>
+                <div class="km-vm-v" id="rv-sum">0</div>
+              </div>
+            </div>
+          </div>
           <div class="olist" id="ro-vote-list"></div>
-          <button class="btn" id="ro-submit-btn">✅ Oyumu İlet</button>
+          <div class="km-vdock" id="ro-dock">
+            <div class="km-vdock-top">
+              <span class="l" id="rv-dock-l">Henüz puan vermedin</span>
+              <span class="r" id="rv-dock-r">En az bir seçeneğe puan ver</span>
+            </div>
+            <button class="km-vgo" id="ro-submit-btn">
+              <span>✓</span><span>Oyumu Gönder</span>
+            </button>
+          </div>
           <button
             class="btn ghost"
             id="ro-leave-btn"
@@ -11304,8 +12711,8 @@ function drawResultCard(opts) {
             sel: "#cats-vote-wrap",
             settle: 260,
             pose: "default",
-            title: "⚡ Hızlı Başlat",
-            body: "Tıpkı çarktaki gibi: hazır konu seç ya da <b>✨ Merci doldursun</b> de. Seçenekleri anında üretirim!",
+            title: "✨ Merci doldursun",
+            body: "Ne oylayacağını bilmiyorsan bana bırak — seçenekleri anında üreteyim!",
             skipIf: function () {
               return tourVoteBusy();
             },
@@ -12040,7 +13447,11 @@ function drawResultCard(opts) {
         var k = String(t == null ? "" : t);
         var v = _lblMemo[k];
         if (v === undefined) {
-          v = wheelLabel(k, 12);
+          // 12 → 22: yazılar artık yatay çizilip gerekirse İKİ SATIRA bölündüğü
+          // için (bkz. _wLayouts) 12 karakterlik ön kırpma gereksiz yere
+          // "Makarna ye…" gibi metinler üretiyordu. Gerçek sığdırma ölçümle
+          // yapılıyor; buradaki sınır yalnız aşırı uzun metinlere karşı emniyet.
+          v = wheelLabel(k, 22);
           _lblMemo[k] = v;
         }
         return v;
@@ -12062,6 +13473,78 @@ function drawResultCard(opts) {
           b = parseInt(s.substr(4, 2), 16);
         var L = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
         return L > 0.62 ? "#3b1556" : "#fff";
+      }
+      /* ══ Çark dilim yazısı: punto + satır yerleşimi ══
+         Yazılar yatay çizildiği için (bkz. drawW 4. adım) genişlik kısıtı
+         dilimin kirişidir. Punto büyükten küçüğe denenir; her puntoda ÖNCE
+         tek satır, sonra iki satır denenir. Sıra önemli: tersi yapılırsa
+         "Mangal yapalım" gibi bir metin iki satır büyük punto yerine tek satır
+         en küçük puntoya düşüp okunmaz hâle geliyor.
+         ⚠️ Emoji fallback korundu (Android WebView'de tofu çıkmasın). */
+      var WFONT_LADDER = [13.5, 12.5, 11.5, 10.5, 9.5];
+      function _wFont(ctx, px) {
+        ctx.font =
+          "700 " + px + "px Nunito,'Segoe UI Emoji','Noto Color Emoji',sans-serif";
+      }
+      function _wFit(ctx, s, maxW) {
+        if (ctx.measureText(s).width <= maxW) return s;
+        var t = s;
+        while (t.length > 1 && ctx.measureText(t + "…").width > maxW)
+          t = t.slice(0, -1);
+        return t.replace(/[\s'\-]+$/, "") + "…";
+      }
+      // Ortaya en yakın boşluktan ikiye böl; tek kelimeyse null
+      function _wSplitTwo(s) {
+        var words = s.split(" ");
+        if (words.length < 2) return null;
+        var best = -1,
+          mid = s.length / 2,
+          pos = 0,
+          i;
+        for (i = 0; i < words.length - 1; i++) {
+          pos += words[i].length + 1;
+          if (best < 0 || Math.abs(pos - mid) < Math.abs(best - mid)) best = pos;
+        }
+        return [s.slice(0, best - 1), s.slice(best)];
+      }
+      function _wLayoutOne(ctx, s, maxW, sizes) {
+        var i, px, two;
+        for (i = 0; i < sizes.length; i++) {
+          px = sizes[i];
+          _wFont(ctx, px);
+          if (ctx.measureText(s).width <= maxW) return { size: px, lines: [s] };
+          two = _wSplitTwo(s);
+          if (
+            two &&
+            ctx.measureText(two[0]).width <= maxW &&
+            ctx.measureText(two[1]).width <= maxW
+          )
+            return { size: px, lines: two };
+        }
+        px = sizes[sizes.length - 1];
+        _wFont(ctx, px);
+        two = _wSplitTwo(s);
+        if (two)
+          return { size: px, lines: [_wFit(ctx, two[0], maxW), _wFit(ctx, two[1], maxW)] };
+        return { size: px, lines: [_wFit(ctx, s, maxW)] };
+      }
+      /* Ölçüm pahalı ve drawW dönüş sırasında her karede çağrılıyor →
+         dilimler/ölçü değişmedikçe yeniden hesaplanmaz. */
+      var _wLayCache = [],
+        _wLayKey = "";
+      function _wLayouts(ctx, items, maxW, r) {
+        var key = Math.round(maxW) + "|" + Math.round(r) + "|" + items.join("");
+        if (key === _wLayKey && _wLayCache.length === items.length) return _wLayCache;
+        // Çark küçüldükçe punto da küçülsün (262px çark = ölçek 1)
+        var scale = Math.max(0.7, Math.min(1.3, r / 121));
+        var sizes = WFONT_LADDER.map(function (x) {
+          return Math.round(x * scale * 10) / 10;
+        });
+        _wLayKey = key;
+        _wLayCache = items.map(function (s) {
+          return _wLayoutOne(ctx, _wlbl(s), maxW, sizes);
+        });
+        return _wLayCache;
       }
       function drawW(cid, items, angle, hi, period) {
         if (hi === undefined) hi = -1;
@@ -12158,24 +13641,34 @@ function drawResultCard(opts) {
           ctx.stroke();
           ctx.restore();
         }
-        // — 4) Etiketler (radyal, flip + dönerken fade) —
+        /* — 4) Etiketler — ⚠️ YAZI ARTIK HİÇ DÖNMEZ (maket aktarımı).
+           Eskiden metin ctx.rotate(mid) ile dilimle BİRLİKTE döndürülüyordu;
+           çarkın üst yarısına düşen dilimlerin yazısı BAŞ AŞAĞI geliyordu
+           (beraberlik çarkında cihaz ekran görüntüsünde net görülüyordu).
+           Artık metin her karede YATAY çizilir, yalnız konumu dilimin ortasına
+           taşınır → çark hangi açıda olursa olsun hepsi okunur kalır.
+           Genişlik dilimin kirişinden hesaplanır; sığmazsa önce punto küçülür,
+           sonra iki satıra bölünür, en son üç noktayla kısalır. Harf genişliği
+           ASLA sıkıştırılmaz (ctx.scale yok) → font bozuk görünmez. */
+        var pr = r * 0.62; // yazı bandının yarıçapı
+        var maxW = Math.min(2 * pr * Math.sin(sl / 2) * 0.92, r * 0.95);
+        ctx.textBaseline = "middle";
+        ctx.textAlign = "center";
+        var lays = _wLayouts(ctx, items, maxW, r);
         for (var j = 0; j < n; j++) {
-          var aj = angle + j * sl,
-            mid = aj + sl / 2;
+          var mid = angle + (j + 0.5) * sl;
+          var lay = lays[j];
           ctx.save();
-          ctx.translate(cx, cy);
-          ctx.rotate(mid);
-          // Yazılar çarkla birlikte sabit yönde döner (flip yok = yön değiştirmez)
           ctx.globalAlpha = hi >= 0 && j !== hi ? 0.38 : 1;
           ctx.fillStyle = _textOn(COLS[(j % kCol) % COLS.length]);
-          var fs = Math.max(10, Math.round(r * (n > 8 ? 0.085 : 0.105)));
-          // Emoji fallback: seçenekte emoji varsa canvas'ta tofu/boşluk yerine
-          // sistem emoji fontuyla çizilsin (Android WebView + Windows).
-          ctx.font =
-            "700 " + fs + "px Nunito,'Segoe UI Emoji','Noto Color Emoji',sans-serif";
-          ctx.textBaseline = "middle";
-          ctx.textAlign = "right";
-          ctx.fillText(_wlbl(items[j]), r - 12, 0);
+          _wFont(ctx, lay.size);
+          ctx.translate(cx + Math.cos(mid) * pr, cy + Math.sin(mid) * pr);
+          if (lay.lines.length === 1) ctx.fillText(lay.lines[0], 0, 0);
+          else {
+            var lh = lay.size * 1.06;
+            ctx.fillText(lay.lines[0], 0, -lh / 2);
+            ctx.fillText(lay.lines[1], 0, lh / 2);
+          }
           ctx.restore();
         }
         // — 5) Dış çerçeve (çift halka) —
@@ -13222,7 +14715,7 @@ function drawResultCard(opts) {
               " kişi)</span>"
             : "";
           scoresEl.innerHTML =
-            '<div style="font-size:11px;font-weight:900;color:var(--ac);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:6px">Oy Dağılımı' +
+            '<div style="font-size:11px;font-weight:900;color:var(--ac);letter-spacing:0.02em;margin-bottom:6px">Oy Dağılımı' +
             peopleInfo +
             "</div>" +
             sorted
@@ -13322,6 +14815,23 @@ function drawResultCard(opts) {
         document.getElementById("tb-title").textContent = "Beraberlik! 🎡";
         document.getElementById("tb-sub").textContent =
           items.length + " seçenek eşit!" + (isHost ? "" : " — Host çözüyor...");
+        // Eşit kalanların çipleri; renk sırası çarkın COLS paletiyle birebir
+        try {
+          var ch = document.getElementById("tb-chips");
+          if (ch) {
+            ch.textContent = "";
+            tbItems.forEach(function (t, i) {
+              var c = document.createElement("span");
+              var sw = document.createElement("i");
+              sw.style.background = COLS[i % COLS.length]; // canvas paleti = gerçek hex
+              var b = document.createElement("b");
+              b.textContent = t; // textContent → kesme işaretli metin güvenli
+              c.appendChild(sw);
+              c.appendChild(b);
+              ch.appendChild(c);
+            });
+          }
+        } catch (e) {}
         if (isHost) sb.textContent = "🎡 Çarkı Çevir!";
         document.getElementById("tb-modal").classList.add("on");
         snd("ding");
@@ -13395,7 +14905,10 @@ function drawResultCard(opts) {
         (function fr(now) {
           var t = Math.min((now - t0) / dur, 1);
           tbAngle = target * ease(t);
-          drawW("mw-canvas", tbSlices, tbAngle, -1);
+          // period = eşit kalan seçenek sayısı → TEKRARLANAN dilimler aynı
+          // seçeneğin rengini alır (maket: renk dilime değil SEÇENEĞE bağlı).
+          // Beraberlik çipleriyle (#tb-chips) de aynı renk dizisi kullanılır.
+          drawW("mw-canvas", tbSlices, tbAngle, -1, tbItems.length);
           var idx = wfA(tbAngle, n);
           if (idx !== li) {
             li = idx;
@@ -13404,7 +14917,7 @@ function drawResultCard(opts) {
           }
           if (t < 1) requestAnimationFrame(fr);
           else {
-            drawW("mw-canvas", tbSlices, tbAngle, wi);
+            drawW("mw-canvas", tbSlices, tbAngle, wi, tbItems.length);
             if (hub) setM("mw-hub", 44, "celebrate");
             tbDone(tbSlices[wi]);
           }
@@ -14536,9 +16049,10 @@ function drawResultCard(opts) {
       // Oda süresi sınırları: en az 1 dk, en çok 24 saat (1440 dk).
       var ROOM_MIN_MIN = 1,
         ROOM_MAX_MIN = 1440;
-      // "+Diğer" butonunun özgün içeriği (applyCustomTime metni ezdiği için geri koyarız)
-      var TIME_CUSTOM_HTML =
-        '<svg viewBox="0 0 24 24" style="width:12px;height:12px;fill:none;stroke:currentColor;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round;vertical-align:-1px;margin-right:1px"><path d="M12 5v14M5 12h14"/></svg>Diğer';
+      // ✏️ hapının boş (değer atanmamış) hâli. applyCustomTime butona düz metin
+      // bastığı için setTimeLimit bunu geri koyar; kmSetupSync ayrıca değerli
+      // hâlde iki satırlı ("2" + <small>saat ✏️</small>) yapıya çevirir.
+      var TIME_CUSTOM_HTML = "✏️";
       // Süreyi insanca yaz: 1440 → "24 saat", 90 → "1 saat 30 dk", 45 → "45 dk"
       function fmtRoomDur(m) {
         m = Math.round(+m || 0);
@@ -15030,6 +16544,13 @@ function drawResultCard(opts) {
         try {
           renderOnlineSuggestions();
         } catch (e) {}
+        // Sahnedeki Merci + canlı ölçerler/hazırlık çubuğu (maket ekranı)
+        try {
+          setM("km-stage-merci", 86, "think");
+        } catch (e) {}
+        try {
+          kmSetupSync();
+        } catch (e) {}
         snd("ding");
         // ⚠️ Kaydırma: eskiden block:"start" ile bölümü ekranın en tepesine
         // çekiyordu. Sahne kartı geldikten sonra bu AŞIRI kaydırma oluyordu
@@ -15346,14 +16867,114 @@ function drawResultCard(opts) {
       // basınca sıfırlanıyor) ama kullanıcıya hiç söylenmiyordu — istemediği
       // seçeneğe de puan vermek zorunda sanılıyordu.
       function voteHintEl() {
+        // Maket ekran 3: ikonlu bilgi kutusu + puan cetveli.
+        // Fragment döndürüyor → mevcut `l.appendChild(voteHintEl())` çağrıları
+        // hiç değişmeden ikisini birden basar.
+        var f = document.createDocumentFragment();
         var h = document.createElement("div");
-        h.className = "empty";
-        h.style.cssText =
-          "padding:2px 0 8px;font-size:11.5px;font-weight:700;line-height:1.45";
-        h.textContent =
-          "İstemediğine dokunma — boş bıraktığın 0 puan sayılır. Aynı yıldıza tekrar basınca puan silinir.";
-        return h;
+        h.className = "km-vhint";
+        var ic = document.createElement("i");
+        ic.textContent = "i";
+        var p = document.createElement("p");
+        p.appendChild(document.createTextNode("Puansız bıraktığın seçenek "));
+        var b = document.createElement("b");
+        b.textContent = "0 puan";
+        p.appendChild(b);
+        p.appendChild(
+          document.createTextNode(
+            " sayılır. Aynı yıldıza tekrar basınca puan silinir.",
+          ),
+        );
+        h.appendChild(ic);
+        h.appendChild(p);
+        f.appendChild(h);
+
+        var lg = document.createElement("div");
+        lg.className = "km-vlegend";
+        [
+          ["1", "Olmaz"],
+          ["2", "Pek değil"],
+          ["3", "Olur"],
+          ["4", "İyi"],
+          ["5", "Bu!"],
+        ].forEach(function (pair) {
+          var s = document.createElement("span");
+          var n = document.createElement("b");
+          n.textContent = pair[0];
+          s.appendChild(n);
+          s.appendChild(document.createTextNode(" " + pair[1]));
+          lg.appendChild(s);
+        });
+        f.appendChild(lg);
+        return f;
       }
+
+      /* ══ OY VER sahnesinin canlı ölçerleri + alt çubuk durumu ══
+         Üç oy ekranı da aynı işi görüyor, tek fonksiyonla besleniyor.
+         Hiçbir render fonksiyonunun imzası değişmedi; her biri sonunda
+         bunu çağırıyor. */
+      function kmVoteSync(which) {
+        try {
+          var votes, opts, ids, clockSrc;
+          if (which === "host") {
+            votes = hostVotes || {};
+            opts = onlineOpts || [];
+            ids = ["hv-done", "hv-total", "hv-sum", null, null, null];
+            clockSrc = "host-timer";
+          } else if (which === "ro") {
+            votes = roVotes || {};
+            opts = roOptOrder && roOptOrder.length ? roOptOrder : Object.keys(votes);
+            ids = ["rv-done", "rv-total", "rv-sum", "rv-dock-l", "rv-dock-r", "ro-submit-btn"];
+          } else {
+            votes = participantVotes || {};
+            opts = Object.keys(votes);
+            ids = ["pv-done", "pv-total", "pv-sum", "pv-dock-l", "pv-dock-r", "submit-vote-btn"];
+          }
+          var done = 0,
+            sum = 0;
+          opts.forEach(function (o) {
+            var v = +votes[o] || 0;
+            if (v > 0) done++;
+            sum += v;
+          });
+          var el;
+          if ((el = document.getElementById(ids[0]))) el.textContent = done;
+          if ((el = document.getElementById(ids[1]))) el.textContent = opts.length;
+          if ((el = document.getElementById(ids[2]))) el.textContent = sum;
+          // Host'ta ayrı sayaç kurulmuyor; yukarıdaki #host-timer aynalanıyor.
+          if (clockSrc) {
+            var src = document.getElementById(clockSrc),
+              dst = document.getElementById("hv-clock");
+            if (dst) dst.textContent = src && src.textContent ? src.textContent : "—";
+          }
+          // Alt çubuk (katılımcı ekranlarında var)
+          var L = ids[3] && document.getElementById(ids[3]);
+          var R = ids[4] && document.getElementById(ids[4]);
+          if (L)
+            L.textContent = done
+              ? done + " seçeneğe puan verdin"
+              : "Henüz puan vermedin";
+          if (R) {
+            if (done) {
+              R.textContent = "Göndermeye hazır";
+              R.className = "r ok";
+            } else {
+              R.textContent = "En az bir seçeneğe puan ver";
+              R.className = "r";
+            }
+          }
+          // Buton: hiç puan yoksa gönderme (boş oy anlamsız)
+          var btn = ids[5] && document.getElementById(ids[5]);
+          if (btn && btn.style.display !== "none") btn.disabled = !done;
+        } catch (e) {}
+      }
+      // Sayaç her saniye değiştiği için host aynası da tazelensin
+      setInterval(function () {
+        var dst = document.getElementById("hv-clock");
+        if (!dst || !dst.offsetParent) return;
+        var src = document.getElementById("host-timer");
+        if (src && src.textContent) dst.textContent = src.textContent;
+      }, 1000);
       // ═══ SONUÇ ZARFI (8 Ağu) ═══
       // Sonuç ekranı doğrudan açılıp kutlama patlamak yerine önce kapalı bir
       // zarf gösterir; kullanıcı dokununca açılır ve kutlama O AN başlar.
@@ -15548,6 +17169,11 @@ function drawResultCard(opts) {
           msg.textContent = "Oylaman iletildi!";
           l.appendChild(msg);
         }
+        kmVoteSync("host");
+        try {
+          if (!document.getElementById("hv-merci").firstChild)
+            setM("hv-merci", 78, "curious");
+        } catch (e) {}
       }
 
       var hostVotesSubmitted = false;
@@ -16307,6 +17933,11 @@ function drawResultCard(opts) {
             "</div>";
           l.appendChild(d);
         });
+        kmVoteSync("participant");
+        try {
+          if (!document.getElementById("pv-merci").firstChild)
+            setM("pv-merci", 78, "curious");
+        } catch (e) {}
       }
 
       function setPVote(name, r) {
@@ -16651,9 +18282,12 @@ function drawResultCard(opts) {
             } else {
               lb.textContent = "🚪 Ayrıl";
               lb.onclick = leaveRoom;
-              // Oylama akışındaki asıl yerine (oy gönder butonunun altına) dön.
-              var sb = document.getElementById("ro-submit-btn");
-              if (sb && sb.parentNode) sb.parentNode.insertBefore(lb, sb.nextSibling);
+              // Oylama akışındaki asıl yerine (alt çubuğun ALTINA) dön.
+              // ⚠️ Artık "Oyumu Gönder" .km-vdock'un içinde; "Ayrıl"ı butonun
+              // yanına değil, çubuğun kardeşi olarak geri koyuyoruz — yoksa
+              // yapışkan çubuğun içine hapsolup çubukla birlikte gizleniyor.
+              var dk = document.getElementById("ro-dock");
+              if (dk && dk.parentNode) dk.parentNode.insertBefore(lb, dk.nextSibling);
             }
           }
         } catch (e) {}
@@ -16728,7 +18362,8 @@ function drawResultCard(opts) {
           // display:"" vermek HİÇBİR ŞEY YAPMAZ → kullanıcı bomboş overlay görür.
           // Mevcut listenRoomOverlay da tam bu yüzden ebeveyni değil yalnız iç
           // parçaları gizliyor; burada da aynısını yapıyoruz.
-          ["ro-name-step", "ro-waiting", "ro-submit-btn", "ro-tie-msg", "ro-vote-list"].forEach(
+          // "ro-vstage" = oy verme sahnesi (maket ekran 3) — sonuç kipinde o da kapanır
+          ["ro-name-step", "ro-waiting", "ro-submit-btn", "ro-tie-msg", "ro-vote-list", "ro-vstage"].forEach(
             function (id) {
               var el = document.getElementById(id);
               if (el) el.style.display = "none";
@@ -17001,6 +18636,13 @@ function drawResultCard(opts) {
             "</div>";
           l.appendChild(d);
         });
+        // Maket ekran 3: bilgi kutusu + puan cetveli burada da olsun
+        l.insertBefore(voteHintEl(), l.firstChild);
+        kmVoteSync("ro");
+        try {
+          if (!document.getElementById("rv-merci").firstChild)
+            setM("rv-merci", 78, "curious");
+        } catch (e) {}
       }
 
       var roOptOrder = [];
@@ -17163,6 +18805,8 @@ function drawResultCard(opts) {
               document.getElementById("ro-waiting").style.display = "none";
               document.getElementById("ro-tie-msg").style.display = "none";
               document.getElementById("ro-vote-list").style.display = "none";
+              var _rvs = document.getElementById("ro-vstage");
+              if (_rvs) _rvs.style.display = "none";
               var w = data.winner,
                 pts = data.winnerPoints || 0,
                 cnt = data.winnerVoters || data.voterCount || 0;
@@ -17211,6 +18855,8 @@ function drawResultCard(opts) {
               roVotes = {};
               data.options.forEach((o) => (roVotes[o] = 0));
               document.getElementById("ro-vote-list").style.display = "";
+              var _rvs2 = document.getElementById("ro-vstage");
+              if (_rvs2) _rvs2.style.display = "";
               document.getElementById("ro-submit-btn").style.display = "";
               document.getElementById("ro-waiting").style.display = "none";
               document.getElementById("ro-result").style.display = "none";
@@ -18459,7 +20105,292 @@ function drawResultCard(opts) {
           d.appendChild(b);
           l.appendChild(d);
         });
+        // Maket ekranının canlı parçaları (ölçer, hazırlık çubuğu, hayalet
+        // satırlar, alt çubuk). Ayrı tutuluyor ki seçenek çizimi bozulmasın.
+        try {
+          kmSetupSync();
+        } catch (e) {}
       }
+
+      /* ══════════ ODA KUR EKRANI — canlı durum (onaylanan maket) ══════════
+         Buradaki hiçbir şey mevcut fonksiyonların imzasını değiştirmiyor:
+         setMaxP / setTimeLimit / applyMaxPCustom / applyCustomTime satır içi
+         onclick'lerde ÖNCE kendileri çalışıyor, kmSetupSync sadece arkasından
+         görseli tazeliyor. */
+      var KM_MAXP_PRESETS = [2, 3, 4, 5, 10];
+      var KM_TIME_PRESETS = [15, 30, 60, 360, 1440];
+      // 90 dk gibi "yuvarlak olmayan" süreler dakika kalır — makette de öyle.
+      function kmDurParts(min) {
+        min = Math.round(+min || 0);
+        if (min < 60 || min % 60 !== 0) return { n: min, u: "dk" };
+        return { n: min / 60, u: "saat" };
+      }
+      // ✏️ hapının içini maketteki iki satırlı yapıya çevirir.
+      // big === null → hapı boş kalem hâline döndürür.
+      function kmPenFill(btn, big, small) {
+        if (!btn) return;
+        btn.textContent = "";
+        if (big === null || big === undefined) {
+          btn.textContent = "✏️";
+          btn.classList.remove("has-val");
+          return;
+        }
+        btn.classList.add("has-val");
+        var b = document.createElement("span");
+        b.textContent = String(big);
+        var s = document.createElement("small");
+        s.textContent = small;
+        btn.appendChild(b);
+        btn.appendChild(s);
+      }
+      function kmSetupSync() {
+        if (!document.getElementById("online-setup")) return;
+        var el;
+        var rn = document.getElementById("room-name");
+        var hn = document.getElementById("host-name");
+        var room = rn ? rn.value.trim() : "";
+        var who = hn ? hn.value.trim() : "";
+        var n = typeof onlineOpts !== "undefined" && onlineOpts ? onlineOpts.length : 0;
+        var max = typeof ONLINE_OPT_MAX !== "undefined" ? ONLINE_OPT_MAX : 12;
+        var cap = typeof roomMaxP !== "undefined" && roomMaxP ? roomMaxP : 4;
+        var mins = typeof roomTimeLimit !== "undefined" && roomTimeLimit ? roomTimeLimit : 1440;
+        var dp = kmDurParts(mins);
+
+        // — Sahne başlığı oda adına dönüşür —
+        if ((el = document.getElementById("km-stage-title")))
+          el.textContent = room || "Yeni oda";
+
+        // — Üç ölçer —
+        if ((el = document.getElementById("km-m-cap"))) el.textContent = cap;
+        if ((el = document.getElementById("km-m-dur"))) el.textContent = dp.n;
+        if ((el = document.getElementById("km-m-duru"))) el.textContent = dp.u;
+        if ((el = document.getElementById("km-m-opt"))) el.textContent = n;
+        if ((el = document.getElementById("km-m-optmax"))) el.textContent = "/ " + max;
+        if ((el = document.getElementById("km-opt-hint")))
+          el.textContent = n + " / " + max;
+
+        // — ✏️ hapları: hazır değerlerden biri seçiliyse kaleme geri dön —
+        kmPenFill(
+          document.getElementById("maxp-custom-btn"),
+          KM_MAXP_PRESETS.indexOf(cap) >= 0 ? null : cap,
+          "kişi ✏️",
+        );
+        kmPenFill(
+          document.getElementById("time-custom-btn"),
+          KM_TIME_PRESETS.indexOf(mins) >= 0 ? null : dp.n,
+          dp.u + " ✏️",
+        );
+
+        // — Yayına hazırlık: üç şart, üç tik —
+        var c1 = !!room,
+          c2 = !!who,
+          c3 = n >= 2;
+        [
+          ["km-ck1", c1],
+          ["km-ck2", c2],
+          ["km-ck3", c3],
+        ].forEach(function (p) {
+          var e = document.getElementById(p[0]);
+          if (e) e.classList.toggle("ok", p[1]);
+        });
+        var pct = Math.round((((c1 ? 1 : 0) + (c2 ? 1 : 0) + (c3 ? 1 : 0)) / 3) * 100);
+        if ((el = document.getElementById("km-bar-fill"))) el.style.width = pct + "%";
+        if ((el = document.getElementById("km-pct"))) el.textContent = "%" + pct;
+
+        // — Hayalet satırlar (2'den az seçenek) —
+        // ⚠️ Yalnız SAYI DEĞİŞİNCE yeniden kurulur: kmSetupSync her tuş
+        // vuruşunda çalışıyor, her seferinde yeniden kurulsa slide-in
+        // animasyonu baştan başlayıp satırlar titriyordu.
+        var g = document.getElementById("km-ghosts");
+        if (g && g.getAttribute("data-n") !== String(n)) {
+          g.setAttribute("data-n", String(n));
+          g.textContent = "";
+          for (var k = 0; k < Math.max(0, 2 - n); k++) {
+            var row = document.createElement("div");
+            row.className = "km-ghost";
+            var num = document.createElement("i");
+            num.textContent = String(n + k + 1);
+            var tx = document.createElement("span");
+            tx.textContent =
+              n + k === 0 ? "İlk seçeneği ekle" : "En az iki seçenek gerekli";
+            row.appendChild(num);
+            row.appendChild(tx);
+            g.appendChild(row);
+          }
+        }
+        // Hayalet satırlar boş durumu zaten anlatıyor → eski metni gizle
+        if ((el = document.getElementById("voe"))) el.style.display = "none";
+
+        // — Üst sınır —
+        var full = n >= max;
+        var lim = document.getElementById("km-limit");
+        if (lim) {
+          lim.hidden = !full;
+          var ls = lim.querySelector("span");
+          if (ls) ls.textContent = max + " seçenek üst sınır";
+        }
+        var voi = document.getElementById("voi");
+        if (voi) {
+          voi.disabled = full;
+          if (full) voi.value = "";
+        }
+        if ((el = document.getElementById("add-online-opt")))
+          el.disabled = full || !(voi && voi.value.trim());
+
+        // — Alt sabit çubuk —
+        var ready = c1 && c2 && c3;
+        if ((el = document.getElementById("create-room-btn"))) el.disabled = !ready;
+        var r = document.getElementById("km-dock-r");
+        if (r) {
+          if (ready) {
+            r.textContent = "Yayına hazır";
+            r.className = "km-dock-r ok";
+          } else {
+            var eksik = [];
+            if (!c1) eksik.push("oda adı");
+            if (!c2) eksik.push("adın");
+            if (!c3) eksik.push(2 - n + " seçenek");
+            r.textContent = eksik.join(", ") + " gerekli";
+            r.className = "km-dock-r";
+          }
+        }
+
+        var bb = document.getElementById("km-bulk");
+        if (bb && !bb.hidden) kmBulkPreview();
+      }
+
+      /* — Toplu ekleme: ayrıştırma addOnlineOpts ile BİREBİR AYNI kural
+           (virgül / noktalı virgül / satır sonu, birebir tekrar elemesi),
+           böylece önizleme yalan söylemez. — */
+      function kmBulkParse(raw) {
+        var seen = Object.create(null),
+          items = [],
+          dup = 0,
+          over = 0;
+        var max = typeof ONLINE_OPT_MAX !== "undefined" ? ONLINE_OPT_MAX : 12;
+        var cur = typeof onlineOpts !== "undefined" && onlineOpts ? onlineOpts : [];
+        var room = Math.max(0, max - cur.length);
+        cur.forEach(function (o) {
+          seen[o] = 1;
+        });
+        String(raw || "")
+          .split(/[,;\n]+/)
+          .forEach(function (p) {
+            var v = p.trim();
+            if (!v) return;
+            if (seen[v]) {
+              dup++;
+              return;
+            }
+            seen[v] = 1;
+            if (items.length >= room) {
+              over++;
+              return;
+            }
+            items.push(v);
+          });
+        return { items: items, dup: dup, over: over };
+      }
+      function kmBulkPreview() {
+        var ta = document.getElementById("km-bulk-txt");
+        var prev = document.getElementById("km-bulk-prev");
+        if (!ta || !prev) return;
+        var a = kmBulkParse(ta.value);
+        var any = a.items.length || a.dup || a.over;
+        prev.hidden = !any;
+        var btn = document.getElementById("km-bulk-add");
+        if (btn) {
+          btn.disabled = a.items.length === 0;
+          btn.textContent = a.items.length
+            ? a.items.length + " seçenek ekle"
+            : "Hepsini Ekle";
+        }
+        if (!any) return;
+        var c = document.getElementById("km-bp-count");
+        if (c)
+          c.textContent = a.items.length
+            ? a.items.length + " seçenek eklenecek"
+            : "Eklenecek yeni bir şey yok";
+        var note = document.getElementById("km-bp-note");
+        if (note) {
+          var bits = [];
+          if (a.dup) bits.push(a.dup + " tekrar atlandı");
+          if (a.over) bits.push(a.over + " tanesi sınıra takıldı");
+          note.hidden = bits.length === 0;
+          note.textContent = bits.join(" · ");
+          note.className = a.over ? "warn" : "";
+        }
+        var chips = document.getElementById("km-bp-chips");
+        if (chips) {
+          chips.textContent = "";
+          a.items.forEach(function (v) {
+            var i = document.createElement("i");
+            i.textContent = v; // textContent → kesme işaretli metin güvenli
+            chips.appendChild(i);
+          });
+        }
+      }
+      function kmBulkClose() {
+        var ta = document.getElementById("km-bulk-txt");
+        if (ta) ta.value = "";
+        var prev = document.getElementById("km-bulk-prev");
+        if (prev) prev.hidden = true;
+        var chips = document.getElementById("km-bp-chips");
+        if (chips) chips.textContent = "";
+        var bb = document.getElementById("km-bulk");
+        if (bb) bb.hidden = true;
+        var add = document.getElementById("km-bulk-add");
+        if (add) {
+          add.disabled = true;
+          add.textContent = "Hepsini Ekle";
+        }
+        var t = document.getElementById("km-bulk-toggle");
+        if (t) {
+          t.setAttribute("aria-expanded", "false");
+          t.textContent = "Birden fazla ekle";
+        }
+      }
+      (function () {
+        var t = document.getElementById("km-bulk-toggle");
+        var bb = document.getElementById("km-bulk");
+        var ta = document.getElementById("km-bulk-txt");
+        if (t && bb) {
+          t.addEventListener("click", function () {
+            if (!bb.hidden) {
+              kmBulkClose();
+              return;
+            }
+            bb.hidden = false;
+            t.setAttribute("aria-expanded", "true");
+            t.textContent = "Toplu eklemeyi kapat";
+            kmBulkPreview();
+            try {
+              ta.focus();
+            } catch (e) {}
+          });
+        }
+        if (ta) {
+          ta.addEventListener("input", kmBulkPreview);
+          ta.addEventListener("paste", function () {
+            setTimeout(kmBulkPreview, 0);
+          });
+        }
+        var add = document.getElementById("km-bulk-add");
+        if (add)
+          add.addEventListener("click", function () {
+            var v = ta ? ta.value : "";
+            kmBulkClose();
+            addOnlineOpts(v); // ayrıştırma/tekrar/sınır TEK yerde
+            renderOnlineOpts();
+          });
+        var cancel = document.getElementById("km-bulk-cancel");
+        if (cancel) cancel.addEventListener("click", kmBulkClose);
+        ["room-name", "host-name", "voi"].forEach(function (id) {
+          var e = document.getElementById(id);
+          if (e) e.addEventListener("input", kmSetupSync);
+        });
+        kmSetupSync();
+      })();
 
       // URL'den oda kodunu yakala — katılımcı overlay göster.
       // ?room= YOKSA: kaydedilmiş açık host odasını sessizce kurtar (KALICILIK).
@@ -18491,6 +20422,10 @@ function drawResultCard(opts) {
       setM("ob2-merci", 120, "celebrate");
       gentleFloat("ob2-merci");
       setM("modal-auth-merci", 80, "wave");
+      // Oda yayında sahnesindeki Merci (maket ekran 2) — kutu gizliyken de kurulur
+      try {
+        setM("ls-merci", 78, "wave");
+      } catch (e) {}
       setM("chat-init-av", 28, "chat");
       // AI hero - setVoteMode'dan önce çalışır, tab geçişinde de set edilmeli
       window._aiHeroInited = false;
