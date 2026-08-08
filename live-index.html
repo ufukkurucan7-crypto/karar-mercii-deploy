@@ -4611,6 +4611,127 @@
         }
       }
 
+      /* ── ODA KURULUM SAHNESİ (onaylanan maketten) ── */
+      .setup-stage {
+        position: relative;
+        overflow: hidden;
+        border-radius: 20px;
+        padding: 14px;
+        margin-bottom: 14px;
+        color: #fff;
+        background: linear-gradient(155deg, var(--ac-dd), var(--ac-d2) 58%, var(--ac));
+        box-shadow: 0 12px 28px -12px rgba(var(--ac-shadow), 0.6);
+      }
+      /* İnce ızgara dokusu — düz mor bloktan çıkarır */
+      .setup-stage::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        opacity: 0.16;
+        pointer-events: none;
+        background-image: linear-gradient(rgba(255, 255, 255, 0.55) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(255, 255, 255, 0.55) 1px, transparent 1px);
+        background-size: 20px 20px;
+        -webkit-mask-image: radial-gradient(ellipse at 25% 0%, #000, transparent 70%);
+        mask-image: radial-gradient(ellipse at 25% 0%, #000, transparent 70%);
+      }
+      .setup-stage > * {
+        position: relative;
+      }
+      .setup-stage-top {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+      }
+      .setup-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        font-size: 9.5px;
+        font-weight: 900;
+        letter-spacing: 0.9px;
+        background: rgba(255, 255, 255, 0.18);
+        padding: 5px 9px;
+        border-radius: 999px;
+      }
+      .sb-dot {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: var(--gold);
+        animation: sbPulse 2s infinite;
+      }
+      @keyframes sbPulse {
+        0%,
+        100% {
+          opacity: 1;
+        }
+        50% {
+          opacity: 0.3;
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .sb-dot {
+          animation: none;
+        }
+      }
+      .setup-step {
+        font-size: 9.5px;
+        font-weight: 900;
+        letter-spacing: 0.9px;
+        opacity: 0.72;
+      }
+      .setup-f {
+        margin-top: 12px;
+      }
+      .setup-l {
+        font-size: 9px;
+        font-weight: 900;
+        letter-spacing: 1.1px;
+        opacity: 0.72;
+      }
+      .setup-l .req {
+        opacity: 0.75;
+        font-weight: 800;
+        letter-spacing: 0.4px;
+      }
+      .setup-in {
+        width: 100%;
+        background: transparent;
+        border: 0;
+        border-bottom: 2px dashed rgba(255, 255, 255, 0.32);
+        color: #fff;
+        font-family: inherit;
+        font-size: 15px;
+        font-weight: 800;
+        padding: 3px 0 6px;
+        outline: none;
+      }
+      .setup-in-big {
+        font-size: 19px;
+        letter-spacing: -0.2px;
+      }
+      .setup-in::placeholder {
+        color: rgba(255, 255, 255, 0.45);
+      }
+      .setup-in:focus {
+        border-bottom-color: #fff;
+        border-bottom-style: solid;
+      }
+      .setup-note {
+        font-size: 9.5px;
+        font-weight: 700;
+        opacity: 0.6;
+        margin-top: 4px;
+      }
+      .setup-sub {
+        font-size: 10.5px;
+        font-weight: 700;
+        opacity: 0.75;
+        margin-top: 12px;
+      }
+
       /* Karekod kutusu */
       .qr-wrap {
         margin: 10px auto 2px;
@@ -5923,6 +6044,7 @@
               +
             </button>
           </div>
+          <div class="empty" id="ci-note" style="display: none"></div>
           <div class="ogrid" id="cl"></div>
           <button
             id="cekilis-clear"
@@ -6172,13 +6294,35 @@
                  custom wrap'ler) → setMaxP/setTimeLimit/toggleCustomTime/
                  applyCustomTime/createRoom hiç değişmeden çalışmaya devam ediyor. -->
             <div id="online-setup" style="display: none">
-              <p class="lbl">Adın (zorunlu)</p>
-              <div class="irow" style="margin-bottom: 12px">
-                <input id="host-name" type="text" placeholder="Adını yaz..." />
-              </div>
-              <p class="lbl">Oda Adı (zorunlu)</p>
-              <div class="irow" style="margin-bottom: 12px">
-                <input id="room-name" type="text" placeholder="örn. Pizza Gecesi" />
+              <!-- Sahne kartı: onaylanan maketin görsel dili. Ayarlar mor
+                   zemin üzerinde toplanıyor, seçenekler altında beyaz alanda
+                   kalıyor → "oda kuruyorum" hissi ekranın kendisinden geliyor. -->
+              <div class="setup-stage">
+                <div class="setup-stage-top">
+                  <span class="setup-badge"><span class="sb-dot"></span> Hazırlık</span>
+                  <span class="setup-step">Adım 1 / 2</span>
+                </div>
+                <div class="setup-f">
+                  <div class="setup-l">Oda adı <span class="req">• zorunlu</span></div>
+                  <input
+                    id="room-name"
+                    class="setup-in setup-in-big"
+                    type="text"
+                    placeholder="Akşam nereye gidiyoruz?"
+                  />
+                  <div class="setup-note">Odaya katılanlar bu adı görür</div>
+                </div>
+                <div class="setup-f">
+                  <div class="setup-l">Senin adın <span class="req">• zorunlu</span></div>
+                  <input
+                    id="host-name"
+                    class="setup-in"
+                    type="text"
+                    placeholder="Adın"
+                  />
+                  <div class="setup-note">Oy verirken arkadaşların bu adı görür</div>
+                </div>
+                <div class="setup-sub">Kod, karekod ya da bağlantıyla katılırlar</div>
               </div>
               <p class="lbl">Kaç kişi oy verecek? (sen dahil)</p>
               <div class="pcount-row" id="maxp-row" style="margin-bottom: 4px">
@@ -12338,15 +12482,56 @@ function drawResultCard(opts) {
       var _lastVotePeopleCount = 0;
 
       // ═══════════════════ ÇEKİLİŞ / KURA ═══════════════════
+      // 8 Ağu: çekilişe de çoklu ekleme. Sınıf listesi, katılımcı listesi gibi
+      // metinler genelde virgülle ya da alt alta gelir; tek tek yazdırmak
+      // eziyetti. Virgül / noktalı virgül / satır sonu ile bölünüyor,
+      // tekrarlar eleniyor, 100 üst sınırı korunuyor.
+      var CEKILIS_MAX = 100;
+      function addCekilisRaw(raw) {
+        var parts = String(raw || "")
+            .split(/[,;\n]+/)
+            .map(function (s) {
+              return s.trim();
+            })
+            .filter(Boolean),
+          added = 0,
+          dup = 0,
+          full = 0;
+        parts.forEach(function (v) {
+          if (S.cekilis.length >= CEKILIS_MAX) {
+            full++;
+            return;
+          }
+          if (S.cekilis.indexOf(v) >= 0) {
+            dup++;
+            return;
+          }
+          S.cekilis.push(v);
+          added++;
+        });
+        var note = document.getElementById("ci-note");
+        if (note) {
+          var msg = [];
+          if (dup) msg.push(dup + " tekrar atlandı");
+          if (full) msg.push(full + " tanesi sınıra takıldı (en fazla " + CEKILIS_MAX + ")");
+          note.textContent = msg.join(" · ");
+          note.style.display = msg.length ? "" : "none";
+        }
+        if (added) {
+          renderCekilis();
+          snd("add");
+        }
+        return added;
+      }
       function addCekilis() {
         var inp = document.getElementById("ci");
-        var v = (inp.value || "").trim();
-        if (!v) return;
-        if (S.cekilis.indexOf(v) < 0 && S.cekilis.length < 100)
-          S.cekilis.push(v);
+        if (!inp || !(inp.value || "").trim()) return;
+        addCekilisRaw(inp.value);
         inp.value = "";
-        renderCekilis();
-        snd("add");
+        // İmleç kutuda kalsın → arka arkaya isim girmek akıcı olsun
+        try {
+          inp.focus();
+        } catch (e) {}
       }
       function removeCekilis(val) {
         if (cekilisSpinning) return;
@@ -14408,10 +14593,26 @@ function drawResultCard(opts) {
         setMaxP(roomMaxP);
         setTimeLimit(roomTimeLimit);
         snd("ding");
+        // ⚠️ Kaydırma: eskiden block:"start" ile bölümü ekranın en tepesine
+        // çekiyordu. Sahne kartı geldikten sonra bu AŞIRI kaydırma oluyordu
+        // (rol butonları ekrandan çıkıyor, kullanıcı nereye geldiğini
+        // kaybediyordu). Artık yalnız GEREKİRSE ve az miktarda kaydırıyoruz:
+        // bölüm zaten görünüyorsa hiç dokunulmuyor; değilse üstünde biraz
+        // bağlam bırakacak şekilde hizalanıyor.
         setTimeout(function () {
           var os = document.getElementById("online-setup");
-          if (os && os.scrollIntoView)
-            os.scrollIntoView({ behavior: "smooth", block: "start" });
+          if (!os || !os.getBoundingClientRect) return;
+          var r = os.getBoundingClientRect(),
+            vh = window.innerHeight || 700;
+          // Üstü görünür ve alanın makul kısmı ekranda ise dokunma
+          if (r.top >= 60 && r.top <= vh * 0.55) return;
+          var pad = 72; // üstte bırakılan bağlam payı
+          var y = window.pageYOffset + r.top - pad;
+          try {
+            window.scrollTo({ top: Math.max(0, y), behavior: "smooth" });
+          } catch (e) {
+            window.scrollTo(0, Math.max(0, y));
+          }
         }, 140);
       }
       // Tur (tutorial) hâlâ çağırıyor → kurulum bölümünü kapatır.
