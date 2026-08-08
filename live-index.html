@@ -4687,13 +4687,57 @@
         content: "Bu!";
       }
 
-      /* ⚠️ 8 Ağu — GERİ ALINDI: .rcard mor gradyana çevrilmişti. Kartın İÇİNDEKİ
-         öğeler (altın "Karar verildi" rozeti, beyaz espri kutusu, Merci'ye sor
-         çipi) açık zemin için tasarlanmış; sadece kartın arka planını
-         koyulaştırınca beyaz üstüne beyaz yazı çıktı ve kart okunmaz oldu.
-         Kartın kendi açık/altın tasarımı zaten iyiydi — özgün hâline dönüldü.
-         Ders: bir kabın zeminini tersine çevirirken TÜM çocuk öğeler
-         gözden geçirilmeli, yoksa kontrast sessizce ölür. */
+      /* ══ SONUÇ KAHRAMAN ALANI (onaylanan maketten) ══
+         ⚠️ İLK DENEMEDE BOZULDU, SEBEBİ: kabın zemini koyulaştırılırken
+         çocukların YAZI RENGİ de beyaza çevrilmişti. Oysa altın rozet
+         (.rlbl) ve espri kutusu (.rsay) KENDİ AÇIK ZEMİNLERİNİ taşıyor —
+         onların yazısı koyu kalmalı. Beyaza çevrilince "beyaz üstüne beyaz"
+         oldu ve okunmaz hâle geldi.
+         Bu blok kartın TÜM çocuklarını tek tek ele alır:
+           .rlbl   → dokunulmuyor (altın rozet, koyu yazı) ✔
+           .rsay   → dokunulmuyor (beyaz kutu, koyu yazı) ✔
+           .rwin   → beyaza çevriliyor (kartın zeminine yazıyor)
+           .merci-bridge → koyu zemine uyarlanıyor
+           .btn / .btn.ghost → koyu zemine uyarlanıyor
+           #v-scores / #w-scores → beyaz kutuya alınıyor
+           .rconf / .rmerci → zeminden bağımsız, dokunulmuyor
+         Kart ÜÇ ekranda kullanılıyor (çark, çekiliş, oylama) — üçü de
+         aynı anda değişir. Karanlık tema kuralları (html.dark .rcard)
+         DAHA SONRA geldiği için orada kendi düzeni korunur. */
+      .rcard {
+        border: 0;
+        background: linear-gradient(160deg, var(--ac-dd), var(--ac-d2) 58%, var(--ac));
+        box-shadow: 0 16px 36px -14px rgba(var(--ac-shadow), 0.6);
+      }
+      /* Kazanan adı kartın zeminine yazıyor → beyaz olmalı */
+      .rcard .rwin {
+        color: #fff;
+        text-shadow: 0 2px 10px rgba(0, 0, 0, 0.22);
+      }
+      /* "Merci'ye sor" çipi koyu zeminde */
+      .rcard .merci-bridge {
+        background: rgba(255, 255, 255, 0.14);
+        border-color: rgba(255, 255, 255, 0.34);
+        color: #fff;
+      }
+      .rcard .merci-bridge .mb-tx,
+      .rcard .merci-bridge .mb-ar {
+        color: #fff;
+      }
+      /* Butonlar */
+      .rcard .btn.ghost {
+        color: #fff;
+        border-color: rgba(255, 255, 255, 0.35);
+        background: rgba(255, 255, 255, 0.12);
+      }
+      /* Puan dökümü: koyu zeminde okunmaz → beyaz kutuya alınıyor */
+      .rcard #v-scores,
+      .rcard #w-scores {
+        background: #fff;
+        border-radius: 12px;
+        padding: 10px 12px;
+        color: var(--ac-dd);
+      }
 
       /* ── ODA YAYINDA SAHNESİ (onaylanan maketten) ── */
       .share-box.live-stage {
