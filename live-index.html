@@ -4979,6 +4979,35 @@
         opacity: 0.75;
         margin-top: 12px;
       }
+      /* Kişi/süre seçicileri sahne kartının İÇİNDE → koyu zemine uyarlanır.
+         (Makette de kartın içindeydiler; dışarıda kalınca ekran ikiye
+         bölünmüş gibi duruyordu.) */
+      .setup-stage .lbl {
+        color: rgba(255, 255, 255, 0.72);
+        margin: 14px 0 7px;
+      }
+      .setup-stage .onl-sel-btn {
+        background: rgba(255, 255, 255, 0.1);
+        border-color: rgba(255, 255, 255, 0.24);
+        color: #fff;
+      }
+      .setup-stage .onl-sel-btn.on {
+        background: #fff;
+        border-color: #fff;
+        color: var(--ac-d);
+      }
+      .setup-stage .ct-unit {
+        color: rgba(255, 255, 255, 0.85);
+      }
+      .setup-stage .ct-hint {
+        color: rgba(255, 255, 255, 0.7);
+      }
+      .setup-stage .ct-box,
+      .setup-stage #maxp-custom-inp {
+        background: rgba(255, 255, 255, 0.94);
+        border-color: transparent;
+        color: #1a1a2e;
+      }
 
       /* Karekod kutusu */
       .qr-wrap {
@@ -6572,8 +6601,7 @@
                   <div class="setup-note">Oy verirken arkadaşların bu adı görür</div>
                 </div>
                 <div class="setup-sub">Kod, karekod ya da bağlantıyla katılırlar</div>
-              </div>
-              <p class="lbl">Kaç kişi oy verecek? (sen dahil)</p>
+                <p class="lbl">Kaç kişi oy verecek? (sen dahil)</p>
               <div class="pcount-row" id="maxp-row" style="margin-bottom: 4px">
                 <!-- Karar (7 Ağu): hazır seçenekler 2·3·4·5·10, gerisi "Diğer".
                      6 ve 8 kaldırıldı; sık kullanılmıyor ve satırı kalabalıklaştırıyordu. -->
@@ -6641,6 +6669,7 @@
                   <button class="abtn" onclick="applyCustomTime()" style="font-size: 13px; padding: 9px 13px">✓</button>
                 </div>
                 <div class="ct-hint">En fazla 24 saat</div>
+              </div>
               </div>
               <p class="lbl" style="margin-top: 14px">Seçenek Ekle (min 2)</p>
               <div class="irow">
