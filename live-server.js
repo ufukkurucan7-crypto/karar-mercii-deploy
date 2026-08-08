@@ -97,6 +97,74 @@ app.get("/.well-known/apple-app-site-association", _sendAasa);
 // Kök kopya: bazı eski istemciler önce burayı dener. İkisi de aynı gövde.
 app.get("/apple-app-site-association", _sendAasa);
 
+// ── HESAP SİLME (Apple Kural 5.1.1(v)) ──────────────────────────────────────
+// ⚠️ YAYIN ENGELİYDİ: hesap OLUŞTURULABİLEN uygulama, silmeyi de UYGULAMA İÇİNDEN
+// başlatabilmek ZORUNDA. Bizde yalnız delete-account.html vardı ("bize e-posta
+// atın") — Apple bunu düzenli reddediyor, web sayfasına yönlendirmek yetmiyor.
+// Silinenler: users/{uid} · decisions/{uid}/history/** · aiUsage & locUsage
+// sayaçları · Firebase Auth kaydı.
+// ⚠️ ODALARA DOKUNULMUYOR: rooms/{kod} paylaşılan veri; host'un hesabını silmek
+// odadaki DİĞER kişilerin oylamasını yok etmemeli. Süresi dolan odalar zaten
+// autoCloseExpiredRooms ile kapanıyor.
+async function _deleteSubcollection(ref, batchSize = 300) {
+  for (;;) {
+    const snap = await ref.limit(batchSize).get();
+    if (snap.empty) return;
+    const batch = adminDb.batch();
+    snap.docs.forEach((d) => batch.delete(d.ref));
+    await batch.commit();
+    if (snap.size < batchSize) return;
+  }
+}
+app.post("/delete-account", rateLimit, async (req, res) => {
+  // ── 1) KİMLİK (yalnız gerçek token hatası buraya düşer) ──
+  let uid;
+  try {
+    const header = req.headers.authorization || "";
+    const token = header.startsWith("Bearer ") ? header.slice(7) : null;
+    if (!token) return res.status(401).json({ error: "Once giris yap." });
+    const decoded = await getAuth().verifyIdToken(token);
+    uid = decoded.uid;
+  } catch (e) {
+    console.error("DELETE-ACCOUNT AUTH FAIL:", e.message);
+    return res
+      .status(401)
+      .json({ error: "Oturum dogrulanamadi, tekrar giris yap." });
+  }
+
+  // ── 2) VERİ + AUTH SİLME (altyapı hatası ≠ oturum hatası: 503, "giriş yap" DEME) ──
+  try {
+    await _deleteSubcollection(
+      adminDb.collection("decisions").doc(uid).collection("history"),
+    );
+    await adminDb.collection("decisions").doc(uid).delete();
+    await adminDb.collection("users").doc(uid).delete();
+    // Günlük sayaçlar `${uid}_${YYYY-MM-DD}` biçiminde → uid önekiyle tara.
+    for (const col of ["aiUsage", "locUsage"]) {
+      const snap = await adminDb
+        .collection(col)
+        .where(FieldPath.documentId(), ">=", uid + "_")
+        .where(FieldPath.documentId(), "<", uid + "`")
+        .get();
+      if (!snap.empty) {
+        const b = adminDb.batch();
+        snap.docs.forEach((d) => b.delete(d.ref));
+        await b.commit();
+      }
+    }
+    // EN SON: Auth kaydı. Önce silinirse token geçersizleşir ve üstteki
+    // Firestore temizliği yarım kalır.
+    await getAuth().deleteUser(uid);
+    console.log("Hesap silindi:", uid);
+    return res.json({ ok: true });
+  } catch (e) {
+    console.error("DELETE-ACCOUNT FAIL:", e.code || "", e.message);
+    return res
+      .status(503)
+      .json({ error: "Hesap su an silinemedi, birazdan tekrar dene." });
+  }
+});
+
 // Oda davet linki (?room=KOD) OG önizlemesi. WhatsApp/Telegram crawler'ı
 // query'li URL'yi fetch eder ama JS ÇALIŞTIRMAZ → davete özel başlık/açıklama
 // sunucudan basılmak zorunda. express.static'ten ÖNCE olmalı ("/" isteğini
@@ -378,6 +446,9 @@ const {
   getFirestore,
   FieldValue,
   Timestamp,
+  // FieldPath: /delete-account'ta `${uid}_${tarih}` biçimli sayaç belgelerini
+  // belge kimliğine göre aralık sorgusuyla bulmak için.
+  FieldPath,
 } = require("firebase-admin/firestore");
 
 initializeApp({
