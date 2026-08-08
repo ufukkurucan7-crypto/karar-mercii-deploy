@@ -55,7 +55,7 @@
       })();
     </script>
     <link
-      href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@700;800;900&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=Nunito:wght@700;800;900&display=swap"
       rel="stylesheet"
     />
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
@@ -96,7 +96,15 @@
         overscroll-behavior: none;
         -webkit-tap-highlight-color: transparent;
       }
-      /* ── BAŞLIK FONTU: Fredoka (yuvarlak, sıcak, profesyonel karakter) ── */
+      /* ── BAŞLIK FONTU: Baloo 2 (yuvarlak, sıcak — Fredoka'nın yerine, 9 Ağu) ──
+         🔴 NEDEN DEĞİŞTİ: Fredoka'nın Türkçe işaretleri gövdesinden FARKLI BİR
+         KESİMLE çizilmiş — `ş`'nin sedillası harfe bağlanmayan düz bir tik,
+         `ğ`'nin brevesi yuvarlak değil sivri. Glifler EKSİK DEĞİLDİ (tofu yok,
+         latin-ext yükleniyordu); sorun tasarım tutarsızlığıydı ve başlık
+         boyutlarında göze batıyordu. Bu yüzden 7 ayrı yerde tek tek Nunito'ya
+         kaçılmıştı — kök neden hiç kaldırılmamıştı.
+         Baloo 2 aynı yuvarlak karakteri veriyor, işaretleri bağlı ve yuvarlak.
+         ⚠️ Yeni bir font eklerken önce ŞşğĞıİçÇöÖüÜ dizisini render edip BAK. */
       .splash-txt,
       .ob-title,
       .hdr-title,
@@ -111,7 +119,7 @@
       .lbl,
       .sec-title,
       .modal-title {
-        font-family: "Fredoka", "Nunito", sans-serif;
+        font-family: "Baloo 2", "Nunito", sans-serif;
         letter-spacing: 0.2px;
       }
       .app {
@@ -11473,7 +11481,7 @@ function drawResultCard(opts) {
   // Merci'nin repliği). Fredoka'nın ş/ğ cedilla'sı farklı kesimden geliyor
   // (.v1-title / .rwin / .cap-txt ile aynı tuzak) → WhatsApp'a giden görselde
   // Türkçe harfler bozuk çıkıyordu. Fredoka yedekte kaldı.
-  var FAM = "'Nunito','Fredoka','Segoe UI',system-ui,-apple-system,'Helvetica Neue',Arial,sans-serif";
+  var FAM = "'Nunito','Baloo 2','Segoe UI',system-ui,-apple-system,'Helvetica Neue',Arial,sans-serif";
 
   // ---- tema paleti (canvas gercek hex ister, var() calismaz) ----
   var T = style === "light" ? {
