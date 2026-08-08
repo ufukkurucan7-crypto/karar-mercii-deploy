@@ -4505,6 +4505,147 @@
       html.dark .settings-panel-hdr { border-bottom-color:#2a2140; }
       html.dark .settings-panel-hdr .back { background:#1e1733; color:var(--ac-ll); }
       html.dark .settings-panel-hdr .ttl { color:#f2eefc; }
+      /* ── SONUÇ ZARFI ── */
+      .res-gate {
+        position: fixed;
+        inset: 0;
+        z-index: 100000;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        padding: 24px;
+        background:
+          radial-gradient(ellipse at 30% 10%, rgba(167, 139, 250, 0.35), transparent 60%),
+          linear-gradient(160deg, var(--ac-dd), var(--ac-d2) 60%, var(--ac));
+      }
+      .res-gate.on {
+        display: flex;
+      }
+      .rg-inner {
+        text-align: center;
+        color: #fff;
+        max-width: 320px;
+        width: 100%;
+      }
+      .rg-room {
+        font-size: 19px;
+        font-weight: 900;
+        letter-spacing: -0.2px;
+        margin-bottom: 18px;
+        overflow-wrap: anywhere;
+      }
+      .rg-env {
+        position: relative;
+        width: 190px;
+        height: 128px;
+        margin: 0 auto;
+        border: 0;
+        cursor: pointer;
+        border-radius: 12px;
+        background: linear-gradient(170deg, #fdfbff, #e9e3ff);
+        box-shadow: 0 16px 34px -12px rgba(0, 0, 0, 0.45);
+        transition: transform 0.16s;
+        animation: rgBreathe 2.4s ease-in-out infinite;
+      }
+      .rg-env:active {
+        transform: scale(0.96);
+      }
+      .rg-env:focus-visible {
+        outline: 3px solid #fff;
+        outline-offset: 4px;
+      }
+      @keyframes rgBreathe {
+        50% {
+          transform: translateY(-5px);
+        }
+      }
+      /* Kapak: üstten aşağı bakan üçgen */
+      .rg-flap {
+        position: absolute;
+        inset: 0 0 auto 0;
+        height: 76px;
+        background: linear-gradient(170deg, #ded5ff, #c9bcf7);
+        clip-path: polygon(0 0, 100% 0, 50% 100%);
+        border-radius: 12px 12px 0 0;
+        transform-origin: top center;
+        transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+      }
+      .rg-env.opened .rg-flap {
+        transform: rotateX(-165deg);
+      }
+      .rg-env.opened {
+        animation: none;
+        transform: scale(1.06);
+      }
+      .rg-seal {
+        position: absolute;
+        left: 50%;
+        top: 52%;
+        transform: translate(-50%, -50%);
+        width: 54px;
+        height: 54px;
+        border-radius: 50%;
+        background: #fff;
+        box-shadow: 0 3px 10px rgba(0, 0, 0, 0.25);
+        display: grid;
+        place-items: center;
+        overflow: hidden;
+      }
+      .rg-seal svg {
+        width: 46px;
+        height: auto;
+        display: block;
+      }
+      .rg-hint {
+        margin-top: 20px;
+        font-size: 12.5px;
+        font-weight: 800;
+        opacity: 0.85;
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .rg-env {
+          animation: none;
+        }
+        .rg-env.opened .rg-flap {
+          transition: none;
+        }
+      }
+
+      /* Oda sayaçları: Katıldı · Kalan süre · Oy */
+      .room-stats {
+        display: flex;
+        gap: 7px;
+        margin: 9px 0 4px;
+      }
+      .rstat {
+        flex: 1;
+        min-width: 0;
+        padding: 7px 6px;
+        border-radius: 12px;
+        background: var(--ac-bg2);
+        border: 1.5px solid var(--ac-bd);
+        text-align: center;
+      }
+      .rstat-l {
+        font-size: 8.5px;
+        font-weight: 900;
+        letter-spacing: 0.7px;
+        color: var(--ac-l2);
+      }
+      .rstat-v {
+        font-size: 15px;
+        font-weight: 900;
+        color: var(--ac-dd);
+        font-variant-numeric: tabular-nums;
+        line-height: 1.25;
+      }
+      /* Sayaç içindeki zamanlayıcı kendi kutu stilini taşımasın */
+      .rstat .timer-bar {
+        margin: 0;
+        padding: 0;
+        background: none;
+        border: 0;
+      }
       .timer-bar {
         background: var(--ac-dd);
         color: #fff;
@@ -5464,6 +5605,21 @@
       </div>
     </div>
 
+    <!-- SONUÇ ZARFI — 8 Ağu. Sonuç yüze çarpmasın: önce kapalı bir zarf,
+         dokununca açılır ve kutlama o an başlar. Bildirimle gelen kullanıcı
+         için kutlamayı "hak edilmiş" bir ana çevirir. Yalnız çevrim içi
+         sonuçta gösterilir; beraberlik çarkı zaten kutladıysa atlanır. -->
+    <div class="res-gate" id="res-gate">
+      <div class="rg-inner">
+        <div class="rg-room" id="rg-room"></div>
+        <button class="rg-env" id="rg-env" type="button" aria-label="Sonucu aç">
+          <span class="rg-flap"></span>
+          <span class="rg-seal" id="rg-seal"></span>
+        </button>
+        <div class="rg-hint" id="rg-hint"></div>
+      </div>
+    </div>
+
     <div class="app">
       <!-- ONBOARDING 1 -->
       <div class="screen on" id="scr-ob1">
@@ -6096,21 +6252,26 @@
                 <div class="code-eyebrow">🔑 ODA KODU</div>
                 <div class="share-code" id="share-code">----</div>
                 <p class="code-help">Arkadaşların bu kodla odana katılır</p>
-                <div
-                  id="host-timer"
-                  class="timer-bar"
-                  style="display: none"
-                ></div>
-                <div
-                  id="participant-count"
-                  style="
-                    font-size: 12px;
-                    font-weight: 800;
-                    color: var(--ac);
-                    margin: 6px 0;
-                  "
-                >
-                  0/4 kişi oy kullandı
+                <!-- 8 Ağu: dağınık duran süre ve oy bilgisi tek bakışta okunan
+                     üçlü sayaca alındı. Eleman id'leri korundu → startTimer ve
+                     oda dinleyicisi aynen çalışıyor. -->
+                <div class="room-stats">
+                  <div class="rstat">
+                    <div class="rstat-l">Katıldı</div>
+                    <div class="rstat-v" id="joined-count">0 / 0</div>
+                  </div>
+                  <div class="rstat">
+                    <div class="rstat-l">Kalan süre</div>
+                    <div
+                      id="host-timer"
+                      class="timer-bar rstat-v"
+                      style="display: none"
+                    ></div>
+                  </div>
+                  <div class="rstat">
+                    <div class="rstat-l">Oy</div>
+                    <div class="rstat-v" id="participant-count">0 / 0</div>
+                  </div>
                 </div>
                 <div id="participant-names" class="pname-list"></div>
                 <div
@@ -14225,6 +14386,47 @@ function drawResultCard(opts) {
           "İstemediğine dokunma — boş bıraktığın 0 puan sayılır. Aynı yıldıza tekrar basınca puan silinir.";
         return h;
       }
+      // ═══ SONUÇ ZARFI (8 Ağu) ═══
+      // Sonuç ekranı doğrudan açılıp kutlama patlamak yerine önce kapalı bir
+      // zarf gösterir; kullanıcı dokununca açılır ve kutlama O AN başlar.
+      // ⚠️ Beraberlik çarkı zaten kutladıysa (tbCelebrated) zarf GÖSTERİLMEZ —
+      // arka arkaya iki kutlama anı olmasın.
+      var _rgBusy = false;
+      function showResultGate(roomName, voters, onOpen) {
+        var g = document.getElementById("res-gate"),
+          env = document.getElementById("rg-env");
+        if (!g || !env || _rgBusy) {
+          onOpen && onOpen();
+          return;
+        }
+        _rgBusy = true;
+        document.getElementById("rg-room").textContent = roomName || "Sonuç hazır";
+        document.getElementById("rg-hint").textContent = voters
+          ? voters + " kişi oy verdi · dokun"
+          : "Dokun";
+        try {
+          document.getElementById("rg-seal").innerHTML = merciSVGGlasses(46);
+        } catch (e) {}
+        env.classList.remove("opened");
+        g.classList.add("on");
+        var done = false;
+        function open() {
+          if (done) return;
+          done = true;
+          env.classList.add("opened");
+          // Kapak animasyonu bitsin, sonra kutlama
+          setTimeout(function () {
+            g.classList.remove("on");
+            _rgBusy = false;
+            onOpen && onOpen();
+          }, 520);
+        }
+        env.onclick = open;
+        // Emniyet ağı: kullanıcı hiç dokunmazsa sonuç sonsuza kadar saklı
+        // kalmasın (bildirimle gelip ekranı bırakan kullanıcı olabilir).
+        setTimeout(open, 15000);
+      }
+
       // ═══ MERCİ AVATARI (8 Ağu) ═══
       // Katılımcıları baş harfle göstermek yetersizdi: aynı harfle başlayan
       // isimler ayırt edilemiyordu. Profil kurdurmak da akışı öldürürdü
@@ -14384,8 +14586,11 @@ function drawResultCard(opts) {
             var parts = data.participants || {};
             var keys = Object.keys(parts);
             var voted = keys.filter((k) => parts[k].submitted === true).length;
+            // Sayaç düzeni: uzun cümle yerine kısa oranlar
             document.getElementById("participant-count").textContent =
-              voted + "/" + data.maxParticipants + " kişi oy kullandı";
+              voted + " / " + data.maxParticipants;
+            var _jc = document.getElementById("joined-count");
+            if (_jc) _jc.textContent = keys.length + " / " + data.maxParticipants;
             // Avatar + isim + durum. İsim textContent ile yazılıyor: katılımcı
             // adı kullanıcı girdisi, innerHTML'e gömmek güvenli değildi.
             var _pn = document.getElementById("participant-names");
@@ -14663,21 +14868,31 @@ function drawResultCard(opts) {
           "Çevrim İçi Oylama",
           say + " (" + pts + " puan, " + cnt + " kişi)",
         );
-        // Beraberlik çarkı zaten kutladıysa ikinci kez ses/konfeti YOK
-        if (!tbCelebrated) {
-          winSound();
-          hSuccess();
-          confetti();
+        // Kutlama anı: önce zarf, dokununca patlasın.
+        var _celebrate = function () {
+          // Beraberlik çarkı zaten kutladıysa ikinci kez ses/konfeti YOK
+          if (!tbCelebrated) {
+            winSound();
+            hSuccess();
+            confetti();
+          }
+          setTimeout(() => {
+            burstAt(card);
+            card.scrollIntoView({ behavior: "smooth", block: "center" });
+          }, 120);
+        };
+        if (tbCelebrated) {
+          // Çark az önce kutladı → araya zarf koyma, doğrudan sonuca geç
+          _celebrate();
+        } else {
+          showResultGate(data.name || "Sonuç hazır", cnt, _celebrate);
         }
         // Online oylama sonucunda non-PRO'ya geçiş reklamı
+        // ⚠️ Zarf açılana kadar reklam açılmasın diye kutlamadan SONRAYA alındı.
         if (!isPremium && typeof KM_AD !== "undefined" && KM_AD.showInterstitial)
           setTimeout(function () {
             KM_AD.showInterstitial();
-          }, 1400);
-        setTimeout(() => {
-          burstAt(card);
-          card.scrollIntoView({ behavior: "smooth", block: "center" });
-        }, 120);
+          }, 3200);
         // "Oy iletildi" kartını kaldır, kazanan kartının altına güçlü çağrıyı koy.
         _kmRemoveInstallCta();
         _kmInstallCta(vr, "winner");
