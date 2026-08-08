@@ -2020,6 +2020,64 @@
         content: "⭐ ";
         font-size: 10px;
       }
+      /* ══ ÇARK "HIZLI BAŞLAT" KARTI (maket .quick / .secHead dili) ══
+         8 Ağu'da bu raf kaldırılmıştı, ekran boşaldı. Geri geldi; iki raf
+         (günün önerileri + hazır paketler) tek kartta, aralarında ince ayraç
+         → "iki ayrı öneri alanı" hissi vermiyor. Tümü km- önekli. */
+      .km-wqs-sep {
+        display: flex;
+        align-items: center;
+        gap: 9px;
+        margin: 12px 0 9px;
+        font-family: "Nunito", sans-serif;
+        font-size: 10.5px;
+        font-weight: 800;
+        letter-spacing: 0.3px;
+        color: var(--ac-d2);
+        opacity: 0.7;
+      }
+      .km-wqs-sep::before,
+      .km-wqs-sep::after {
+        content: "";
+        flex: 1;
+        height: 1px;
+        background: var(--ac-bd);
+      }
+      html.dark .km-wqs-sep {
+        color: #9a93ad;
+      }
+      html.dark .km-wqs-sep::before,
+      html.dark .km-wqs-sep::after {
+        background: #3d3460;
+      }
+      /* Kategori rafı kart içinde: kaydırma maskesi yerine sarmalanan satır */
+      .km-wqs-cats {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 7px;
+        overflow: visible;
+        padding: 0;
+        margin: 0 0 12px;
+        -webkit-mask-image: none;
+        mask-image: none;
+      }
+      .km-wqs-cats .cat {
+        padding: 7px 12px;
+        font-size: 11.5px;
+        border-width: 1.5px;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.72);
+        transition: transform 0.12s ease, box-shadow 0.15s ease,
+          background 0.15s ease;
+      }
+      html.dark .km-wqs-cats .cat {
+        background: rgba(var(--ac-shadow), 0.14);
+        border-color: #3d3460;
+        color: var(--ac-ll);
+      }
+      .km-wqs-cats .cat:active {
+        transform: scale(0.95);
+      }
       .v1-divider {
         display: flex;
         align-items: center;
@@ -3163,7 +3221,9 @@
         #wheel-center-merci svg *,
         .m-wave-arm,
         .m-zzz,
-        .m-magnify {
+        .m-magnify,
+        .wptr.tick,
+        .wd-chip {
           animation: none !important;
         }
       }
@@ -3781,15 +3841,31 @@
         height: 58px;
         border-radius: 50%;
         background: radial-gradient(circle at 38% 30%, #ffffff, #efe9ff);
-        border: 3px solid #fff;
+        /* Maketteki göbek: belirgin BEYAZ halka + derin gölge.
+           Halka artık border değil box-shadow → 58px dış ölçü sabit kalırken
+           maskota daha çok yer kalıyor (akis-final .wheelWrap .hub). */
+        border: 0;
         box-shadow:
-          0 3px 12px rgba(76, 29, 149, 0.3),
-          inset 0 0 0 1.5px rgba(var(--ac-shadow),0.15);
+          0 0 0 4px #fff,
+          0 6px 16px rgba(20, 5, 60, 0.45),
+          inset 0 0 0 1.5px rgba(var(--ac-shadow), 0.14);
         display: flex;
         align-items: center;
         justify-content: center;
         pointer-events: none;
         overflow: hidden;
+        /* Spin bitince göbek yumuşakça DİKE oturur (finishW). Spin BOYUNCA
+           kapalı: her karede JS transform yazıyor, transition olsa sürüklenirdi. */
+        transition: transform 0.45s cubic-bezier(0.2, 0.9, 0.3, 1.2);
+      }
+      body.wheel-spinning #wheel-center-merci {
+        transition: none;
+      }
+      html.dark #wheel-center-merci {
+        box-shadow:
+          0 0 0 4px #fff,
+          0 6px 18px rgba(0, 0, 0, 0.72),
+          inset 0 0 0 1.5px rgba(var(--ac-shadow), 0.2);
       }
       #wheel-center-merci svg {
         width: 40px;
@@ -3798,6 +3874,24 @@
         animation:
           mfloat 3.6s ease-in-out infinite,
           mbreath 4.2s ease-in-out infinite;
+      }
+      /* Göbek sallanması (maketteki hubShake ±5° / .42s).
+         ⚠️ ÇAKIŞMA YOK: kabın (#wheel-center-merci) transform'unu spin
+         döngüsü JS ile yazıyor (translate+rotate(wAngle)); sallanma İÇTEKİ
+         svg'ye biniyor → ikisi iç içe, birbirini ezmiyor. Spin boyunca idle
+         mfloat/mbreath yerine sadece bu çalışır. */
+      @keyframes kmHubShake {
+        0%,
+        100% {
+          transform: rotate(-5deg);
+        }
+        50% {
+          transform: rotate(5deg);
+        }
+      }
+      body.wheel-spinning #wheel-center-merci svg {
+        transform-origin: center center;
+        animation: kmHubShake 0.42s ease-in-out infinite;
       }
       /* Çark göbeği maskotu: idle animasyonu SADECE iç svg'ye (container
          transform'u spin sırasında JS ile yazılıyor → ona dokunma). */
@@ -3909,18 +4003,28 @@
       body.wheel-dragging #s-wheel .wstage {
         animation: none;
       }
+      /* İBRE — onaylanan maketten (akis-final .needle) birebir aktarım.
+         Eskiden düz bir CSS clip-path üçgeniydi, makette taç gradyanlı damla
+         + beyaz daire + #b45309 kontur var. Artık SVG.
+         ⚠️ SINIF ADI `wptr` KALMALI: tıkırtı animasyonunu finishW()
+         `#s-wheel .wptr` seçicisiyle tetikliyor. */
       .wptr {
         position: absolute;
-        top: 0px;
+        top: -8px;
         left: 50%;
         transform: translateX(-50%);
-        width: 28px;
-        height: 36px;
-        background: linear-gradient(160deg, #fbbf24, #f59e0b);
-        clip-path: polygon(50% 100%, 0 0, 100% 0);
+        width: 34px;
+        height: 42px;
         z-index: 8;
-        filter: drop-shadow(0 3px 4px rgba(var(--ac-shadow), 0.35));
-        transform-origin: 50% 0;
+        overflow: visible;
+        pointer-events: none;
+        filter: drop-shadow(0 3px 5px rgba(20, 5, 60, 0.5));
+        /* Tıkırtı artık ibrenin ALTIN TOPUNDAN (cx17,cy12.5 → %30) sallanıyor;
+           eski üçgende pivot tepedeydi. Ucu dilime çarpıp sekmiş gibi duruyor. */
+        transform-origin: 50% 30%;
+      }
+      html.dark .wptr {
+        filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.66));
       }
       .wptr.tick {
         animation: ptrtick 0.45s ease;
@@ -4015,8 +4119,11 @@
         top: 0;
         left: 0;
         /* Çark gölgesi artık canvas İÇİNDE değil burada (dönerken repaint yok).
-           Nötr koyu-mor ton: açık, dark ve PRO temalarda makul durur. */
-        box-shadow: 0 8px 22px rgba(40, 18, 80, 0.32);
+           Nötr koyu-mor ton: açık, dark ve PRO temalarda makul durur.
+           Maketteki drop-shadow(0 10px 22px rgba(20,5,60,.45)) tonuna
+           hizalandı — ama BİLEREK box-shadow kaldı: dönen bir canvas'a
+           filter:drop-shadow koymak her karede yeniden çizim demek. */
+        box-shadow: 0 10px 22px rgba(20, 5, 60, 0.45);
         will-change: transform;
       }
       #wcanvas:active {
@@ -4073,16 +4180,35 @@
       }
       .wcap {
         text-align: center;
-        margin-top: 10px;
+        margin-top: 14px;
         display: flex;
         align-items: center;
         justify-content: center;
         gap: 8px;
       }
+      /* Maketteki cam hap dili: yumuşak yüzey + ince kenar + hafif gölge.
+         ⚠️ Fredoka DEĞİL: .cap-txt üstteki ortak kuralda Fredoka alıyordu,
+         "Çarkı / parmağınla" gibi ş-ğ-ı glyph'leri bozuk kesimden geliyor. */
       .wcap .cap-txt {
+        font-family: "Nunito", sans-serif;
         font-size: 12px;
         font-weight: 800;
-        color: var(--ac);
+        line-height: 1.35;
+        color: var(--ac-d);
+        text-align: left;
+        padding: 8px 13px;
+        border-radius: 14px;
+        background: rgba(255, 255, 255, 0.72);
+        border: 1px solid var(--ac-bd);
+        box-shadow: 0 6px 16px -10px rgba(var(--ac-shadow), 0.55);
+        backdrop-filter: blur(6px);
+        -webkit-backdrop-filter: blur(6px);
+      }
+      html.dark .wcap .cap-txt {
+        color: #efe9ff;
+        background: rgba(255, 255, 255, 0.06);
+        border-color: #3d3460;
+        box-shadow: 0 6px 16px -10px rgba(0, 0, 0, 0.8);
       }
 
       /* Modal */
@@ -5118,9 +5244,12 @@
       }
       #online-setup .km-stage-title {
         margin: 0 0 4px;
-        font-family: "Fredoka", "Nunito", sans-serif;
+        /* Nunito 800: burada kullanıcının yazdığı oda adı görünüyor ve
+           Fredoka'nın ş/ğ cedilla'sı farklı kesimden geliyor (.v1-title ve
+           DARK-PAK #16 ile aynı çözüm). */
+        font-family: "Nunito", sans-serif;
         font-size: 20px;
-        font-weight: 700;
+        font-weight: 800;
         line-height: 1.15;
         letter-spacing: -0.2px;
         overflow-wrap: anywhere;
@@ -5295,9 +5424,10 @@
       }
       #online-setup .km-sechead h3 {
         margin: 0;
-        font-family: "Fredoka", "Nunito", sans-serif;
+        /* Fredoka ş cedilla düzeltmesi — "Oda adı"/"Seçenekler" başlıkları */
+        font-family: "Nunito", sans-serif;
         font-size: 13.5px;
-        font-weight: 700;
+        font-weight: 800;
         letter-spacing: 0.2px;
         color: #1a1a2e;
       }
@@ -5979,9 +6109,10 @@
       }
       .km-vs-txt h2 {
         margin: 0 0 4px;
-        font-family: "Fredoka", "Nunito", sans-serif;
+        /* Oda adı (kullanıcı metni) — Fredoka'nın ş cedilla'sı bozuk, Nunito 800 */
+        font-family: "Nunito", sans-serif;
         font-size: 20px;
-        font-weight: 700;
+        font-weight: 800;
         line-height: 1.15;
         letter-spacing: -0.2px;
       }
@@ -6925,7 +7056,8 @@
         text-align: center;
       }
       .km-cta-h {
-        font-family: "Fredoka", sans-serif;
+        /* Fredoka ş cedilla düzeltmesi */
+        font-family: "Nunito", sans-serif;
         font-weight: 800;
         font-size: 16px;
         color: var(--ac);
@@ -7560,10 +7692,19 @@
                 <p class="v1-sub">Hazır konu seç ya da kendin ekle 👇</p>
               </div>
             </div>
-            <!-- 8 Ağu: "⚡ Hızlı Başlat" çipleri kaldırıldı. Aynı işi gören
-                 hazır paketler zaten aşağıda duruyor; iki ayrı öneri alanı
-                 kartı şişiriyor ve tekrar hissi veriyordu. Boş çarkta artık
-                 tek ve net bir yol var: Merci doldursun. -->
+            <!-- "⚡ HIZLI BAŞLAT" GERİ GELDİ (8 Ağu'da kaldırılmıştı, ekran
+                 boş kaldı). İki raf tek kartta:
+                 1) #wheel-daily → günün saatine göre değişen paketler
+                    (renderDailySuggestions / WHEEL_SUGGESTIONS — fonksiyon
+                    hiç silinmemişti, yalnız kabı yoktu).
+                 2) #cats-wheel → sabit kategoriler (renderCats / CATEGORIES,
+                    tıklama loadCat("wheel", i)).
+                 Kart çark dolunca zaten gizleniyor (renderDailySuggestions) →
+                 iki raf da onunla birlikte kayboluyor. -->
+            <div class="wd-title">⚡ Hızlı Başlat</div>
+            <div class="wd-chips" id="wheel-daily"></div>
+            <div class="km-wqs-sep">HAZIR PAKETLER</div>
+            <div class="cats km-wqs-cats" id="cats-wheel"></div>
             <button
               id="merci-fill-btn"
               class="v1-merci-btn"
@@ -7591,7 +7732,21 @@
           </button>
           <div class="wscene" id="wscene">
             <div class="wstage">
-              <div class="wptr"></div>
+              <!-- İbre: maketteki (akis-final .needle) taç gradyanlı damla.
+                   Sınıf `wptr` KORUNDU → finishW() içindeki tıkırtı
+                   (#s-wheel .wptr + .tick) çalışmaya devam ediyor.
+                   Gradyan id'si kendi <defs>'inde, çakışmasın diye km- önekli. -->
+              <svg class="wptr" viewBox="0 0 34 42" aria-hidden="true" focusable="false">
+                <defs>
+                  <linearGradient id="kmPtrCrown" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stop-color="#fef3c7"/>
+                    <stop offset="50%" stop-color="#fbbf24"/>
+                    <stop offset="100%" stop-color="#e08c05"/>
+                  </linearGradient>
+                </defs>
+                <path d="M17 40 L3.5 13 A15 15 0 0 1 30.5 13 Z" fill="url(#kmPtrCrown)" stroke="#b45309" stroke-width="2.6" stroke-linejoin="round"/>
+                <circle cx="17" cy="12.5" r="4.6" fill="#fff" stroke="#b45309" stroke-width="2"/>
+              </svg>
               <canvas id="wcanvas" width="300" height="300"></canvas>
               <div id="wheel-center-merci"></div>
               <div class="spin-hint" id="spin-hint">
@@ -7754,8 +7909,8 @@
               ></div>
               <div
                 style="
-                  font-family: Fredoka, Nunito, sans-serif;
-                  font-weight: 700;
+                  font-family: Nunito, sans-serif;
+                  font-weight: 800;
                   font-size: 19px;
                   color: var(--ac-dd);
                   margin-top: 4px;
@@ -13311,9 +13466,10 @@ function drawResultCard(opts) {
 
       // ═══════════════════ CATEGORIES ═══════════════════
       function renderCats() {
-        // Çark artık "Hızlı Başlat" davet kartını kullanıyor (cats-wheel kaldırıldı).
-        // Kategori çipleri yalnızca Oylama (cats-vote) için çiziliyor.
-        ["vote"].forEach((m) => {
+        // cats-wheel GERİ GELDİ: çark ekranındaki "Hızlı Başlat" kartının
+        // ikinci rafı (HAZIR PAKETLER). Oylama tarafı (cats-vote /
+        // #cats-vote-wrap) hiç değişmedi — aynı döngü ikisini de besliyor.
+        ["wheel", "vote"].forEach((m) => {
           var c = document.getElementById("cats-" + m);
           if (!c) return;
           c.innerHTML = "";
@@ -13546,6 +13702,29 @@ function drawResultCard(opts) {
         });
         return _wLayCache;
       }
+      /* Çark jantının koyu halka rengi. Canvas var() ANLAMAZ → --ac-dd'nin
+         hesaplanmış GERÇEK hex'ini okuyup string olarak veriyoruz; böylece
+         PRO temalarında (mavi/yeşil/pembe) jant da tema ile geliyor.
+         Varsayılan #4c1d95 = maketteki jant rengi. Sonuç cache'lenir,
+         her karede getComputedStyle çağırmayalım (spin 60fps). */
+      var _kmRimCache = { key: "", val: "#4c1d95" };
+      function _kmRimCol() {
+        try {
+          var key =
+            (document.documentElement.getAttribute("data-theme") || "d") +
+            (document.documentElement.classList.contains("dark") ? "|k" : "");
+          if (_kmRimCache.key === key) return _kmRimCache.val;
+          var v = getComputedStyle(document.documentElement)
+            .getPropertyValue("--ac-dd")
+            .trim();
+          if (!/^#[0-9a-fA-F]{3,8}$/.test(v)) v = "#4c1d95";
+          _kmRimCache.key = key;
+          _kmRimCache.val = v;
+          return v;
+        } catch (e) {
+          return "#4c1d95";
+        }
+      }
       function drawW(cid, items, angle, hi, period) {
         if (hi === undefined) hi = -1;
         var c = document.getElementById(cid);
@@ -13569,7 +13748,10 @@ function drawResultCard(opts) {
         ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
         var cx = W / 2,
           cy = H / 2,
-          r = cx - 7;
+          // Jant artık 8px kalınlığında (maket) → dış kenarı r+4'e taşıyor.
+          // r'yi 7 yerine 5 içeride tutuyoruz ki halkanın dışı canvas'ın
+          // (ve box-shadow halkasının) kenarına otursun, arada boşluk kalmasın.
+          r = cx - 5;
         ctx.clearRect(0, 0, W, H);
         if (!items.length) {
           ctx.fillStyle = "#f3f0ff";
@@ -13671,15 +13853,18 @@ function drawResultCard(opts) {
           }
           ctx.restore();
         }
-        // — 5) Dış çerçeve (çift halka) —
+        // — 5) Dış çerçeve (ÇİFT JANT — maketten: kalın koyu halka + ince
+        //      beyaz iç halka). Makette 8px #4c1d95 + 2px beyaz; buradaki
+        //      koyu ton temaya göre okunuyor (canvas var() anlamaz → gerçek
+        //      hex string alınıyor, _kmRimCol). —
         ctx.beginPath();
         ctx.arc(cx, cy, r, 0, Math.PI * 2);
-        ctx.strokeStyle = "#fff";
-        ctx.lineWidth = 5;
+        ctx.strokeStyle = _kmRimCol();
+        ctx.lineWidth = 8;
         ctx.stroke();
         ctx.beginPath();
-        ctx.arc(cx, cy, r - 3.5, 0, Math.PI * 2);
-        ctx.strokeStyle = "rgba(124,58,237,.22)";
+        ctx.arc(cx, cy, r - 6, 0, Math.PI * 2);
+        ctx.strokeStyle = "rgba(255,255,255,.85)";
         ctx.lineWidth = 2;
         ctx.stroke();
         // — 6) Merkez göbek (spin butonu arkası) —
@@ -13713,9 +13898,20 @@ function drawResultCard(opts) {
         // Çark 2'den az seçenekle pasif → canvas üstünden sayfa kaydırılabilsin
         var _cv = document.getElementById("wcanvas");
         if (_cv) _cv.classList.toggle("km-scroll", S.wheel.length < 2);
+        // Göbekteki Merci — SAKİN ifadeye dön. launch() "scared", finishW()
+        // "celebrate" basıyor; o iki hâle KARIŞMA (yoksa kutlama pozu ekrana
+        // gelmeden silinir). Sadece iş bittiğinde/boştayken normale çeker.
+        // dataset.pose ile gereksiz innerHTML yazımı engellenir → idle CSS
+        // animasyonları (mfloat/mbreath/mblink) her updW'de baştan başlamaz.
         var cm = document.getElementById("wheel-center-merci");
-        if (cm && !cm.innerHTML && typeof merciSVG === "function")
-          cm.innerHTML = merciSVG(46);
+        if (cm && typeof setM === "function") {
+          var _busy = spinning || window._wheelResultPending;
+          if (!cm.innerHTML || (!_busy && cm.dataset.pose !== "normal")) {
+            setM("wheel-center-merci", 46, "normal");
+            cm.dataset.pose = "normal";
+            cm.style.transform = "translate(-50%,-50%)";
+          }
+        }
         var has = S.wheel.length > 0;
         // Çark her zaman görünür (boş da olsa)
         document.getElementById("wscene").style.display = "block";
@@ -13751,7 +13947,7 @@ function drawResultCard(opts) {
         ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
         var cx = W / 2,
           cy = W / 2,
-          r = W / 2 - 4;
+          r = W / 2 - 5; // dolu çarkla AYNI yarıçap → boş↔dolu geçişte zıplamaz
         ctx.clearRect(0, 0, W, W);
         var emptyLabels = ["?", "?", "?", "?", "?", "?"];
         var emptyColors = [
@@ -13785,20 +13981,21 @@ function drawResultCard(opts) {
           ctx.fillText("?", r - 14, 0);
           ctx.restore();
         }
-        // Çerçeve
+        // Çerçeve — dolu çarkla AYNI çift jant (kalın koyu + ince beyaz iç)
         ctx.beginPath();
         ctx.arc(cx, cy, r, 0, Math.PI * 2);
-        ctx.strokeStyle = "#fff";
-        ctx.lineWidth = 4;
+        ctx.strokeStyle = _kmRimCol();
+        ctx.lineWidth = 8;
         ctx.stroke();
-        // Merkez nokta
         ctx.beginPath();
-        ctx.arc(cx, cy, 12, 0, Math.PI * 2);
+        ctx.arc(cx, cy, r - 6, 0, Math.PI * 2);
+        ctx.strokeStyle = "rgba(255,255,255,.85)";
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        // Merkez göbek (üstünde DOM'daki #wheel-center-merci duruyor)
+        ctx.beginPath();
+        ctx.arc(cx, cy, r * 0.135, 0, Math.PI * 2);
         ctx.fillStyle = "#fff";
-        ctx.fill();
-        ctx.beginPath();
-        ctx.arc(cx, cy, 7, 0, Math.PI * 2);
-        ctx.fillStyle = "#7c3aed";
         ctx.fill();
       }
       // ═══ BERABERLİK ÇARKI YARDIMCILARI (7 Ağu) ═══
@@ -14029,6 +14226,8 @@ function drawResultCard(opts) {
         // Duruşa geçiş finishW içinde kutlama pozuyla yapılıyor.
         try {
           setM("wheel-center-merci", 46, "scared");
+          var _hbL = document.getElementById("wheel-center-merci");
+          if (_hbL) _hbL.dataset.pose = "scared";
         } catch (e) {}
         // Dönmeye başladığı an belirgin kickoff haptiği (önemli buton basışı)
         hImpact("MEDIUM", 55);
@@ -14221,9 +14420,20 @@ function drawResultCard(opts) {
         wheelHi = wi;
         drawW("wcanvas", S.wheelSlices, wAngle, wi, S.wheelPeriod);
         wheelSpotlight(S.wheelSlices.length, wi, wAngle);
-        // Çark durdu → göbekteki Merci kutlamaya geçsin
+        // Çark durdu → göbekteki Merci kutlamaya geçsin + göbek YUMUŞAKÇA
+        // dike otursun. (Spin boyunca kap çarkla birlikte rotate(wAngle)
+        // alıyordu; eskiden orada kalıp maskot yan yatmış görünüyordu.
+        // wheel-spinning sınıfı settle içinde kalktığı için CSS transition
+        // artık aktif — rAF ile bir kare sonra yazıyoruz ki geçiş tetiklensin.)
         try {
           setM("wheel-center-merci", 46, "celebrate");
+          var _hbF = document.getElementById("wheel-center-merci");
+          if (_hbF) {
+            _hbF.dataset.pose = "celebrate";
+            requestAnimationFrame(function () {
+              _hbF.style.transform = "translate(-50%,-50%)";
+            });
+          }
         } catch (e) {}
         // SONUÇ GÖRÜNENE KADAR yeniden çevirme KİLİTLİ: kullanıcı sonucu görmeden
         // tekrar çeviremesin. Döndür butonu, sonuç kartına kaydırıldıktan SONRA
@@ -19192,10 +19402,11 @@ function drawResultCard(opts) {
       function renderDailySuggestions() {
         var wrap = document.getElementById("wheel-daily");
         var card = document.getElementById("wheel-empty-card");
-        // ⚠️ Kart görünürlüğü ÖNCE hallediliyor: "Hızlı Başlat" çipleri
-        // kaldırıldığı için #wheel-daily artık yok ve fonksiyon eskiden burada
-        // erken çıkıyordu → boş çark kartı, çark dolduğunda bile ekranda
-        // kalıyordu. Çip yoksa yalnız çip kısmı atlanmalı, kart mantığı değil.
+        // ⚠️ Kart görünürlüğü ÖNCE hallediliyor, çip rafından BAĞIMSIZ.
+        // Geçmişte "Hızlı Başlat" çipleri kaldırılınca #wheel-daily yok oldu ve
+        // fonksiyon en başta erken çıkıyordu → boş çark kartı, çark dolduğunda
+        // bile ekranda kalıyordu. Raf (şu an geri geldi) ileride yine
+        // kaldırılırsa yalnız çip kısmı atlanmalı, kart mantığı değil.
         if (S.wheel.length > 0) {
           if (card) card.style.display = "none";
           return;
