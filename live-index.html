@@ -10225,7 +10225,11 @@ function drawResultCard(opts) {
   var people = opts.peopleCount || 0;
   var style = opts.style === "light" ? "light" : "bold";
 
-  var FAM = "'Fredoka','Nunito','Segoe UI',system-ui,-apple-system,'Helvetica Neue',Arial,sans-serif";
+  // ⚠️ Nunito ÖNCE: burası PAYLAŞILAN sonuç görselini çiziyor (kazanan adı +
+  // Merci'nin repliği). Fredoka'nın ş/ğ cedilla'sı farklı kesimden geliyor
+  // (.v1-title / .rwin / .cap-txt ile aynı tuzak) → WhatsApp'a giden görselde
+  // Türkçe harfler bozuk çıkıyordu. Fredoka yedekte kaldı.
+  var FAM = "'Nunito','Fredoka','Segoe UI',system-ui,-apple-system,'Helvetica Neue',Arial,sans-serif";
 
   // ---- tema paleti (canvas gercek hex ister, var() calismaz) ----
   var T = style === "light" ? {
