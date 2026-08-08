@@ -66,6 +66,37 @@ app.get("/.well-known/assetlinks.json", (req, res) => {
   ]);
 });
 
+// apple-app-site-association — iOS Universal Links (assetlinks.json'ın iOS karşılığı).
+// ⚠️ NEDEN ÖNEMLİ: Android tarafında davet linki app-link ile uygulamada açılıyor,
+// iOS'ta AÇILMIYORDU (bu dosya 404'tü) → paylaşılan oda linki Safari'de açılıp
+// indirmeyi öldürüyordu. Büyümedeki "viral kaçak" tam olarak buydu.
+// Android'deki handle_all_urls davranışını AYNALIYOR: tüm yollar uygulamaya gider.
+// appID = <TeamID>.<BundleID>. Team 3W82BX76S7, bundle app.kararmercii.com.
+// ⚠️ Apple bu dosyayı UZANTISIZ ve application/json olarak bekler; YÖNLENDİRME
+// KABUL ETMEZ (301/302 = doğrulama başarısız). express.static'ten ÖNCE duruyor.
+// ⚠️ Bu route TEK BAŞINA yetmez: uygulamada `com.apple.developer.associated-domains`
+// entitlement'ı da olmalı (App.entitlements'a eklendi) ve YENİ BUILD gerekir —
+// native değişiklik mevcut TestFlight sürümüne yansımaz.
+const _AASA = {
+  applinks: {
+    apps: [],
+    details: [
+      {
+        appIDs: ["3W82BX76S7.app.kararmercii.com"],
+        components: [{ "/": "*", comment: "tum yollar - Android app-link ile ayni" }],
+      },
+      // Eski iOS sürümleri için geriye dönük biçim (components'i anlamayanlar).
+      { appID: "3W82BX76S7.app.kararmercii.com", paths: ["*"] },
+    ],
+  },
+};
+function _sendAasa(req, res) {
+  res.type("application/json").send(JSON.stringify(_AASA));
+}
+app.get("/.well-known/apple-app-site-association", _sendAasa);
+// Kök kopya: bazı eski istemciler önce burayı dener. İkisi de aynı gövde.
+app.get("/apple-app-site-association", _sendAasa);
+
 // Oda davet linki (?room=KOD) OG önizlemesi. WhatsApp/Telegram crawler'ı
 // query'li URL'yi fetch eder ama JS ÇALIŞTIRMAZ → davete özel başlık/açıklama
 // sunucudan basılmak zorunda. express.static'ten ÖNCE olmalı ("/" isteğini
