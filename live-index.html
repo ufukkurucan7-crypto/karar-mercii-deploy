@@ -1799,15 +1799,14 @@
         );
         pointer-events: none;
       }
-      #tab-ai:not(.on) {
-        border-color: var(--ac-ll);
-        background: linear-gradient(145deg, var(--ac-bg2), var(--ac-bg));
-      }
-      #tab-ai:not(.on) .tab-label {
-        background: linear-gradient(90deg, var(--ac), var(--ac-l));
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        background-clip: text;
+      /* ⚠️ KALDIRILDI (kullanıcı bildirdi, 9 Ağu): `#tab-ai:not(.on)` Merci
+         sekmesine AKTİF DEĞİLKEN bile mor zemin + gradyan yazı veriyordu →
+         çubukta hep yanık duruyor, kullanıcı hangi sekmede olduğunu anlamıyordu.
+         Merci artık diğerleriyle aynı: pasifken nötr, seçiliyken kapsül.
+         Aşağıdaki `.tab-merci-glow` de bu yüzden görünmez yapıldı — elemanı
+         markup'tan silmedim, tur adımı ve JS onu arıyor olabilir. */
+      .tab-merci-glow {
+        display: none;
       }
       @keyframes tab-pulse {
         0%,
@@ -1818,9 +1817,8 @@
           box-shadow: 0 0 0 4px rgba(var(--ac-shadow),0.12);
         }
       }
-      #tab-ai:not(.on) {
-        animation: tab-pulse 2.5s ease-in-out infinite;
-      }
+      /* Nabız animasyonu da kalktı: pasif Merci sekmesi diğerlerinden hiçbir
+         şekilde ayrışmayacak (kullanıcı 9 Ağu). */
 
       /* ══════════════════ ANA EKRAN HUB (2×2 ızgara) ══════════════════
          8 Ağu: sekmeler aşağı indi, ana ekran bir "kart merkezi" oldu.
@@ -1986,12 +1984,18 @@
         overflow: hidden;
         cursor: pointer;
         font-family: "Nunito", sans-serif;
-        color: #1a1a2e;
-        border: 1.5px solid var(--ac-bd);
-        background: #fff;
+        /* ⚠️ DÖRT KART DA AYNI (kullanıcı kararı, 9 Ağu): önce yalnız Merci
+           gradyanlıydı, diğer üçü düz beyazdı → Merci "premium/kilitli" gibi
+           duruyor, ızgaranın eşitliği bozuluyordu. Artık hepsi aynı mor sahne
+           dilinde; Merci yalnız ✨AI rozeti ve parıltısıyla ayrışıyor. */
+        color: #fff;
+        border: 1px solid rgba(255, 255, 255, 0.22);
+        background:
+          radial-gradient(120% 120% at 88% 6%, rgba(255, 255, 255, 0.18), transparent 58%),
+          linear-gradient(155deg, var(--ac-dd), var(--ac-d2) 60%, var(--ac-l));
         border-radius: 22px;
         padding: 14px;
-        box-shadow: 0 12px 26px -20px rgba(var(--ac-shadow), 0.9);
+        box-shadow: 0 16px 30px -16px rgba(var(--ac-shadow), 0.95);
         transition:
           transform 0.14s,
           box-shadow 0.22s,
@@ -2040,7 +2044,8 @@
       .km-msub {
         font-size: 11.5px;
         font-weight: 700;
-        color: #6b6491;
+        /* Kart artik mor zeminli -> acik ton (bkz. .km-mcard) */
+        color: rgba(255, 255, 255, 0.84);
         margin-top: 3px;
         line-height: 1.35;
       }
@@ -7707,13 +7712,17 @@
         border-top-color: #2a2140;
       }
       /* ── ANA EKRAN HUB — koyu tema ── */
+      /* Koyu temada da AYNI mor sahne (duz koyu zemin dort karti birbirine
+         benzetip ayrimi yok ediyordu). */
       html.dark .km-mcard {
-        background: #1e1733;
-        border-color: #342a4f;
-        color: #ece8f7;
+        background:
+          radial-gradient(120% 120% at 88% 6%, rgba(255, 255, 255, 0.12), transparent 58%),
+          linear-gradient(155deg, #2a1b52, #3b2472 60%, #6d28d9);
+        border-color: rgba(255, 255, 255, 0.14);
+        color: #fff;
       }
       html.dark .km-msub {
-        color: #a396cf;
+        color: rgba(255, 255, 255, 0.8);
       }
       html.dark .km-mchev {
         color: var(--ac-l2);
@@ -7847,22 +7856,10 @@
       /* (a) En sağdaki "Merci" sekmesi pasifken açık gradient (#tab-ai:not(.on))
          → dark'ta beyaz görünüyordu. Koyu zemin; maskot/label çevresine hafif
          parıltı ile logo dark zeminde görünür kalır. */
-      html.dark #tab-ai:not(.on) {
-        background: linear-gradient(145deg, #2a2140, #1e1733);
-        border-color: #3a2f55;
-      }
-      html.dark #tab-ai:not(.on) .tab-merci-glow {
-        background: linear-gradient(
-          135deg,
-          rgba(167, 139, 250, 0.22) 0%,
-          rgba(196, 181, 253, 0.1) 100%
-        );
-      }
-      html.dark #tab-ai:not(.on) .tab-label {
-        background: linear-gradient(90deg, var(--ac-l), var(--ac-ll));
-        -webkit-background-clip: text;
-        background-clip: text;
-      }
+      /* (kaldırıldı 9 Ağu — pasif Merci sekmesi artık nötr, koyu tema için
+         ayrı bir kural gerekmiyor) */
+
+
       /* (b) "Merci'nin Notu" özet kutusu (.hist-summary) — class-tabanlı
          var(--ac-bg) inline catch-all'a takılmıyordu. */
       html.dark .hist-summary {
