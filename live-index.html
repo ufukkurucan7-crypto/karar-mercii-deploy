@@ -2020,64 +2020,6 @@
         content: "⭐ ";
         font-size: 10px;
       }
-      /* ══ ÇARK "HIZLI BAŞLAT" KARTI (maket .quick / .secHead dili) ══
-         8 Ağu'da bu raf kaldırılmıştı, ekran boşaldı. Geri geldi; iki raf
-         (günün önerileri + hazır paketler) tek kartta, aralarında ince ayraç
-         → "iki ayrı öneri alanı" hissi vermiyor. Tümü km- önekli. */
-      .km-wqs-sep {
-        display: flex;
-        align-items: center;
-        gap: 9px;
-        margin: 12px 0 9px;
-        font-family: "Nunito", sans-serif;
-        font-size: 10.5px;
-        font-weight: 800;
-        letter-spacing: 0.3px;
-        color: var(--ac-d2);
-        opacity: 0.7;
-      }
-      .km-wqs-sep::before,
-      .km-wqs-sep::after {
-        content: "";
-        flex: 1;
-        height: 1px;
-        background: var(--ac-bd);
-      }
-      html.dark .km-wqs-sep {
-        color: #9a93ad;
-      }
-      html.dark .km-wqs-sep::before,
-      html.dark .km-wqs-sep::after {
-        background: #3d3460;
-      }
-      /* Kategori rafı kart içinde: kaydırma maskesi yerine sarmalanan satır */
-      .km-wqs-cats {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 7px;
-        overflow: visible;
-        padding: 0;
-        margin: 0 0 12px;
-        -webkit-mask-image: none;
-        mask-image: none;
-      }
-      .km-wqs-cats .cat {
-        padding: 7px 12px;
-        font-size: 11.5px;
-        border-width: 1.5px;
-        border-radius: 999px;
-        background: rgba(255, 255, 255, 0.72);
-        transition: transform 0.12s ease, box-shadow 0.15s ease,
-          background 0.15s ease;
-      }
-      html.dark .km-wqs-cats .cat {
-        background: rgba(var(--ac-shadow), 0.14);
-        border-color: #3d3460;
-        color: var(--ac-ll);
-      }
-      .km-wqs-cats .cat:active {
-        transform: scale(0.95);
-      }
       .v1-divider {
         display: flex;
         align-items: center;
@@ -2414,6 +2356,10 @@
       .share-code.tiles span {
         min-width: 42px;
         padding: 8px 4px;
+        /* ⚠️ Kutucuk bir flex ÖĞESİ ve min-width'i içeriğinden geniş → harf
+           varsayılan olarak sola yaslanıyordu (cihazda "J X 9 2" solda duruyordu).
+           text-align olmadan ortalanmaz; justify-content kutuyu ortalar, HARFİ değil. */
+        text-align: center;
         border-radius: 12px;
         background: var(--ac-bg2);
         border: 1.5px solid var(--ac-bd);
@@ -4596,6 +4542,44 @@
       .vqs-merci-btn:active { transform:scale(.97); }
       .vqs-merci-btn:disabled { opacity:.7; cursor:default; }
       html.dark .vqs-merci-btn { background:rgba(255,255,255,.04); border-color:#3d3460; color:var(--ac-ll); }
+      /* "Oylamayı Kapat" artık her iki host adımında da görünüyor. İki dolu mor
+         buton (Oylamaya Geç / Oyumu İlet + Kapat) alt alta gelince hangisinin
+         ana eylem olduğu okunmuyordu → kapatma ikincil (çerçeveli) oldu. */
+      #close-voting-btn {
+        margin-top: 8px;
+        background: var(--ac-bg2);
+        color: var(--ac-d);
+        border: 1.5px solid var(--ac-bd);
+        box-shadow: none;
+      }
+      #close-voting-btn:hover {
+        background: var(--ac-bg3);
+        color: var(--ac-d);
+      }
+      html.dark #close-voting-btn {
+        background: #241b3a;
+        border-color: #3a2f55;
+        color: var(--ac-ll);
+      }
+      /* "Bu cihazda" Hızlı Başlat rafı kart içinde: üst boşluğu kırp, butondan ayır */
+      #cats-vote-wrap .wd-title { margin: 2px 0 8px; }
+      #cats-vote-wrap .wd-chips { margin-bottom: 12px; }
+      /* Yeni tur paneli: "geçen turdakiler" çipi + Hızlı Başlat rafı */
+      #new-round-opts .wd-title { margin: 12px 0 8px; }
+      #nro-recall { margin-top: 10px; }
+      #nro-daily { margin-bottom: 4px; }
+      /* "Geçen turdakiler" çipi Hızlı Başlat çiplerinden ayrılsın */
+      .wd-chip.km-recall {
+        background: var(--ac-bg3);
+        border-color: var(--ac-l2);
+        color: var(--ac-d);
+        font-weight: 800;
+      }
+      html.dark .wd-chip.km-recall {
+        background: #2a2140;
+        border-color: var(--ac-d);
+        color: var(--ac-ll);
+      }
       /* Canlı oy tablosu (online şeffaflık) */
       .voter-board { border:1.5px solid var(--ac-bd); border-radius:16px; padding:12px 14px; background:var(--ac-bg2); margin-bottom:12px; }
       html.dark .voter-board { background:#1a1430; border-color:#33285a; }
@@ -4630,186 +4614,428 @@
       html.dark .settings-panel-hdr { border-bottom-color:#2a2140; }
       html.dark .settings-panel-hdr .back { background:#1e1733; color:var(--ac-ll); }
       html.dark .settings-panel-hdr .ttl { color:#f2eefc; }
-      /* ── SONUÇ ZARFI ── */
+      /* ── SONUÇ ZARFI — maketin .gate/.envCard/.envFlap/.envSeal bloğu (maket
+         satır 733-814) ile eşitlendi. Eskisi düz mor bir perde + düz beyaz
+         dikdörtgendi; maket açık lavanta katmanlar + nokta dokusu + nefes alan
+         ışık + 3B kapak istiyor.
+           makette .gate      → burada .res-gate
+           makette .gateInner → burada .rg-inner
+           makette .gateTitle → burada .rg-room
+           makette .env       → burada .rg-env (perspective taşıyıcı)
+           makette .envCard   → burada .rg-card
+           makette .envFlap   → burada .rg-flap
+           makette .envSeal   → burada .rg-seal
+           makette .gateBtn   → burada .rg-btn
+           makette .gate.away → burada .res-gate.away (@keyframes kmGateOut) */
       .res-gate {
         position: fixed;
         inset: 0;
         z-index: 100000;
         display: none;
+        flex-direction: column;
         align-items: center;
         justify-content: center;
-        padding: 24px;
+        gap: 26px;
+        overflow: hidden;
+        padding: 26px 24px 30px;
         background:
-          radial-gradient(ellipse at 30% 10%, rgba(167, 139, 250, 0.35), transparent 60%),
-          linear-gradient(160deg, var(--ac-dd), var(--ac-d2) 60%, var(--ac));
+          radial-gradient(72% 46% at 50% 36%, rgba(168, 85, 247, 0.2), transparent 72%),
+          radial-gradient(85% 55% at 104% -4%, rgba(196, 181, 253, 0.55), transparent 62%),
+          radial-gradient(80% 55% at -12% 104%, rgba(251, 113, 133, 0.18), transparent 62%),
+          linear-gradient(170deg, var(--ac-bg2) 0%, var(--ac-bg3) 55%, #e7ddff 100%);
       }
       .res-gate.on {
         display: flex;
       }
+      /* Kenarlarda ince nokta dokusu, ortaya doğru siliniyor */
+      .res-gate::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+        background-image: radial-gradient(rgba(var(--ac-shadow), 0.18) 1.2px, transparent 1.3px);
+        background-size: 15px 15px;
+        -webkit-mask-image: radial-gradient(78% 58% at 50% 42%, transparent 22%, #000 88%);
+        mask-image: radial-gradient(78% 58% at 50% 42%, transparent 22%, #000 88%);
+      }
+      .res-gate.away {
+        animation: kmGateOut 0.42s ease-in forwards;
+        pointer-events: none;
+      }
+      @keyframes kmGateOut {
+        to {
+          opacity: 0;
+          transform: scale(1.09);
+        }
+      }
       .rg-inner {
-        text-align: center;
-        color: #fff;
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 16px;
         max-width: 320px;
         width: 100%;
       }
-      .rg-room {
-        font-size: 19px;
-        font-weight: 900;
-        letter-spacing: -0.2px;
-        margin-bottom: 18px;
-        overflow-wrap: anywhere;
+      /* Zarfın arkasında nefes alan ışık — "bana dokun" işareti, yazısız */
+      .rg-inner::before {
+        content: "";
+        position: absolute;
+        left: 50%;
+        top: 62%;
+        width: 270px;
+        height: 270px;
+        margin: -135px 0 0 -135px;
+        border-radius: 50%;
+        pointer-events: none;
+        background: radial-gradient(circle, rgba(var(--ac-shadow), 0.28), rgba(var(--ac-shadow), 0) 66%);
+        animation: kmGateGlow 3.6s ease-in-out infinite;
       }
-      .rg-env {
-        position: relative;
-        width: 190px;
-        height: 128px;
-        margin: 0 auto;
-        border: 0;
-        cursor: pointer;
-        border-radius: 12px;
-        background: linear-gradient(170deg, #fdfbff, #e9e3ff);
-        box-shadow: 0 16px 34px -12px rgba(0, 0, 0, 0.45);
-        transition: transform 0.16s;
-        animation: rgBreathe 2.4s ease-in-out infinite;
-      }
-      .rg-env:active {
-        transform: scale(0.96);
-      }
-      .rg-env:focus-visible {
-        outline: 3px solid #fff;
-        outline-offset: 4px;
-      }
-      @keyframes rgBreathe {
+      @keyframes kmGateGlow {
+        0%,
+        100% {
+          transform: scale(0.9);
+          opacity: 0.7;
+        }
         50% {
-          transform: translateY(-5px);
+          transform: scale(1.1);
+          opacity: 1;
         }
       }
-      /* Kapak: üstten aşağı bakan üçgen */
+      .rg-inner > * {
+        position: relative;
+        z-index: 1;
+      }
+      .rg-room {
+        max-width: 260px;
+        text-align: center;
+        overflow-wrap: anywhere;
+        font-size: 19.5px;
+        font-weight: 900;
+        line-height: 1.25;
+        letter-spacing: -0.02em;
+        color: var(--ac-dd);
+        text-shadow: 0 1px 0 rgba(255, 255, 255, 0.65);
+      }
+      .rg-env {
+        width: 216px;
+        perspective: 800px;
+        cursor: pointer;
+        border: 0;
+        padding: 0;
+        background: none;
+        display: block;
+      }
+      .rg-env:focus-visible {
+        outline: 3px solid var(--ac);
+        outline-offset: 6px;
+        border-radius: 20px;
+      }
+      .rg-card {
+        position: relative;
+        display: block;
+        height: 142px;
+        border-radius: 18px;
+        background: linear-gradient(160deg, var(--ac-d2), var(--ac-dd) 70%, #3b1478);
+        box-shadow:
+          0 2px 4px rgba(var(--ac-shadow), 0.35),
+          0 16px 32px -10px rgba(var(--ac-shadow), 0.6);
+        transform-style: preserve-3d;
+        transition: transform 0.5s cubic-bezier(0.2, 0.9, 0.3, 1.1);
+        animation: kmEnvIdle 3.6s ease-in-out infinite;
+      }
+      @keyframes kmEnvIdle {
+        0%,
+        100% {
+          transform: translateY(0) rotate(0);
+        }
+        50% {
+          transform: translateY(-6px) rotate(-1deg);
+        }
+      }
+      /* Gövde çıplak: yalnız ince katlanma çizgileri + üstten ışık */
+      .rg-card::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        border-radius: 18px;
+        pointer-events: none;
+        background:
+          linear-gradient(200deg, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0) 46%),
+          linear-gradient(to top left, transparent calc(50% - 0.6px), rgba(255, 255, 255, 0.14) 50%, transparent calc(50% + 0.6px)),
+          linear-gradient(to top right, transparent calc(50% - 0.6px), rgba(255, 255, 255, 0.14) 50%, transparent calc(50% + 0.6px));
+      }
       .rg-flap {
         position: absolute;
-        inset: 0 0 auto 0;
-        height: 76px;
-        background: linear-gradient(170deg, #ded5ff, #c9bcf7);
+        left: 0;
+        right: 0;
+        top: 0;
+        height: 74px;
+        z-index: 3;
+        background: linear-gradient(180deg, var(--ac-l), var(--ac));
         clip-path: polygon(0 0, 100% 0, 50% 100%);
-        border-radius: 12px 12px 0 0;
+        border-radius: 18px 18px 0 0;
         transform-origin: top center;
-        transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+        transition: transform 0.55s cubic-bezier(0.4, 0.05, 0.2, 1);
+        -webkit-backface-visibility: hidden;
+        backface-visibility: hidden;
+        overflow: hidden;
       }
-      .rg-env.opened .rg-flap {
-        transform: rotateX(-165deg);
+      /* Kapağın üzerinde gezinen ışık — dokunmaya davet */
+      .rg-flap::after {
+        content: "";
+        position: absolute;
+        top: -30%;
+        left: -60%;
+        width: 45%;
+        height: 200%;
+        background: linear-gradient(100deg, transparent, rgba(255, 255, 255, 0.42), transparent);
+        transform: rotate(14deg);
+        animation: kmSweep 3.6s ease-in-out infinite;
+        pointer-events: none;
       }
-      .rg-env.opened {
-        animation: none;
-        transform: scale(1.06);
+      .rg-env.opened .rg-flap::after {
+        display: none;
       }
       .rg-seal {
         position: absolute;
         left: 50%;
-        top: 52%;
-        transform: translate(-50%, -50%);
-        width: 54px;
-        height: 54px;
+        top: 56px;
+        width: 36px;
+        height: 36px;
+        margin-left: -18px;
+        z-index: 4;
         border-radius: 50%;
-        background: #fff;
-        box-shadow: 0 3px 10px rgba(0, 0, 0, 0.25);
-        display: grid;
-        place-items: center;
         overflow: hidden;
+        background: var(--ac-bg3);
+        box-shadow: 0 0 0 3px #fff, 0 4px 8px rgba(20, 5, 60, 0.35);
+        transition: opacity 0.3s, transform 0.3s;
       }
       .rg-seal svg {
-        width: 46px;
-        height: auto;
         display: block;
+        width: 100%;
+        height: 100%;
+      }
+      .rg-env.opened .rg-flap {
+        transform: rotateX(-172deg);
+      }
+      .rg-env.opened .rg-seal {
+        opacity: 0;
+        transform: scale(0.5);
+      }
+      .rg-env.opened .rg-card {
+        animation: none;
+        transform: translateY(-8px) scale(1.03);
+      }
+      .rg-btn {
+        width: 216px;
+        max-width: 100%;
+        margin: 0;
       }
       .rg-hint {
-        margin-top: 20px;
-        font-size: 12.5px;
+        font-size: 12px;
         font-weight: 800;
+        color: var(--ac-d2);
         opacity: 0.85;
+        text-align: center;
+      }
+      html.dark .res-gate {
+        background:
+          radial-gradient(72% 46% at 50% 36%, rgba(124, 58, 237, 0.28), transparent 72%),
+          radial-gradient(85% 55% at 104% -4%, rgba(76, 29, 149, 0.5), transparent 62%),
+          linear-gradient(170deg, #150f26 0%, #100c1c 55%, #1c1433 100%);
+      }
+      html.dark .res-gate::before {
+        background-image: radial-gradient(rgba(196, 181, 253, 0.14) 1.2px, transparent 1.3px);
+      }
+      html.dark .rg-room {
+        color: #f2eefc;
+        text-shadow: none;
+      }
+      html.dark .rg-hint {
+        color: #a99fc4;
+      }
+      html.dark .rg-seal {
+        background: #241b3a;
+        box-shadow: 0 0 0 3px #100c1c, 0 4px 8px rgba(0, 0, 0, 0.5);
       }
       @media (prefers-reduced-motion: reduce) {
-        .rg-env {
-          animation: none;
+        .rg-card,
+        .rg-inner::before,
+        .rg-flap::after,
+        .res-gate.away {
+          animation: none !important;
         }
         .rg-env.opened .rg-flap {
           transition: none;
         }
       }
 
-      /* ══ OY VERME KARTLARI (onaylanan maketten) ══
-         Eskiden tek satırdı: isim solda, minik yıldızlar sağda. Artık her
-         seçenek bir kart; isim üstte, beş büyük altın yıldız altında tam
-         genişlikte. Parmak hedefi büyüdü, okunurluk arttı.
-         ⚠️ Sınıf adları korundu (.oitem/.oitop/.oname/.stars/.star) →
-         renderHostVoteList ve renderParticipant hiç değişmedi. */
+      /* ══ OY VERME KARTLARI — maketin .voteCard/.vcTop/.stars bloğunun BİREBİR
+         karşılığı (maket satır 476-517). ══
+         🔴 Önceki turlarda bu kartlar "bozma" listesindeydi ve sahnenin/etiket
+         rafının ETRAFI güzelleşirken kartlar eski soluk lavanta dikdörtgenler
+         olarak kaldı. Artık kartın KENDİSİ makete eşit:
+           makette .voteCard        → burada .oitem
+           makette .voteCard.rated  → burada .oitem.rated
+           makette .vcTop           → burada .oitop (mevcut sınıf korundu)
+           makette .vcNum           → burada .km-vcnum
+           makette .vcName          → burada .oname (mevcut sınıf korundu)
+           makette .vcTag           → burada .km-vctag
+           makette .stars button    → burada .star (span değil, artık <button>)
+           makette .sw/.sIcon/.sLab → burada .km-sw/.km-sic/.km-slab
+         Sınıf adları .oitem/.oitop/.oname/.stars/.star KORUNDU çünkü beş ayrı
+         render (tur demosu, masa, host, katılımcı, ?room= misafiri) bunları
+         üretiyor — hepsi aynı yardımcıdan (kmStarsHtml/kmVoteCardHtml) geçiyor. */
       .oitem {
         flex-direction: column;
         align-items: stretch;
-        gap: 9px;
-        padding: 12px;
-        border-radius: 16px;
+        gap: 0;
+        padding: 12px 12px 10px;
+        border-radius: 20px;
         background: #fff;
         border: 1.5px solid var(--ac-bd);
+        box-shadow: 0 8px 20px -16px rgba(var(--ac-shadow), 0.7);
+        transition: border-color 0.2s, background 0.2s;
+      }
+      .oitem.rated {
+        border-color: var(--ac-l2);
+        background: linear-gradient(180deg, #fff, var(--ac-bg2));
+      }
+      .oitem .oitop {
+        display: flex;
+        align-items: center;
+        gap: 9px;
+      }
+      /* Sıra rozeti — puanlanınca mor gradyana döner (maket .vcNum) */
+      .km-vcnum {
+        width: 24px;
+        height: 24px;
+        border-radius: 9px;
+        flex: 0 0 auto;
+        display: grid;
+        place-items: center;
+        font-size: 11.5px;
+        font-weight: 900;
+        font-family: "Nunito", sans-serif;
+        background: linear-gradient(160deg, var(--ac-lll), var(--ac-bg3));
+        color: var(--ac-d);
+        transition: background 0.2s, color 0.2s;
+      }
+      .oitem.rated .km-vcnum {
+        background: linear-gradient(160deg, var(--ac-l), var(--ac-d));
+        color: #fff;
       }
       .oitem .oname {
-        font-size: 15px;
+        font-size: 14.5px;
         white-space: normal;
         overflow: visible;
         text-overflow: clip;
         overflow-wrap: anywhere;
       }
+      /* Durum etiketi: "puan yok" → "4 · İyi" (altın kapsül) — maket .vcTag */
+      .km-vctag {
+        flex: 0 0 auto;
+        font-size: 10.5px;
+        font-weight: 900;
+        padding: 4px 9px;
+        border-radius: 999px;
+        white-space: nowrap;
+        background: var(--ac-bg3);
+        color: var(--ac-d2);
+      }
+      .oitem.rated .km-vctag {
+        background: linear-gradient(160deg, #fff5d6, #ffe9ab);
+        color: #8a5a00;
+      }
       .oitem .stars {
         display: flex;
-        gap: 6px;
+        gap: 4px;
         width: 100%;
+        margin-top: 9px;
+        flex-shrink: 1;
       }
+      /* .star artık <button> — üstteki genel .star kuralının (font-size 22,
+         renk, padding) hepsi burada eziliyor. */
       .oitem .star {
-        flex: 1;
-        text-align: center;
-        font-size: 25px;
-        line-height: 1;
-        padding: 8px 0;
-        border-radius: 12px;
-        background: var(--ac-bg2);
-        color: var(--ac-lll);
-        transition: background 0.15s, color 0.15s, transform 0.12s;
+        flex: 1 1 0;
+        min-width: 0;
+        border: none;
+        background: none;
+        cursor: pointer;
+        padding: 2px 0 0;
+        font-size: inherit;
+        color: inherit;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 2px;
+        font-family: "Nunito", sans-serif;
       }
-      .oitem .star.on {
-        background: linear-gradient(135deg, #fcd34d, #f5a623);
-        color: #fff;
-      }
-      .oitem .star:active {
-        transform: scale(0.9);
-      }
-      /* Seçili puanın adı — JS'e dokunmadan, :has() ile.
-         Kurallar artan sırada; 4 yıldız seçiliyse 1..4 kuralı da eşleşir ama
-         SON eşleşen kazanır, yani her zaman en yüksek yıldızın adı görünür.
-         Uygulamadaki BEŞ ayrı yıldız listesinde birden çalışır.
-         :has() desteklemeyen eski tarayıcıda etiket görünmez, yıldızlar
-         normal çalışır — zararsız düşüş. */
-      .oitem::after {
+      .oitem .star .km-sw {
         display: block;
-        text-align: right;
-        font-size: 11px;
+        width: 100%;
+        max-width: 44px;
+        transition: transform 0.12s;
+      }
+      .oitem .star svg {
+        display: block;
+        width: 100%;
+        height: auto;
+      }
+      .oitem .star .km-sic {
+        fill: var(--ac-bg3);
+        stroke: var(--ac-bd);
+        stroke-width: 1.4;
+        transition: fill 0.15s;
+      }
+      .oitem .star.on .km-sic {
+        fill: url(#gGold);
+        stroke: #d18a06;
+      }
+      .oitem .star.on .km-sw {
+        filter: drop-shadow(0 3px 6px rgba(251, 191, 36, 0.55));
+      }
+      /* Yıldız ALTINDAKİ etiket: normalde soluk, seçili puanda altın */
+      .oitem .star .km-slab {
+        font-size: 8.5px;
         font-weight: 900;
-        letter-spacing: 0.3px;
-        color: #d98800;
-        margin-top: -2px;
+        letter-spacing: -0.02em;
+        white-space: nowrap;
+        color: var(--ac-d2);
+        opacity: 0.55;
       }
-      .oitem:has(.star.on:nth-of-type(1))::after {
-        content: "Olmaz";
+      .oitem .star.on .km-slab {
+        opacity: 0;
       }
-      .oitem:has(.star.on:nth-of-type(2))::after {
-        content: "Pek değil";
+      .oitem .star.cur .km-slab {
+        opacity: 1;
+        color: #a26a00;
       }
-      .oitem:has(.star.on:nth-of-type(3))::after {
-        content: "Olur";
+      /* Genel .star:active scale(1.2) kartı zıplatıyordu → sadece yıldız bassın */
+      .oitem .star:active {
+        transform: none;
       }
-      .oitem:has(.star.on:nth-of-type(4))::after {
-        content: "İyi";
+      .oitem .star:active .km-sw {
+        transform: scale(0.92);
       }
-      .oitem:has(.star.on:nth-of-type(5))::after {
-        content: "Bu!";
+      /* Basış anı: zıpla-dön-otur (maket @keyframes starPop) */
+      .oitem .star.pop .km-sw {
+        animation: kmStarPop 0.45s cubic-bezier(0.2, 0.9, 0.3, 1.4) both;
+      }
+      @keyframes kmStarPop {
+        0% {
+          transform: scale(1) translateY(0) rotate(0);
+        }
+        35% {
+          transform: scale(1.38) translateY(-7px) rotate(-9deg);
+        }
+        62% {
+          transform: scale(0.9) translateY(1px) rotate(4deg);
+        }
+        100% {
+          transform: scale(1) translateY(0) rotate(0);
+        }
       }
 
       /* ══ SONUÇ KAHRAMAN ALANI (onaylanan maketten) ══
@@ -6343,12 +6569,75 @@
       html.dark .km-vdock-top .l {
         color: #a99fc4;
       }
+      /* ══ Oy ekranı başlığı: geri oku + oda adı (maket ekran 3 üst şeridi) ══
+         Host artık "Oda yayında" adımından AYRI bir oy adımına geçiyor; geri
+         dönebilmesi şart. */
+      .km-vhdr {
+        display: flex;
+        align-items: center;
+        gap: 11px;
+        padding: 2px 2px 12px;
+        margin-bottom: 2px;
+      }
+      .km-vback {
+        flex: 0 0 auto;
+        width: 36px;
+        height: 36px;
+        border-radius: 12px;
+        border: 1.5px solid var(--ac-bd);
+        background: var(--ac-bg2);
+        color: var(--ac-d);
+        font-family: "Nunito", sans-serif;
+        font-size: 24px;
+        font-weight: 900;
+        line-height: 1;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0 3px 3px 0;
+        transition: transform 0.12s, background 0.15s;
+      }
+      .km-vback:active {
+        transform: scale(0.94);
+      }
+      .km-vhdr-t {
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 1px;
+      }
+      .km-vhdr-t b {
+        font-size: 17px;
+        font-weight: 900;
+        letter-spacing: -0.02em;
+        color: var(--ac-dd);
+      }
+      .km-vhdr-t span {
+        font-size: 12px;
+        font-weight: 800;
+        color: var(--ac-d);
+        opacity: 0.8;
+        overflow-wrap: anywhere;
+      }
+      html.dark .km-vback {
+        background: #241b3a;
+        border-color: #3a2f55;
+        color: var(--ac-ll);
+      }
+      html.dark .km-vhdr-t b {
+        color: #f2eefc;
+      }
+      html.dark .km-vhdr-t span {
+        color: var(--ac-ll);
+      }
       @media (prefers-reduced-motion: reduce) {
         .km-vstage::after,
         .km-vs-merci,
         .km-vs-dot,
         .km-vgo::after,
-        .km-vm .timer-bar.urgent {
+        .km-vm .timer-bar.urgent,
+        .oitem .star.pop .km-sw {
           animation: none !important;
         }
       }
@@ -7131,6 +7420,41 @@
       html.dark .oname {
         color: #f2eefc;
       }
+      /* Oy kartının maket parçaları — koyu tema karşılıkları */
+      html.dark .oitem.rated {
+        background: linear-gradient(180deg, #241c3d, #1c1530) !important;
+        border-color: var(--ac-d) !important;
+      }
+      html.dark .km-vcnum {
+        background: linear-gradient(160deg, #302748, #241d3a);
+        color: var(--ac-ll);
+      }
+      html.dark .oitem.rated .km-vcnum {
+        background: linear-gradient(160deg, var(--ac-l), var(--ac-d));
+        color: #fff;
+      }
+      html.dark .km-vctag {
+        background: #2a2140;
+        color: #b9aed6;
+      }
+      html.dark .oitem.rated .km-vctag {
+        background: linear-gradient(160deg, #4a3712, #3a2a0c);
+        color: #ffd782;
+      }
+      /* ⚠️ :not(.on) ŞART: bu seçici (html.dark + 4 sınıf) açık temadaki
+         `.oitem .star.on .km-sic{fill:url(#gGold)}` kuralından daha güçlü.
+         Kapsam daraltılmazsa koyu temada yıldızlar altın YERİNE koyu kalıyor,
+         yalnız altın gölge görünüyordu. */
+      html.dark .oitem .star:not(.on) .km-sic {
+        fill: #2a2140;
+        stroke: #3d3460;
+      }
+      html.dark .oitem .star .km-slab {
+        color: #a99fc4;
+      }
+      html.dark .oitem .star.cur .km-slab {
+        color: #ffcf6b;
+      }
       /* ═══ DARK-PAK #16: modal başlıkları + form alanları + sil/temizle + login duvarı ═══ */
       /* Modal başlık/gövde metinleri (inline var(--ac-dd)/#1a1a2e dark'ta okunmuyordu) */
       html.dark .info-modal-title,
@@ -7392,6 +7716,14 @@
     <!-- ═══ İKON TANIMLARI: tek çizgi dili, 24 viewBox, currentColor ═══ -->
     <svg width="0" height="0" style="position: absolute" aria-hidden="true">
       <defs>
+        <!-- Oy verme yildizinin 3B altin dolgusu (maket: linearGradient#gGold).
+             CSS'ten fill:url(#gGold) ile cagriliyor; ayni belgede tanimli
+             olmasi sart, harici dosyaya tasima. -->
+        <linearGradient id="gGold" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#fde68a" />
+          <stop offset="45%" stop-color="#fbbf24" />
+          <stop offset="100%" stop-color="#ea9a06" />
+        </linearGradient>
         <g id="i-home">
           <path d="M4 11 12 4.4 20 11" />
           <path d="M6.2 9.8V18.6A1.4 1.4 0 0 0 7.6 20h8.8a1.4 1.4 0 0 0 1.4-1.4V9.8" />
@@ -7529,11 +7861,16 @@
       <div class="rg-inner">
         <div class="rg-room" id="rg-room"></div>
         <button class="rg-env" id="rg-env" type="button" aria-label="Sonucu aç">
-          <span class="rg-flap"></span>
-          <span class="rg-seal" id="rg-seal"></span>
+          <span class="rg-card">
+            <span class="rg-flap"></span>
+            <span class="rg-seal" id="rg-seal"></span>
+          </span>
         </button>
         <div class="rg-hint" id="rg-hint"></div>
       </div>
+      <button class="btn rg-btn" id="rg-btn" type="button">
+        ✉️ Sonucu Gör
+      </button>
     </div>
 
     <div class="app">
@@ -7693,18 +8030,16 @@
               </div>
             </div>
             <!-- "⚡ HIZLI BAŞLAT" GERİ GELDİ (8 Ağu'da kaldırılmıştı, ekran
-                 boş kaldı). İki raf tek kartta:
-                 1) #wheel-daily → günün saatine göre değişen paketler
-                    (renderDailySuggestions / WHEEL_SUGGESTIONS — fonksiyon
-                    hiç silinmemişti, yalnız kabı yoktu).
-                 2) #cats-wheel → sabit kategoriler (renderCats / CATEGORIES,
-                    tıklama loadCat("wheel", i)).
-                 Kart çark dolunca zaten gizleniyor (renderDailySuggestions) →
-                 iki raf da onunla birlikte kayboluyor. -->
+                 boş kaldı). #wheel-daily → günün saatine göre değişen paketler
+                 (renderDailySuggestions / WHEEL_SUGGESTIONS — fonksiyon hiç
+                 silinmemişti, yalnız kabı yoktu).
+                 Kart çark dolunca gizleniyor → raf da onunla kayboluyor.
+                 ⚠️ "HAZIR PAKETLER" (#cats-wheel) rafı DENENDİ VE GERİ ALINDI
+                 (kullanıcı, 8 Ağu akşam): çalışmıyordu ve üstteki Hızlı Başlat
+                 zaten aynı işi yapıyor — iki öneri rafı tekrar hissi veriyor.
+                 Tekrar ekleme. -->
             <div class="wd-title">⚡ Hızlı Başlat</div>
             <div class="wd-chips" id="wheel-daily"></div>
-            <div class="km-wqs-sep">HAZIR PAKETLER</div>
-            <div class="cats km-wqs-cats" id="cats-wheel"></div>
             <button
               id="merci-fill-btn"
               class="v1-merci-btn"
@@ -7967,12 +8302,19 @@
             </div>
           </div>
 
-          <!-- "⚡ Hızlı Başlat" ÇİP RAFI KALDIRILDI (kullanıcı kararı):
-               oda kurmada zaten saate göre hazır paketler (#online-daily) var,
-               aynı işi iki yerde yapmak ekranı kalabalıklaştırıyordu.
-               Kart ve id KORUNDU (#cats-vote-wrap'i gösterip gizleyen 8 ayrı
-               yer + tur adımı var), içinde yalnız "Merci doldursun" kaldı. -->
+          <!-- ⚠️ 8 Ağu KULLANICI BULGUSU: "Merci doldursun seçeneği duruyor ve
+               kötü gözüküyor yalnızca Bu cihazda modunda." Kart tek bir butonla
+               bomboş duruyordu. Çözüm: çark ekranındaki "⚡ Hızlı Başlat"
+               rafının aynısı (renderVoteSuggestions) buraya da geldi — ama
+               YALNIZ "Bu cihazda" modunda ve liste boşken; oda kurmada zaten
+               #online-daily var, iki yerde aynı raf olmasın.
+               ⚠️ Kart ve id KORUNDU (#cats-vote-wrap'i gösterip gizleyen 8 ayrı
+               yer + bir tur adımı var). -->
           <div id="cats-vote-wrap" class="vqs-card vqs-solo" style="display: none">
+            <div class="wd-title" id="vote-daily-title" style="display: none">
+              ⚡ Hızlı Başlat
+            </div>
+            <div class="wd-chips" id="vote-daily" style="display: none"></div>
             <button
               class="vqs-merci-btn"
               id="vote-merci-fill"
@@ -8299,13 +8641,22 @@
             </div>
             <!-- Host view -->
             <div id="online-host" style="display: none">
+              <!-- ⚠️ 8 Ağu KULLANICI BULGUSU: "oda kurarken karma karışık aynı
+                   bilgiler iki yerde var hem yukarda hem aşağıda." Sebebi: oda
+                   yayına girer girmez ALTINDA ikinci bir mor sahne (OYLAMA
+                   AÇIK) açılıyor, sayaç/sayılar tekrar ediyordu. Makette bunlar
+                   AYRI ADIM: "Adım 2 Oda yayında" (kod+QR+katılımcılar+alt
+                   çubukta ★ Oylamaya Geç) ve "Adım 3 Oy Ver" (geri oku + kendi
+                   sahnesi). Aşağıdaki #host-live-step / #host-vote-section
+                   ikilisi bu ayrımı kurar; ikisi ASLA aynı anda açık olmaz. -->
+              <div id="host-live-step">
               <!-- ODA YAYINDA — onaylanan maketin kompozisyonu.
                    .share-box sinifi KORUNDU: sonuc ekraninda bu kutuyu gizleyen
                    kod (#online-host .share-box) aynen calismaya devam etsin. -->
               <div class="share-box live-stage">
                 <div class="ls-top">
                   <span class="ls-badge"><span class="ls-dot"></span> Yayında</span>
-                  <span class="ls-step">Adım 2 / 2</span>
+                  <span class="ls-step">Adım 2 / 3</span>
                 </div>
                 <!-- Maket ekran 2: başlık + alt yazı solda, Merci sağda -->
                 <div class="ls-head">
@@ -8357,14 +8708,41 @@
                 </div>
                 <div id="participant-names" class="pname-list"></div>
               </div>
-              <div id="host-vote-section">
+              <!-- Maket ekran 2'nin alt sabit çubuğu: oy sahnesine GEÇİŞ.
+                   Sayaç burada TEKRARLANMAZ; yukarıdaki sahnede zaten var. -->
+              <div class="km-vdock" id="host-go-dock">
+                <div class="km-vdock-top">
+                  <span class="l" id="hg-dock-l">Oda kodu —</span>
+                  <span class="r ok" id="hg-dock-r">Yayında</span>
+                </div>
+                <button class="km-vgo" id="host-go-vote" type="button">
+                  <svg class="ic ic-t" viewBox="0 0 24 24"><use href="#i-star"/></svg>
+                  Oylamaya Geç
+                </button>
+              </div>
+              </div>
+              <div id="host-vote-section" style="display: none">
                 <!-- OY VER sahnesi (maket ekran 3). Ölçerler kmVoteSync ile
                      dolar; #hv-clock yukarıdaki #host-timer'ın AYNASIDIR
                      (ikinci bir sayaç kurulmuyor, metni kopyalanıyor). -->
+                <div class="km-vhdr">
+                  <button
+                    class="km-vback"
+                    id="host-vote-back"
+                    type="button"
+                    aria-label="Oda ekranına dön"
+                  >
+                    ‹
+                  </button>
+                  <div class="km-vhdr-t">
+                    <b>Oy Ver</b>
+                    <span id="hv-room-name"></span>
+                  </div>
+                </div>
                 <div class="km-vstage">
                   <div class="km-vs-top">
                     <span class="km-vs-badge"><i class="km-vs-dot"></i>OYLAMA AÇIK</span>
-                    <span class="km-vs-step">Senin oyun</span>
+                    <span class="km-vs-step">Adım 3 / 3</span>
                   </div>
                   <div class="km-vs-head">
                     <div class="km-vs-txt">
@@ -8389,10 +8767,14 @@
                   </div>
                 </div>
                 <div class="olist" id="host-vote-list"></div>
-                <button class="btn" id="close-voting-btn">
-                  🏆 Oylamayı Kapat
-                </button>
               </div>
+              <!-- ⚠️ "Oylamayı Kapat" BİLEREK #host-vote-section'ın DIŞINDA:
+                   host oy adımına hiç geçmeden de (yalnız "Oda yayında"
+                   ekranındayken) oylamayı kapatabilmeli. İçeride kalsaydı
+                   adım ayrımı bu düğmeyi erişilemez yapardı. -->
+              <button class="btn" id="close-voting-btn">
+                🏆 Oylamayı Kapat
+              </button>
               <!-- CANLI OY TABLOSU (şeffaflık) — host da kim oyladı görsün.
                    renderVoteTable() tüm .voter-board'lara basar (FAZ 2). -->
               <div id="vote-table-host" class="voter-board" style="display: none"></div>
@@ -8429,6 +8811,20 @@
                     placeholder="Seçenek ekle..."
                   /><button class="abtn" onclick="addNROpt()">+</button>
                 </div>
+                <!-- Boş ekranla bırakma: geçen turun seçenekleri tek dokunuşla
+                     geri gelir, yanında saate göre Hızlı Başlat rafı. -->
+                <div class="wd-chips" id="nro-recall" style="display: none">
+                  <button
+                    class="wd-chip km-recall"
+                    id="nro-recall-btn"
+                    type="button"
+                    onclick="recallPrevRoundOpts()"
+                  ></button>
+                </div>
+                <div class="wd-title" id="nro-daily-title" style="display: none">
+                  ⚡ Hızlı Başlat
+                </div>
+                <div class="wd-chips" id="nro-daily" style="display: none"></div>
                 <div class="ogrid" id="nro-list"></div>
                 <div id="nro-empty" class="empty" style="display: none">
                   En az 2 seçenek ekle!
@@ -12870,8 +13266,9 @@ function drawResultCard(opts) {
             sel: "#cats-vote-wrap",
             settle: 260,
             pose: "default",
-            title: "✨ Merci doldursun",
-            body: "Ne oylayacağını bilmiyorsan bana bırak — seçenekleri anında üreteyim!",
+            title: "⚡ Hızlı Başlat / ✨ Merci doldursun",
+            // 8 Ağu: karta "Hızlı Başlat" çip rafı eklendi → tur da onu anlatsın.
+            body: "Ne oylayacağını bilmiyorsan iki kısayol var: <b>⚡ Hızlı Başlat</b> çiplerinden hazır bir paket seç, ya da <b>✨ Merci doldursun</b> de — seçenekleri anında üreteyim!",
             skipIf: function () {
               return tourVoteBusy();
             },
@@ -12888,7 +13285,8 @@ function drawResultCard(opts) {
             pose: "default",
             title: "⭐ Seçenek + yıldız",
             // 8 Ağu: puanlama zorunlu değil — tur metni de bunu söylüyor artık.
-            body: "Beğendiğin seçeneğe <b>1–5 yıldız</b> ver. <b>Hepsine vermek zorunda değilsin</b>; dokunmadığın 0 sayılır. En çok yıldızı toplayan kazanır 🏆 (Gerçekte seçenekleri yukarıdan sen eklersin.)",
+            // 8 Ağu: yıldızların ALTINA etiket geldi (Olmaz…Bu!) → tur da söylesin.
+            body: "Beğendiğin seçeneğe <b>1–5 yıldız</b> ver; her yıldızın altında ne anlama geldiği yazıyor (<b>Olmaz → Bu!</b>). <b>Hepsine vermek zorunda değilsin</b>; dokunmadığın 0 sayılır. En çok yıldızı toplayan kazanır 🏆 (Gerçekte seçenekleri yukarıdan sen eklersin.)",
             skipIf: function () {
               return tourVoteBusy();
             },
@@ -12903,22 +13301,18 @@ function drawResultCard(opts) {
                 d.id = "tour-demo-vote";
                 d.className = "olist";
                 d.style.cssText = "margin-top:10px";
-                var _row = function (name, filled) {
-                  var st = "";
-                  for (var k = 1; k <= 5; k++)
-                    st +=
-                      '<span class="star' +
-                      (k <= filled ? " on" : "") +
-                      '">★</span>';
+                // Tur demosu da gerçek kartın AYNISINI kullanır (kmVoteCardHtml)
+                // → tur, cihazdaki ekranı birebir tarif etsin.
+                var _row = function (i, name, filled) {
                   return (
-                    '<div class="oitem"><div class="oitop"><span class="oname">' +
-                    name +
-                    '</span></div><div class="stars">' +
-                    st +
-                    "</div></div>"
+                    '<div class="' +
+                    kmVoteCardCls(filled) +
+                    '">' +
+                    kmVoteCardHtml(i, name, filled, null) +
+                    "</div>"
                   );
                 };
-                d.innerHTML = _row("🍕 Pizza", 4) + _row("🍔 Burger", 2);
+                d.innerHTML = _row(0, "🍕 Pizza", 4) + _row(1, "🍔 Burger", 2);
                 host.appendChild(d);
               }
             },
@@ -12951,7 +13345,9 @@ function drawResultCard(opts) {
             settle: 380,
             pose: "default",
             title: "📡 Oda Oluştur",
-            body: "Adını, oda adını, <b>kaç kişi</b> olacağını ve <b>süreyi</b> seç; hemen altına da seçenekleri ekle. <b>Odayı Oluştur</b>'a basınca çıkan <b>4 haneli kodu</b> paylaş — arkadaşların katılsın!",
+            // 8 Ağu: oda yayına girince oy sahnesi ARTIK altta açılmıyor, ayrı
+            // adım oldu (bkz. hostShowStep) → tur bu iki adımı da anlatsın.
+            body: "Adını, oda adını, <b>kaç kişi</b> olacağını ve <b>süreyi</b> seç; hemen altına da seçenekleri ekle. <b>Odayı Oluştur</b>'a basınca çıkan <b>4 haneli kodu</b> paylaş — arkadaşların katılsın! Sen de oy vermek istediğinde alttaki <b>★ Oylamaya Geç</b> düğmesine bas; <b>‹</b> ile oda ekranına dönersin.",
             skipIf: function () {
               return tourVoteBusy();
             },
@@ -13470,10 +13866,10 @@ function drawResultCard(opts) {
 
       // ═══════════════════ CATEGORIES ═══════════════════
       function renderCats() {
-        // cats-wheel GERİ GELDİ: çark ekranındaki "Hızlı Başlat" kartının
-        // ikinci rafı (HAZIR PAKETLER). Oylama tarafı (cats-vote /
-        // #cats-vote-wrap) hiç değişmedi — aynı döngü ikisini de besliyor.
-        ["wheel", "vote"].forEach((m) => {
+        // ⚠️ Yalnız "vote". #cats-wheel rafı 8 Ağu akşamı KULLANICI KARARIYLA
+        // kaldırıldı (üstteki "⚡ Hızlı Başlat" aynı işi yapıyor). Döngüye
+        // "wheel" ekleme — eleman yok, sessizce boşa dönersin.
+        ["vote"].forEach((m) => {
           var c = document.getElementById("cats-" + m);
           if (!c) return;
           c.innerHTML = "";
@@ -14566,6 +14962,8 @@ function drawResultCard(opts) {
           } else if (s === mx && s > 0) w.push(x);
         });
         voteClosed = true;
+        // Yeni sonuç turu → beraberlik kutlaması bayrağını sıfırla (bkz. newRound)
+        tbCelebrated = false;
         w.length === 1 ? showVWin(w[0]) : openTb(w);
       }
       function masaNext() {
@@ -14617,6 +15015,7 @@ function drawResultCard(opts) {
         masaPeopleConfirmed = false; // mod tuşundan da yeni oylama açılabilsin (idle)
         document.getElementById("vote-local").style.display = "none";
         render("vote");
+        tbCelebrated = false; // yeni sonuç turu (bkz. newRound)
         w.length === 1 ? showVWin(w[0]) : openTb(w);
       }
       var _lastVoteScores = {};
@@ -15006,7 +15405,9 @@ function drawResultCard(opts) {
       function setStars(n, r) {
         if (voteClosed) return; // sonuç gösterildikten sonra yıldız değiştirilemez
         S.vote[n] = S.vote[n] === r ? 0 : r;
+        _kmPopName = n; // yalnız bu kartın yıldızları zıplasın
         render("vote");
+        _kmPopName = null;
         snd("add");
         hImpact("MEDIUM", 20); // oy verme dokunuşu
       }
@@ -16703,6 +17104,10 @@ function drawResultCard(opts) {
         totals = {};
         voteClosed = false;
         updateVoteUI();
+        // "Bu cihazda" modunda Hızlı Başlat rafını taze bas (online'da gizlenir)
+        try {
+          renderVoteSuggestions();
+        } catch (e) {}
         // Adım 2'ye geç + kişi sayısı stepper değerini senkronla
         setVoteStep(2);
         var pv = document.getElementById("masa-people-val");
@@ -16918,8 +17323,8 @@ function drawResultCard(opts) {
           if (cwDone) cwDone.style.display = "none";
           document.getElementById("online-host").style.display = "";
           // Host alt-bölümlerini taze oylama durumuna getir (stale gizleme/gösterme temizle)
-          var _hvs = document.getElementById("host-vote-section");
-          if (_hvs) _hvs.style.display = "";
+          // Yeni oda → önce "Oda yayında" adımı; oy sahnesi ALTTA AÇILMAZ.
+          hostShowStep("live");
           var _cvb = document.getElementById("close-voting-btn");
           if (_cvb) _cvb.style.display = "";
           var _sbx = document.querySelector("#online-host .share-box");
@@ -16934,14 +17339,33 @@ function drawResultCard(opts) {
           if (_nro) _nro.style.display = "none";
           var _vrCard = document.getElementById("vr");
           if (_vrCard) _vrCard.style.display = "none";
+          tbCelebrated = false; // yeni oda = yeni sonuç turu (bkz. newRound)
           renderShareCode(code);
           document.getElementById("room-title-display").textContent = name;
+          hostShowStep("live"); // kod ve oda adı yazıldıktan SONRA: alt çubuk tazelensin
           renderHostVoteList();
           listenRoomAsHost(code);
           setVoteStep(3); // online oda açıldı → adım göstergesi "Oyla"ya geç
           snd("ding");
           logEv("room_create", { option_count: onlineOpts.length });
           startTimer(_tl * 60, "host-timer", () => deadlineClose(shareCode));
+          // ⚠️ ODA KURULUNCA YUKARI DÖN (kullanıcı bildirdi, 8 Ağu):
+          // Form uzun olduğu için "Odayı Oluştur"a basıldığında sayfa en altta,
+          // host'un KENDİ yıldız listesinde kalıyordu → oda kodunu, karekodu ve
+          // paylaş butonlarını hiç görmüyordu. Oysa oda kurmanın tek amacı o kodu
+          // paylaşmak. Panel görünür olduktan SONRA kaydır (rAF + küçük gecikme:
+          // display:"" hemen üstte yazılıyor, layout daha oturmamış oluyor).
+          try {
+            requestAnimationFrame(function () {
+              setTimeout(function () {
+                var _top =
+                  document.querySelector("#online-host .share-box") ||
+                  document.getElementById("online-host");
+                if (_top && _top.scrollIntoView)
+                  _top.scrollIntoView({ behavior: "smooth", block: "start" });
+              }, 60);
+            });
+          } catch (e) {}
         } catch (e) {
           alert("Oda oluşturulamadı!");
         }
@@ -16997,8 +17421,8 @@ function drawResultCard(opts) {
           var cwDone = document.getElementById("cats-vote-wrap");
           if (cwDone) cwDone.style.display = "none";
           document.getElementById("online-host").style.display = "";
-          var _hvs = document.getElementById("host-vote-section");
-          if (_hvs) _hvs.style.display = "";
+          // Odaya yeniden bağlanma da "Oda yayında" adımıyla başlar.
+          hostShowStep("live");
           var _cvb = document.getElementById("close-voting-btn");
           if (_cvb) _cvb.style.display = "";
           var _sbx = document.querySelector("#online-host .share-box");
@@ -17016,6 +17440,7 @@ function drawResultCard(opts) {
           renderShareCode(code);
           document.getElementById("room-title-display").textContent =
             data.name || "Oylama";
+          hostShowStep("live");
           renderHostVoteList();
           listenRoomAsHost(code);
           setVoteStep(3);
@@ -17080,6 +17505,73 @@ function drawResultCard(opts) {
       // Mekanik zaten böyleydi (puanlar 0'dan başlıyor, aynı yıldıza tekrar
       // basınca sıfırlanıyor) ama kullanıcıya hiç söylenmiyordu — istemediği
       // seçeneğe de puan vermek zorunda sanılıyordu.
+      /* ══ OY KARTI YAPICILARI — maket ekran 3'ün .voteCard/.stars bloğu ══
+         Aynı kartı BEŞ ayrı yer üretiyor: tur demosu (#tour-demo-vote), masa
+         (render("vote")), host (renderHostVoteList), uygulama-içi katılımcı
+         (renderParticipant), ?room= misafiri (renderRoVoteList). Hepsi bu iki
+         yardımcıdan geçiyor — biri güzelleşip diğeri eski soluk yıldızlarla
+         kalmasın diye. Yıldız yolu ve etiketler maketten birebir. */
+      var KM_STAR_PATH =
+        "M12 2.4 L14.95 8.4 L21.6 9.35 L16.8 14.05 L17.93 20.65 L12 17.52 L6.07 20.65 L7.2 14.05 L2.4 9.35 L9.05 8.4 Z";
+      var KM_STAR_LBL = ["Olmaz", "Pek değil", "Olur", "İyi", "Bu!"];
+      /* Yalnız SON DOKUNULAN seçeneğin yıldızları zıplasın. Listeler her
+         tıklamada baştan çiziliyor; bu bayrak olmasa oda güncellemesi gelen
+         HER renderda ekrandaki bütün kartlar patır patır zıplardı. */
+      var _kmPopName = null;
+      function kmStarsHtml(rating, name, clickFor) {
+        var r = +rating || 0,
+          pop = _kmPopName !== null && _kmPopName === name,
+          st = "";
+        for (var i = 1; i <= 5; i++) {
+          var on = i <= r;
+          var anim =
+            on && pop
+              ? ' style="animation-delay:' + ((i - 1) * 0.045).toFixed(3) + 's"'
+              : "";
+          st +=
+            '<button type="button" class="star' +
+            (on ? " on" : "") +
+            (i === r ? " cur" : "") +
+            (on && pop ? " pop" : "") +
+            '" aria-pressed="' +
+            (on ? "true" : "false") +
+            '" aria-label="' +
+            i +
+            " yildiz - " +
+            KM_STAR_LBL[i - 1] +
+            '"' +
+            (clickFor ? ' onclick="' + clickFor(i) + '"' : "") +
+            '><span class="km-sw"' +
+            anim +
+            '><svg viewBox="0 0 24 24" aria-hidden="true"><path class="km-sic" d="' +
+            KM_STAR_PATH +
+            '" stroke-linejoin="round"/></svg></span><span class="km-slab">' +
+            KM_STAR_LBL[i - 1] +
+            "</span></button>";
+        }
+        return st;
+      }
+      // extraTop: masa modundaki "×" sil butonu gibi ek düğmeler için.
+      function kmVoteCardHtml(idx, name, rating, clickFor, extraTop) {
+        var r = +rating || 0;
+        return (
+          '<div class="oitop"><span class="km-vcnum">' +
+          (idx + 1) +
+          '</span><span class="oname">' +
+          name +
+          '</span><span class="km-vctag">' +
+          (r > 0 ? r + " · " + KM_STAR_LBL[r - 1] : "puan yok") +
+          "</span>" +
+          (extraTop || "") +
+          '</div><div class="stars" role="group">' +
+          kmStarsHtml(r, name, clickFor) +
+          "</div>"
+        );
+      }
+      function kmVoteCardCls(rating) {
+        return (+rating || 0) > 0 ? "oitem rated" : "oitem";
+      }
+
       function voteHintEl() {
         // Maket ekran 3: ikonlu bilgi kutusu + puan cetveli.
         // Fragment döndürüyor → mevcut `l.appendChild(voteHintEl())` çağrıları
@@ -17205,26 +17697,47 @@ function drawResultCard(opts) {
         _rgBusy = true;
         document.getElementById("rg-room").textContent = roomName || "Sonuç hazır";
         document.getElementById("rg-hint").textContent = voters
-          ? voters + " kişi oy verdi · dokun"
-          : "Dokun";
+          ? voters + " kişi oy verdi"
+          : "Sonuç hazır";
         try {
-          document.getElementById("rg-seal").innerHTML = merciSVGGlasses(46);
+          document.getElementById("rg-seal").innerHTML = merciSVGGlasses(36);
         } catch (e) {}
         env.classList.remove("opened");
+        g.classList.remove("away");
         g.classList.add("on");
         var done = false;
+        var _red = false;
+        try {
+          _red = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+        } catch (e) {}
         function open() {
           if (done) return;
           done = true;
           env.classList.add("opened");
-          // Kapak animasyonu bitsin, sonra kutlama
-          setTimeout(function () {
-            g.classList.remove("on");
-            _rgBusy = false;
-            onOpen && onOpen();
-          }, 520);
+          /* ⚠️ KULLANICI DÜZELTMESİ: maketin KENDİSİNDE konfeti zarfa
+             basılmadan patlıyordu. Burada kutlama (winSound + konfeti) YALNIZ
+             bu noktadan sonra, zarf açıldıktan sonra çalışır — öncesinde asla.
+             onOpen çağrısı kasten perde silindikten SONRA: kutlama patlarken
+             sonuç kartı zaten ekranda olsun. */
+          setTimeout(
+            function () {
+              g.classList.add("away"); // maket: .gate.away → gateOut
+              setTimeout(
+                function () {
+                  g.classList.remove("on");
+                  g.classList.remove("away");
+                  _rgBusy = false;
+                  onOpen && onOpen();
+                },
+                _red ? 0 : 400,
+              );
+            },
+            _red ? 0 : 480,
+          );
         }
         env.onclick = open;
+        var gb = document.getElementById("rg-btn");
+        if (gb) gb.onclick = open;
         // Emniyet ağı: kullanıcı hiç dokunmazsa sonuç sonsuza kadar saklı
         // kalmasın (bildirimle gelip ekranı bırakan kullanıcı olabilir).
         setTimeout(open, 15000);
@@ -17284,6 +17797,63 @@ function drawResultCard(opts) {
           mouth +
           "</svg>"
         );
+      }
+      /* ══ HOST ODA EKRANI — İKİ AYRI ADIM (8 Ağu kullanıcı bulgusu) ══
+         "live"   → Oda yayında: kod + karekod + katılımcılar + alt çubukta
+                    "★ Oylamaya Geç". Oy sahnesi GÖRÜNMEZ (sayaç tekrarı yok).
+         "vote"   → Oy Ver: geri oku + kendi sahnesi + yıldız kartları.
+         "result" → Oylama kapandı: alt çubuk ve oy bölümü kalkar, katılımcı
+                    listesi kalır (kimin oy verdiği görünsün).
+         İkisi ASLA aynı anda açık olmaz. */
+      function hostShowStep(step) {
+        var live = document.getElementById("host-live-step");
+        var dock = document.getElementById("host-go-dock");
+        var vote = document.getElementById("host-vote-section");
+        if (step === "vote") {
+          if (live) live.style.display = "none";
+          if (vote) vote.style.display = "";
+        } else if (step === "result") {
+          if (live) live.style.display = "";
+          if (dock) dock.style.display = "none";
+          if (vote) vote.style.display = "none";
+        } else {
+          if (live) live.style.display = "";
+          if (dock) dock.style.display = "";
+          if (vote) vote.style.display = "none";
+        }
+        // Alt çubuğun sol yazısı: oda kodu (sayaç DEĞİL — sayaç tek yerde)
+        try {
+          var l = document.getElementById("hg-dock-l");
+          if (l) l.textContent = shareCode ? "Oda kodu " + shareCode : "Oda kodu —";
+          var rn = document.getElementById("hv-room-name");
+          if (rn)
+            rn.textContent =
+              (document.getElementById("room-title-display") || {}).textContent ||
+              "";
+        } catch (e) {}
+      }
+      function hostGoVote() {
+        hostShowStep("vote");
+        try {
+          renderHostVoteList();
+        } catch (e) {}
+        snd("click");
+        try {
+          var t = document.getElementById("online-host");
+          if (t && t.scrollIntoView)
+            t.scrollIntoView({ behavior: "smooth", block: "start" });
+        } catch (e) {}
+      }
+      function hostBackToRoom() {
+        hostShowStep("live");
+        snd("click");
+        try {
+          var t =
+            document.querySelector("#online-host .share-box") ||
+            document.getElementById("online-host");
+          if (t && t.scrollIntoView)
+            t.scrollIntoView({ behavior: "smooth", block: "start" });
+        } catch (e) {}
       }
       // Oda kodunu hane hane kutucuklara yazar. Tek yerden geçiyor ki iki
       // farklı çağrı (yeni oda / odaya yeniden bağlanma) ayrışmasın.
@@ -17347,26 +17917,13 @@ function drawResultCard(opts) {
         var l = document.getElementById("host-vote-list");
         l.innerHTML = "";
         l.appendChild(voteHintEl());
-        onlineOpts.forEach((name) => {
-          var r = hostVotes[name] || 0,
-            st = "";
-          for (var i = 1; i <= 5; i++)
-            st +=
-              '<span class="star' +
-              (i <= r ? " on" : "") +
-              '" onclick="setHostStar(\'' +
-              esc(name) +
-              "'," +
-              i +
-              ')">★</span>';
+        onlineOpts.forEach((name, idx) => {
+          var r = hostVotes[name] || 0;
           var d = document.createElement("div");
-          d.className = "oitem";
-          d.innerHTML =
-            '<div class="oitop"><span class="oname">' +
-            name +
-            '</span></div><div class="stars">' +
-            st +
-            "</div>";
+          d.className = kmVoteCardCls(r);
+          d.innerHTML = kmVoteCardHtml(idx, name, r, function (i) {
+            return "setHostStar('" + esc(name) + "'," + i + ")";
+          });
           l.appendChild(d);
         });
         if (!hostVotesSubmitted) {
@@ -17409,7 +17966,9 @@ function drawResultCard(opts) {
       function setHostStar(n, r) {
         if (roomStatus !== "open" || hostVotesSubmitted) return;
         hostVotes[n] = hostVotes[n] === r ? 0 : r;
+        _kmPopName = n;
         renderHostVoteList();
+        _kmPopName = null;
         snd("add");
         if (shareCode)
           db.collection("rooms")
@@ -17699,9 +18258,11 @@ function drawResultCard(opts) {
         if (rstBtn) rstBtn.style.display = "";
         var vnvBtn = document.getElementById("vr-new-vote-btn");
         if (vnvBtn) vnvBtn.style.display = "none";
-        // Hide stale voting UI
-        var hv = document.getElementById("host-vote-section");
-        if (hv) hv.style.display = "none";
+        // Hide stale voting UI — oy bölümü ve "Oylamaya Geç" çubuğu kalkar,
+        // "Odadakiler" listesi kalır (kim oy verdi görünsün).
+        try {
+          hostShowStep("result");
+        } catch (e) {}
         var pl = document.getElementById("participant-list");
         if (pl) pl.style.display = "none";
         var sv = document.getElementById("submit-vote-btn");
@@ -17783,7 +18344,20 @@ function drawResultCard(opts) {
       function newRound() {
         hostVotesSubmitted = false;
         hostVotes = {};
+        // 🔴 SESSİZ KAZANAN BUG'I (kullanıcı bildirdi, 8 Ağu): tbCelebrated YALNIZ
+        // openTb() içinde sıfırlanıyordu, yani yalnız BERABERLİK olan turda.
+        // Bir turda beraberlik çıkıp çark kutlayınca bayrak true kalıyor; sonraki
+        // turda tek kazanan olunca showOnlineWinner "çark zaten kutladı" sanıp
+        // winSound/hSuccess/confetti'yi VE zarfı atlıyordu → kazanan ekranı sessiz.
+        // Bayrağın anlamı "BU sonuç için çark kutladı" → her yeni turda sıfırlanmalı.
+        tbCelebrated = false;
         if (!shareCode) return;
+        /* ⚠️ 8 Ağu KULLANICI BULGUSU: "aynı odada yeni oylama başlatırken
+           seçenekler siliniyor" → host bomboş bir ekranla kalıyordu. Liste yine
+           boş başlar (yeni tur gerçekten YENİ seçeneklerle açılsın diye) ama
+           önceki turun seçenekleri saklanır ve "↩ Geçen turdakiler" çipiyle tek
+           dokunuşla geri gelir; ayrıca Hızlı Başlat rafı da burada. */
+        _kmPrevRoundOpts = (onlineOpts || []).slice();
         newRoundOpts = [];
         renderNROpts();
         document.getElementById("new-round-btn").style.display = "none";
@@ -17792,7 +18366,11 @@ function drawResultCard(opts) {
         var rstb0 = document.getElementById("reset-online-btn");
         if (rstb0) rstb0.style.display = "none";
         document.getElementById("new-round-opts").style.display = "";
-        document.getElementById("host-vote-section").style.display = "none";
+        // Seçenek düzenlenirken oy sahnesi, "Oylamaya Geç" çubuğu ve
+        // "Oylamayı Kapat" kapalı (yeni tur daha başlamadı).
+        hostShowStep("result");
+        var _cvb0 = document.getElementById("close-voting-btn");
+        if (_cvb0) _cvb0.style.display = "none";
         document.getElementById("vr").style.display = "none";
         document.getElementById("tb-modal").classList.remove("on");
         document.getElementById("nro-inp").value = "";
@@ -17833,6 +18411,10 @@ function drawResultCard(opts) {
         // share-box'ı tekrar göster (yeni oda kurulunca lazım)
         var shareBox = document.querySelector("#online-host .share-box");
         if (shareBox) shareBox.style.display = "";
+        // Host adımını da başa al (bir sonraki oda "Oy Ver"de açılmasın)
+        try {
+          hostShowStep("live");
+        } catch (e) {}
         // Seçenek listelerini temizle
         var vol = document.getElementById("vol");
         if (vol) vol.innerHTML = "";
@@ -17844,6 +18426,73 @@ function drawResultCard(opts) {
         snd("click");
       }
 
+      /* Yeni tur seçenek panelinin yardımcıları: geçen turun seçeneklerini
+         geri getirme + Hızlı Başlat rafı. Host'u boş ekranla bırakmamak için. */
+      var _kmPrevRoundOpts = [];
+      function recallPrevRoundOpts() {
+        (_kmPrevRoundOpts || []).forEach(function (o) {
+          if (newRoundOpts.indexOf(o) < 0 && newRoundOpts.length < 14)
+            newRoundOpts.push(o);
+        });
+        renderNROpts();
+        snd("add");
+        hImpact("LIGHT", 25);
+      }
+      function applyNRSuggestion(i) {
+        try {
+          var s = WHEEL_SUGGESTIONS[i];
+          if (!s) return;
+          s.o.forEach(function (o) {
+            if (newRoundOpts.indexOf(o) < 0 && newRoundOpts.length < 14)
+              newRoundOpts.push(o);
+          });
+          renderNROpts();
+          snd("add");
+        } catch (e) {}
+      }
+      function renderNRExtras() {
+        var empty = !newRoundOpts.length;
+        // "↩ Geçen turdakiler" — yalnız liste boşken ve saklı seçenek varken
+        var rec = document.getElementById("nro-recall");
+        var recBtn = document.getElementById("nro-recall-btn");
+        var hasPrev = _kmPrevRoundOpts && _kmPrevRoundOpts.length >= 2;
+        if (rec) rec.style.display = empty && hasPrev ? "" : "none";
+        if (recBtn && hasPrev)
+          recBtn.textContent =
+            "↩ Geçen turdakiler (" + _kmPrevRoundOpts.length + ")";
+        // Hızlı Başlat rafı (çarktakinin aynısı, hedefi newRoundOpts)
+        var wrap = document.getElementById("nro-daily");
+        var ttl = document.getElementById("nro-daily-title");
+        if (!wrap) return;
+        if (!empty || typeof WHEEL_SUGGESTIONS === "undefined") {
+          wrap.style.display = "none";
+          if (ttl) ttl.style.display = "none";
+          return;
+        }
+        var idxs = [];
+        try {
+          idxs = dailySuggestionIndices(4);
+        } catch (e) {
+          wrap.style.display = "none";
+          if (ttl) ttl.style.display = "none";
+          return;
+        }
+        wrap.innerHTML = "";
+        idxs.slice(0, 4).forEach(function (i) {
+          var s = WHEEL_SUGGESTIONS[i];
+          if (!s) return;
+          var b = document.createElement("button");
+          b.className = "wd-chip";
+          b.type = "button";
+          b.textContent = s.e + " " + s.t;
+          b.addEventListener("click", function () {
+            applyNRSuggestion(i);
+          });
+          wrap.appendChild(b);
+        });
+        wrap.style.display = idxs.length ? "" : "none";
+        if (ttl) ttl.style.display = idxs.length ? "" : "none";
+      }
       function renderNROpts() {
         var l = document.getElementById("nro-list");
         if (!l) return;
@@ -17861,6 +18510,9 @@ function drawResultCard(opts) {
             "');renderNROpts()\">×</button>";
           l.appendChild(d);
         });
+        try {
+          renderNRExtras();
+        } catch (e2) {}
       }
 
       function addNROpt() {
@@ -17930,7 +18582,8 @@ function drawResultCard(opts) {
           currentRound++;
           tbAnimKey = "";
           document.getElementById("new-round-opts").style.display = "none";
-          document.getElementById("host-vote-section").style.display = "";
+          // Yeni tur başladı → doğrudan "Oy Ver" adımı (geri okuyla odaya dönülür)
+          hostShowStep("vote");
           document.getElementById("close-voting-btn").style.display = "";
           document.getElementById("vr").style.display = "none";
           document.getElementById("tb-modal").classList.remove("on");
@@ -18125,26 +18778,13 @@ function drawResultCard(opts) {
         if (!l) return;
         l.innerHTML = "";
         l.appendChild(voteHintEl());
-        opts.forEach((name) => {
-          var r = participantVotes[name] || 0,
-            st = "";
-          for (var i = 1; i <= 5; i++)
-            st +=
-              '<span class="star' +
-              (i <= r ? " on" : "") +
-              '" onclick="setPVote(\'' +
-              esc(name) +
-              "'," +
-              i +
-              ')">★</span>';
+        opts.forEach((name, idx) => {
+          var r = participantVotes[name] || 0;
           var d = document.createElement("div");
-          d.className = "oitem";
-          d.innerHTML =
-            '<div class="oitop"><span class="oname">' +
-            name +
-            '</span></div><div class="stars">' +
-            st +
-            "</div>";
+          d.className = kmVoteCardCls(r);
+          d.innerHTML = kmVoteCardHtml(idx, name, r, function (i) {
+            return "setPVote('" + esc(name) + "'," + i + ")";
+          });
           l.appendChild(d);
         });
         kmVoteSync("participant");
@@ -18156,7 +18796,9 @@ function drawResultCard(opts) {
 
       function setPVote(name, r) {
         participantVotes[name] = participantVotes[name] === r ? 0 : r;
+        _kmPopName = name;
         renderParticipant(Object.keys(participantVotes));
+        _kmPopName = null;
         snd("add");
       }
 
@@ -18828,26 +19470,13 @@ function drawResultCard(opts) {
         if (opts && opts.length) roOptOrder = opts.slice();
         var l = document.getElementById("ro-vote-list");
         l.innerHTML = "";
-        opts.forEach((name) => {
-          var r = roVotes[name] || 0,
-            st = "";
-          for (var i = 1; i <= 5; i++)
-            st +=
-              '<span class="star' +
-              (i <= r ? " on" : "") +
-              '" onclick="setRoStar(\'' +
-              esc(name) +
-              "'," +
-              i +
-              ')">★</span>';
+        opts.forEach((name, idx) => {
+          var r = roVotes[name] || 0;
           var d = document.createElement("div");
-          d.className = "oitem";
-          d.innerHTML =
-            '<div class="oitop"><span class="oname">' +
-            name +
-            '</span></div><div class="stars">' +
-            st +
-            "</div>";
+          d.className = kmVoteCardCls(r);
+          d.innerHTML = kmVoteCardHtml(idx, name, r, function (i) {
+            return "setRoStar('" + esc(name) + "'," + i + ")";
+          });
           l.appendChild(d);
         });
         // Maket ekran 3: bilgi kutusu + puan cetveli burada da olsun
@@ -18862,7 +19491,9 @@ function drawResultCard(opts) {
       var roOptOrder = [];
       function setRoStar(n, r) {
         roVotes[n] = roVotes[n] === r ? 0 : r;
+        _kmPopName = n;
         renderRoVoteList(roOptOrder.length ? roOptOrder : Object.keys(roVotes));
+        _kmPopName = null;
         snd("add");
       }
       function sendFeedback() {
@@ -19465,36 +20096,31 @@ function drawResultCard(opts) {
             keys = Object.keys(S.vote);
           l.innerHTML = "";
           e.style.display = keys.length ? "none" : "";
-          keys.forEach((name) => {
-            var r = S.vote[name] || 0,
-              st = "";
-            for (var i = 1; i <= 5; i++)
-              st +=
-                '<span class="star' +
-                (i <= r ? " on" : "") +
-                '" onclick="setStars(\'' +
-                esc(name) +
-                "'," +
-                i +
-                ')">★</span>';
+          keys.forEach((name, idx) => {
+            var r = S.vote[name] || 0;
             var d = document.createElement("div");
-            d.className = "oitem";
+            d.className = kmVoteCardCls(r);
             var removeBtn = masaPeopleConfirmed
               ? ""
               : "<button class=\"rbtn\" onclick=\"removeOpt('vote','" +
                 esc(name) +
                 "')\">×</button>";
-            d.innerHTML =
-              '<div class="oitop"><span class="oname">' +
-              name +
-              "</span>" +
-              removeBtn +
-              '</div><div class="stars">' +
-              st +
-              "</div>";
+            d.innerHTML = kmVoteCardHtml(
+              idx,
+              name,
+              r,
+              function (i) {
+                return "setStars('" + esc(name) + "'," + i + ")";
+              },
+              removeBtn,
+            );
             l.appendChild(d);
           });
           updateVoteUI();
+          // "Bu cihazda" Hızlı Başlat rafı: liste dolunca kendi kendine kapanır
+          try {
+            renderVoteSuggestions();
+          } catch (e) {}
         }
       }
       function sw(m) {
@@ -20063,6 +20689,9 @@ function drawResultCard(opts) {
       );
       bind("create-room-btn", createRoom);
       bind("close-voting-btn", closeVoting);
+      // Host: "Oda yayında" ↔ "Oy Ver" adımları (bkz. hostShowStep)
+      bind("host-go-vote", hostGoVote);
+      bind("host-vote-back", hostBackToRoom);
       bind("new-round-btn", newRound);
       bind("confirm-new-round-btn", confirmNewRound);
       (function () {
@@ -20288,6 +20917,76 @@ function drawResultCard(opts) {
           wrap.appendChild(b);
         });
         wrap.style.display = idxs.length ? "" : "none";
+      }
+      /* ══ "Bu cihazda" (masa) modunun Hızlı Başlat rafı ══
+         Çarktaki #wheel-daily rafının aynısı; applySuggestion yerine oylama
+         listesine (S.vote) ekler. Yalnız masa modunda ve liste boşken görünür —
+         online kurulumda #online-daily zaten var, çift raf olmasın. */
+      function applyVoteSuggestion(i) {
+        try {
+          var s = WHEEL_SUGGESTIONS[i];
+          if (!s) return;
+          var added = 0;
+          s.o.forEach(function (o) {
+            if (!(o in S.vote)) {
+              S.vote[o] = 0;
+              added++;
+            }
+          });
+          var vr0 = document.getElementById("vr");
+          if (vr0) vr0.style.display = "none";
+          render("vote");
+          updateVoteUI();
+          if (added) {
+            snd("add");
+            hImpact("LIGHT", 25);
+          }
+        } catch (e) {}
+      }
+      function renderVoteSuggestions() {
+        var wrap = document.getElementById("vote-daily");
+        var ttl = document.getElementById("vote-daily-title");
+        var card = document.getElementById("cats-vote-wrap");
+        if (!wrap) return;
+        var show =
+          voteMode === "masa" &&
+          !voteClosed &&
+          !Object.keys(S.vote || {}).length &&
+          typeof WHEEL_SUGGESTIONS !== "undefined";
+        if (!show) {
+          wrap.style.display = "none";
+          if (ttl) ttl.style.display = "none";
+          if (card) card.classList.add("vqs-solo");
+          return;
+        }
+        var idxs = [];
+        try {
+          idxs = dailySuggestionIndices(6);
+        } catch (e) {
+          wrap.style.display = "none";
+          if (ttl) ttl.style.display = "none";
+          if (card) card.classList.add("vqs-solo");
+          return;
+        }
+        wrap.innerHTML = "";
+        idxs.slice(0, 6).forEach(function (i, pos) {
+          var s = WHEEL_SUGGESTIONS[i];
+          if (!s) return;
+          var b = document.createElement("button");
+          b.className = "wd-chip" + (pos < 2 ? " hot" : "");
+          b.type = "button";
+          b.style.animationDelay = (0.04 * (pos + 1)).toFixed(2) + "s";
+          b.textContent = s.e + " " + s.t;
+          b.addEventListener("click", function () {
+            applyVoteSuggestion(i);
+          });
+          wrap.appendChild(b);
+        });
+        var any = wrap.children.length > 0;
+        wrap.style.display = any ? "" : "none";
+        if (ttl) ttl.style.display = any ? "" : "none";
+        // Raf doluyken kart artık "tek butonluk" değil → dar padding kalksın
+        if (card) card.classList.toggle("vqs-solo", !any);
       }
       function renderOnlineOpts() {
         var l = document.getElementById("vol");
