@@ -4611,6 +4611,77 @@
         }
       }
 
+      /* ══ OY VERME KARTLARI (onaylanan maketten) ══
+         Eskiden tek satırdı: isim solda, minik yıldızlar sağda. Artık her
+         seçenek bir kart; isim üstte, beş büyük altın yıldız altında tam
+         genişlikte. Parmak hedefi büyüdü, okunurluk arttı.
+         ⚠️ Sınıf adları korundu (.oitem/.oitop/.oname/.stars/.star) →
+         renderHostVoteList ve renderParticipant hiç değişmedi. */
+      .oitem {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 9px;
+        padding: 12px;
+        border-radius: 16px;
+        background: #fff;
+        border: 1.5px solid var(--ac-bd);
+      }
+      .oitem .oname {
+        font-size: 15px;
+        white-space: normal;
+        overflow: visible;
+        text-overflow: clip;
+        overflow-wrap: anywhere;
+      }
+      .oitem .stars {
+        display: flex;
+        gap: 6px;
+        width: 100%;
+      }
+      .oitem .star {
+        flex: 1;
+        text-align: center;
+        font-size: 25px;
+        line-height: 1;
+        padding: 8px 0;
+        border-radius: 12px;
+        background: var(--ac-bg2);
+        color: var(--ac-lll);
+        transition: background 0.15s, color 0.15s, transform 0.12s;
+      }
+      .oitem .star.on {
+        background: linear-gradient(135deg, #fcd34d, #f5a623);
+        color: #fff;
+      }
+      .oitem .star:active {
+        transform: scale(0.9);
+      }
+      /* ══ SONUÇ KAHRAMAN ALANI (onaylanan maketten) ══ */
+      .rcard {
+        border: 0;
+        color: #fff;
+        background: linear-gradient(160deg, var(--ac-dd), var(--ac-d2) 58%, var(--ac));
+        box-shadow: 0 16px 36px -14px rgba(var(--ac-shadow), 0.6);
+      }
+      .rcard .rlbl {
+        color: rgba(255, 255, 255, 0.78);
+      }
+      .rcard .rwin {
+        color: #fff;
+      }
+      .rcard .rsay {
+        color: rgba(255, 255, 255, 0.88);
+      }
+      .rcard .btn.ghost {
+        color: #fff;
+        border-color: rgba(255, 255, 255, 0.35);
+        background: rgba(255, 255, 255, 0.12);
+      }
+      /* Puan dökümü koyu zeminde okunsun */
+      .rcard #v-scores {
+        color: #fff;
+      }
+
       /* ── ODA YAYINDA SAHNESİ (onaylanan maketten) ── */
       .share-box.live-stage {
         position: relative;
