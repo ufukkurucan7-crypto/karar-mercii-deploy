@@ -4611,6 +4611,170 @@
         }
       }
 
+      /* ── ODA YAYINDA SAHNESİ (onaylanan maketten) ── */
+      .share-box.live-stage {
+        position: relative;
+        overflow: hidden;
+        background: linear-gradient(155deg, var(--ac-dd), var(--ac-d2) 58%, var(--ac));
+        border: 0;
+        border-radius: 20px;
+        padding: 15px;
+        text-align: left;
+        color: #fff;
+        box-shadow: 0 12px 28px -12px rgba(var(--ac-shadow), 0.6);
+      }
+      .live-stage::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        opacity: 0.16;
+        pointer-events: none;
+        background-image: linear-gradient(rgba(255, 255, 255, 0.55) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(255, 255, 255, 0.55) 1px, transparent 1px);
+        background-size: 20px 20px;
+        -webkit-mask-image: radial-gradient(ellipse at 25% 0%, #000, transparent 70%);
+        mask-image: radial-gradient(ellipse at 25% 0%, #000, transparent 70%);
+      }
+      .live-stage > * {
+        position: relative;
+      }
+      .ls-top {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+      }
+      .ls-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        font-size: 9.5px;
+        font-weight: 900;
+        letter-spacing: 0.9px;
+        background: var(--coral);
+        padding: 5px 9px;
+        border-radius: 999px;
+      }
+      .ls-dot {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: #fff;
+        animation: sbPulse 1.6s infinite;
+      }
+      .ls-step {
+        font-size: 9.5px;
+        font-weight: 900;
+        letter-spacing: 0.9px;
+        opacity: 0.72;
+      }
+      .ls-title {
+        font-size: 20px;
+        font-weight: 900;
+        letter-spacing: -0.3px;
+        margin-top: 9px;
+        overflow-wrap: anywhere;
+      }
+      .ls-sub {
+        font-size: 11px;
+        font-weight: 700;
+        opacity: 0.78;
+        margin-top: 3px;
+      }
+      /* Kod ve karekod yan yana — masada telefonu uzatmak için */
+      .ls-code-row {
+        display: flex;
+        align-items: flex-start;
+        gap: 10px;
+        margin-top: 13px;
+      }
+      .ls-code-left {
+        flex: 1;
+        min-width: 0;
+      }
+      .live-stage .code-eyebrow {
+        color: rgba(255, 255, 255, 0.72);
+        margin: 0 0 5px;
+        text-align: left;
+      }
+      /* Kod kutucukları koyu zeminde beyaz */
+      .live-stage .share-code.tiles {
+        justify-content: flex-start;
+        margin: 0;
+      }
+      .live-stage .share-code.tiles span {
+        background: rgba(255, 255, 255, 0.94);
+        border: 0;
+        min-width: 38px;
+        font-size: 23px;
+        box-shadow: 0 3px 10px rgba(0, 0, 0, 0.18);
+      }
+      .live-stage .qr-wrap {
+        margin: 0;
+        flex: 0 0 auto;
+        padding: 7px 7px 4px;
+        border: 0;
+      }
+      .live-stage .qr-wrap canvas {
+        width: 96px;
+        height: 96px;
+      }
+      .ls-actions {
+        display: flex;
+        gap: 7px;
+        margin-top: 13px;
+      }
+      .ls-btn {
+        flex: 1;
+        padding: 11px 6px;
+        border-radius: 12px;
+        cursor: pointer;
+        font-family: inherit;
+        font-size: 12.5px;
+        font-weight: 800;
+        color: #fff;
+        border: 1.5px solid rgba(255, 255, 255, 0.28);
+        background: rgba(255, 255, 255, 0.14);
+      }
+      .ls-btn:active {
+        transform: scale(0.96);
+      }
+      /* Sayaçlar koyu zemine uyarlanır */
+      .live-stage .room-stats {
+        margin: 12px 0 0;
+      }
+      .live-stage .rstat {
+        background: rgba(0, 0, 0, 0.18);
+        border: 0;
+      }
+      .live-stage .rstat-l {
+        color: rgba(255, 255, 255, 0.7);
+      }
+      .live-stage .rstat-v {
+        color: #fff;
+      }
+
+      /* Beyaz alandaki bölüm kartı (Odadakiler vb.) */
+      .card-sec {
+        background: var(--ac-bg2);
+        border: 1.5px solid var(--ac-bd);
+        border-radius: 16px;
+        padding: 12px;
+        margin-bottom: 12px;
+      }
+      .card-sec-hd {
+        margin-bottom: 8px;
+      }
+      .card-sec-t {
+        font-size: 10px;
+        font-weight: 900;
+        letter-spacing: 0.9px;
+        color: var(--ac);
+      }
+      .card-sec .pname-list {
+        margin: 0;
+      }
+
       /* ── ODA KURULUM SAHNESİ (onaylanan maketten) ── */
       .setup-stage {
         position: relative;
@@ -6410,25 +6574,36 @@
             </div>
             <!-- Host view -->
             <div id="online-host" style="display: none">
-              <div class="share-box">
-                <p
-                  style="font-size: 12px; font-weight: 800; color: var(--ac-d)"
-                  id="room-title-display"
-                >
-                  Oda hazır!
-                </p>
-                <div class="code-eyebrow">🔑 ODA KODU</div>
-                <div class="share-code" id="share-code">----</div>
-                <!-- Karekod: masada oturan arkadaşlar kod yazmadan katılsın.
-                     KM_QR ile yerel üretiliyor (dış servis/istek YOK). -->
-                <div class="qr-wrap" id="qr-wrap" style="display: none">
-                  <canvas id="room-qr" width="140" height="140"></canvas>
-                  <div class="qr-cap">Okut ve katıl</div>
+              <!-- ODA YAYINDA — onaylanan maketin kompozisyonu.
+                   .share-box sinifi KORUNDU: sonuc ekraninda bu kutuyu gizleyen
+                   kod (#online-host .share-box) aynen calismaya devam etsin. -->
+              <div class="share-box live-stage">
+                <div class="ls-top">
+                  <span class="ls-badge"><span class="ls-dot"></span> Yayında</span>
+                  <span class="ls-step">Adım 2 / 2</span>
                 </div>
-                <p class="code-help">Kod, karekod ya da bağlantıyla katılırlar</p>
-                <!-- 8 Ağu: dağınık duran süre ve oy bilgisi tek bakışta okunan
-                     üçlü sayaca alındı. Eleman id'leri korundu → startTimer ve
-                     oda dinleyicisi aynen çalışıyor. -->
+                <div class="ls-title" id="room-title-display">Oda hazır!</div>
+                <div class="ls-sub">Kod, karekod ya da bağlantıyla katılırlar</div>
+
+                <div class="ls-code-row">
+                  <div class="ls-code-left">
+                    <div class="code-eyebrow">Oda kodu</div>
+                    <div class="share-code" id="share-code">----</div>
+                  </div>
+                  <!-- Karekod yerel uretiliyor (KM_QR), dis servise istek yok -->
+                  <div class="qr-wrap" id="qr-wrap" style="display: none">
+                    <canvas id="room-qr" width="140" height="140"></canvas>
+                    <div class="qr-cap">Okut ve katıl</div>
+                  </div>
+                </div>
+
+                <div class="ls-actions">
+                  <button class="ls-btn" id="whatsapp-btn">
+                    <svg class="ic ic-t" viewBox="0 0 24 24"><use href="#i-share"/></svg> Paylaş
+                  </button>
+                  <button class="ls-btn" id="copy-link-btn">🔗 Linki Kopyala</button>
+                </div>
+
                 <div class="room-stats">
                   <div class="rstat">
                     <div class="rstat-l">Katıldı</div>
@@ -6436,34 +6611,20 @@
                   </div>
                   <div class="rstat">
                     <div class="rstat-l">Kalan süre</div>
-                    <div
-                      id="host-timer"
-                      class="timer-bar rstat-v"
-                      style="display: none"
-                    ></div>
+                    <div id="host-timer" class="timer-bar rstat-v" style="display: none"></div>
                   </div>
                   <div class="rstat">
                     <div class="rstat-l">Oy</div>
                     <div class="rstat-v" id="participant-count">0 / 0</div>
                   </div>
                 </div>
-                <div id="participant-names" class="pname-list"></div>
-                <div
-                  style="
-                    display: flex;
-                    gap: 8px;
-                    justify-content: center;
-                    flex-wrap: wrap;
-                    margin-top: 8px;
-                  "
-                >
-                  <button class="share-copy" id="whatsapp-btn">
-                    <svg class="ic ic-t" viewBox="0 0 24 24"><use href="#i-share"/></svg> Paylaş
-                  </button>
-                  <button class="share-copy" id="copy-link-btn">
-                    🔗 Linki Kopyala
-                  </button>
+              </div>
+
+              <div class="card-sec">
+                <div class="card-sec-hd">
+                  <span class="card-sec-t">Odadakiler</span>
                 </div>
+                <div id="participant-names" class="pname-list"></div>
               </div>
               <div id="host-vote-section">
                 <p class="lbl">Senin Oyun</p>
@@ -14762,8 +14923,7 @@ function drawResultCard(opts) {
           var _vrCard = document.getElementById("vr");
           if (_vrCard) _vrCard.style.display = "none";
           renderShareCode(code);
-          document.getElementById("room-title-display").textContent =
-            name + " — Oda açık";
+          document.getElementById("room-title-display").textContent = name;
           renderHostVoteList();
           listenRoomAsHost(code);
           setVoteStep(3); // online oda açıldı → adım göstergesi "Oyla"ya geç
@@ -14843,7 +15003,7 @@ function drawResultCard(opts) {
           if (_vrCard) _vrCard.style.display = "none";
           renderShareCode(code);
           document.getElementById("room-title-display").textContent =
-            (data.name || "Oylama") + " — Oda açık";
+            data.name || "Oylama";
           renderHostVoteList();
           listenRoomAsHost(code);
           setVoteStep(3);
