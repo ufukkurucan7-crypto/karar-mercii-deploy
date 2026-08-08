@@ -4901,6 +4901,128 @@
       html.tour-lock body {
         overflow: hidden !important;
       }
+
+      /* ═══ MOD İPUCU BALONCUĞU (kmModeHint) ═══
+         Bir moda İLK girişte tek seferlik çıkan küçük baloncuk. Tur DEĞİL:
+         ekranı karartmaz, zincirlemez, "Anladım"a basınca localStorage'a
+         bayrak yazılır ve bir daha çıkmaz (kmHint_<mod>).
+         ⚠️ Sekme çubuğu position:fixed + z-index:60 → baloncuk 61+ olmalı ama
+         tur (399999) ve modallerin ALTINDA kalmalı. */
+      .km-hint {
+        position: fixed;
+        z-index: 900;
+        width: min(88vw, 330px);
+        background: #fff;
+        border: 1.5px solid var(--ac-bd);
+        border-radius: 18px;
+        padding: 13px 14px 11px;
+        box-shadow:
+          0 2px 6px rgba(var(--ac-shadow), 0.1),
+          0 14px 40px -12px rgba(var(--ac-shadow), 0.45);
+        font-family: "Nunito", sans-serif;
+        animation: kmHintIn 0.26s cubic-bezier(0.34, 1.56, 0.64, 1);
+      }
+      .km-hint-row {
+        display: flex;
+        align-items: flex-start;
+        gap: 10px;
+      }
+      .km-hint-av {
+        flex: 0 0 auto;
+        width: 42px;
+        display: flex;
+        justify-content: center;
+      }
+      .km-hint-tx {
+        flex: 1 1 auto;
+        min-width: 0;
+        font-size: 12.5px;
+        font-weight: 700;
+        line-height: 1.55;
+        color: #3b0764;
+      }
+      .km-hint-tx b {
+        font-weight: 900;
+        color: var(--ac-d2);
+      }
+      .km-hint-ok {
+        display: block;
+        width: 100%;
+        margin-top: 10px;
+        padding: 9px;
+        border: none;
+        border-radius: 12px;
+        background: linear-gradient(135deg, var(--ac), var(--ac-l));
+        color: #fff;
+        font-family: "Nunito", sans-serif;
+        font-size: 13px;
+        font-weight: 900;
+        cursor: pointer;
+        transition: transform 0.12s;
+      }
+      .km-hint-ok:active {
+        transform: scale(0.97);
+      }
+      /* Oka ait üçgen — baloncuğun hedefe baktığı taraf */
+      .km-hint::after {
+        content: "";
+        position: absolute;
+        left: var(--km-hint-ax, 50%);
+        width: 12px;
+        height: 12px;
+        margin-left: -6px;
+        background: #fff;
+        border: 1.5px solid var(--ac-bd);
+        transform: rotate(45deg);
+      }
+      .km-hint.km-below::after {
+        top: -7px;
+        border-right: none;
+        border-bottom: none;
+      }
+      .km-hint.km-above::after {
+        bottom: -7px;
+        border-left: none;
+        border-top: none;
+      }
+      /* Hedef ekrandan uzun (ör. boş çark kartı) → baloncuk alta sabitlenir,
+         ok bir yeri göstermediği için gizlenir. */
+      .km-hint.km-noarrow::after {
+        display: none;
+      }
+      @keyframes kmHintIn {
+        from {
+          opacity: 0;
+          transform: translateY(8px) scale(0.94);
+        }
+        to {
+          opacity: 1;
+          transform: none;
+        }
+      }
+      html.dark .km-hint {
+        background: #1c1630;
+        border-color: #3a2f55;
+      }
+      html.dark .km-hint::after {
+        background: #1c1630;
+        border-color: #3a2f55;
+      }
+      html.dark .km-hint-tx {
+        color: #cbc3e0;
+      }
+      html.dark .km-hint-tx b {
+        color: #f2eefc;
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .km-hint {
+          animation: none;
+        }
+        .km-hint-ok:active {
+          transform: none;
+        }
+      }
+
       .vote-mode-btn {
         padding: 12px 12px;
         background: var(--ac-bg);
@@ -11099,10 +11221,13 @@
         var aiWall = document.getElementById("ai-login-wall");
         var aiContent = document.getElementById("ai-content");
         var logoutBtn = document.getElementById("mi-logout");
+        // Apple 5.1.1(v): silme yalnız hesabı OLAN kullanıcıya gösterilir.
+        var delAccBtn = document.getElementById("mi-delete-account");
         if (currentUser) {
           if (profileWrap) profileWrap.style.display = "flex";
           if (signInItem) signInItem.style.display = "none";
           if (logoutBtn) logoutBtn.style.display = "";
+          if (delAccBtn) delAccBtn.style.display = currentUser.isAnonymous ? "none" : "";
           // Giriş yapınca her zaman AI içeriği göster, login duvarını gizle
           if (aiWall) aiWall.style.display = "none";
           if (aiContent) aiContent.style.display = "";
@@ -11127,7 +11252,17 @@
           // Konum artık açılışta İSTENMEZ — sadece sohbette mekan sorulunca,
           // kullanıcı onay butonuna basınca taze konum alınır (merciNearby).
         } else {
-          profileWrap.style.display = "none";
+          // 🔴 KORUMASIZDI (8 Ağu): #menu-profile-wrap DOM'da HİÇ YOK — tek geçtiği
+          // yer bu JS. Misafir menüyü her açtığında burada TypeError atılıyor,
+          // updateAuthUI YARIDA KESİLİYORDU → altındaki signInItem/logoutBtn/
+          // aiWall/aiContent ayarlarının HİÇBİRİ çalışmıyordu. Merci turunun
+          // bozuk olmasının da sebebi buydu.
+          // ⚠️ Guard'ı eklemek davranışı DEĞİŞTİRİR ve bu KASITLI: artık misafir
+          // Merci sekmesinde giriş duvarını görecek. Doğrusu bu — sunucu AI için
+          // Google girişini ZORUNLU kılıyor (anonim token authAndQuota'da 401),
+          // yani duvarsız hâlde misafir yazıp ancak hatayla karşılaşıyordu.
+          if (profileWrap) profileWrap.style.display = "none";
+          if (delAccBtn) delAccBtn.style.display = "none";
           if (signInItem) signInItem.style.display = "flex";
           if (logoutBtn) logoutBtn.style.display = "none";
           if (aiWall) aiWall.style.display = "";
@@ -13813,7 +13948,10 @@ function drawResultCard(opts) {
 
       // ═══════════════════ TUTORIAL ═══════════════════
       // ══════════ İNTERAKTİF TUR (maskot + balon + spotlight, sekmeleri gezdirir) ══════════
-      function startInteractiveTour(force) {
+      // ⚠️ 2. parametre (customSteps) verilirse motor UZUN turun adımları yerine
+      //    o diziyi oynatır → 3 adımlık kısa açılış turu (startQuickTour) aynı
+      //    balon/spotlight/scroll-kilidi motorunu kullanır, kod ikizlenmez.
+      function startInteractiveTour(force, customSteps) {
         // Sadece ANA EKRAN (sekmeler görünür) durumunda çalış — login/onboarding'de DEĞİL.
         var firstTab = document.querySelector('.tab[data-tab="wheel"]');
         if (!firstTab || !firstTab.offsetParent) {
@@ -13836,7 +13974,7 @@ function drawResultCard(opts) {
             return '<div style="font-size:46px">🐙</div>';
           }
         }
-        var steps = [
+        var steps = customSteps || [
           {
             pose: "chat",
             title: "Selam, ben Merci! 🐙",
@@ -14030,13 +14168,18 @@ function drawResultCard(opts) {
             tab: "vote",
             // 8 Ağu: açılır pencere kaldırıldı, kurulum tek ekranda → selektör
             // ve metin buna göre güncellendi (tur eski ekranı anlatmasın).
-            sel: "#online-setup",
+            // ⚠️ Eskiden sel "#online-setup" idi: panel ~1200px, spotlight tüm
+            //    ekranı kaplayıp hiçbir şeyi işaret etmiyordu. #create-room-btn de
+            //    OLMAZ — o buton `position:sticky` bir dock'un içinde, kaydırınca
+            //    ekrana yapışık kaldığı için scrollIntoView hedefi yakalayamıyor.
+            //    Panelin tepesindeki özet kart (~255px) doğru hedef.
+            sel: "#online-setup .km-stage",
             settle: 380,
             pose: "default",
             title: "📡 Oda Oluştur",
             // 8 Ağu: oda yayına girince oy sahnesi ARTIK altta açılmıyor, ayrı
             // adım oldu (bkz. hostShowStep) → tur bu iki adımı da anlatsın.
-            body: "Adını, oda adını, <b>kaç kişi</b> olacağını ve <b>süreyi</b> seç; hemen altına da seçenekleri ekle. <b>Odayı Oluştur</b>'a basınca çıkan <b>4 haneli kodu</b> paylaş — arkadaşların katılsın! Sen de oy vermek istediğinde alttaki <b>★ Oylamaya Geç</b> düğmesine bas; <b>‹</b> ile oda ekranına dönersin.",
+            body: "Formda adını, oda adını, <b>kaç kişi</b> olacağını ve <b>süreyi</b> seç; seçenekleri de ekle. Hazır olunca <b>Odayı Oluştur</b>'a bas — çıkan <b>4 haneli kodu</b> paylaş, arkadaşların katılsın! Sen de oy vermek istediğinde <b>★ Oylamaya Geç</b> düğmesine bas; <b>‹</b> ile oda ekranına dönersin.",
             skipIf: function () {
               return tourVoteBusy();
             },
@@ -14089,7 +14232,12 @@ function drawResultCard(opts) {
             body: "Ne yesek, nereye gitsek, ne izlesek… durumunu anlat, sana en iyi seçenekleri öneririm. Kararsız kalırsan senin için seçerim 🐙",
             open: function () {
               if (!currentUser) {
-                this.sel = "#ai-login-wall";
+                // ⚠️ #ai-login-wall her zaman görünür DEĞİL (giriş duvarı yerine
+                //    kota kartı çıkabiliyor) → gizliyse spotlight ölçülemeyip tur
+                //    o adımda komple karartmaya düşüyordu. Görünürse onu, değilse
+                //    her durumda ekranda olan hero'yu hedefle.
+                var _w = document.getElementById("ai-login-wall");
+                this.sel = _w && _w.offsetParent ? "#ai-login-wall" : ".merci-ai-hero";
                 this.body =
                   "Merci'ye danışmak için <b>Google ile giriş</b> yeterli — <b>kısa bir reklam izle, 4 mesaj</b> kazan! (PRO'da günde 50 mesaj, reklamsız.) Girince 'ne yesem, nereye gitsem' diye sorabilir, yakındaki mekan önerisi alabilirsin.";
               } else {
@@ -14414,24 +14562,247 @@ function drawResultCard(opts) {
         }
         render();
       }
+      // ══════════ KISA AÇILIŞ TURU — 3 ADIM ══════════
+      // 8 Ağu kararı: ana ekran 2×2 hub oldu ve her kartın altında zaten tek
+      // satır açıklama var ("Kararı şansa bırak" vb.) → 24 adımlık tur ilk
+      // açılışta ARTIK OTOMATİK BAŞLAMIYOR. Yerine 3 adım: hub / alt sekmeler /
+      // menü. Uzun tur SİLİNMEDİ, ☰ Menü → "Nasıl kullanılır"da duruyor.
+      // ⚠️ Adım sayısını büyütme; mod anlatımı kmModeHint (mod başına tek
+      //    seferlik baloncuk) işine bırakıldı, zincirleme tur YOK.
+      function kmQuickTourSteps() {
+        return [
+          {
+            sel: "#km-hub .km-grid4",
+            settle: 300,
+            pose: "chat",
+            title: "Selam, ben Merci! 🐙",
+            body: "Karar vermenin <b>dört yolu</b> var: <b>Çark</b>, <b>Oylama</b>, <b>Çekiliş</b> ve <b>ben</b>. Kartın altındaki yazı ne işe yaradığını söylüyor — dokun, hemen başlayalım.",
+            open: function () {
+              try {
+                _doSw(null);
+              } catch (e) {}
+            },
+          },
+          {
+            sel: ".tabs",
+            settle: 220,
+            pose: "default",
+            title: "⬇️ Dört yol hep elinin altında",
+            body: "Aynı dört mod <b>ekranın altındaki çubukta</b> da duruyor. İstediğin an tek dokunuşla geçebilirsin; başlıktaki <b>‹</b> seni bu ana ekrana geri getirir.",
+          },
+          {
+            sel: "#menu-btn",
+            settle: 200,
+            pose: "glasses",
+            title: "☰ Menü burada",
+            body: "Ayarlar (karanlık mod, ses, titreşim), <b>karar geçmişin</b>, PRO ve <b>Nasıl kullanılır</b> — her şeyi ayrıntılı anlattığım uzun tur — bu menüde. Hazırsan başlayalım! 🎉",
+          },
+        ];
+      }
+      function startQuickTour() {
+        // force=true: kendi hazır-olma kontrolümüzü showTutorialIfNeeded yaptı,
+        // motorun sekme guard'ına takılmasın (eski "hiç açılmama" tuzağı).
+        startInteractiveTour(true, kmQuickTourSteps());
+      }
+      window.startQuickTour = startQuickTour;
       function showTutorialIfNeeded() {
         if (localStorage.getItem("kmTutDone")) return;
-        // İLK AÇILIŞ TETİK: Auto çağrı, ana ekran (sekmeler) hazır değilken
-        // startInteractiveTour'un guard'ına takılıp SESSİZCE dönüyor ve bir daha
-        // denemiyordu (12853 → 2sn'de fire, kullanıcı hâlâ onboarding'de → tur asla
-        // açılmıyordu). Ana ekran görünür olana kadar bekle, hazır olunca başlat.
+        // İLK AÇILIŞ TETİK: eskiden '.tab[data-tab="wheel"]'.offsetParent
+        // bekleniyordu ve guard'a takılıp tur SESSİZCE hiç açılmıyordu.
+        // Artık tek ölçüt ana ekranın açık olması; hub'ı turun 1. adımı
+        // (_doSw(null)) zaten kendisi açıyor.
         var _tries = 0;
         (function _waitMain() {
           if (localStorage.getItem("kmTutDone")) return; // başka tetik başlattı → dur
           if (document.getElementById("km-tour")) return; // tur zaten açık
-          var ft = document.querySelector('.tab[data-tab="wheel"]');
-          if (ft && ft.offsetParent) {
-            startInteractiveTour();
+          var main = document.getElementById("scr-main");
+          if (main && main.classList.contains("on")) {
+            startQuickTour();
             return;
           }
-          if (_tries++ < 120) setTimeout(_waitMain, 500); // ~60sn ana ekranı bekle
+          if (_tries++ < 150) setTimeout(_waitMain, 400); // ~60sn ana ekranı bekle
         })();
       }
+
+      // ══════════ MOD İPUCU — mod başına TEK SEFERLİK baloncuk ══════════
+      // Uzun tur ilk açılıştan kalktı; her modun "nasıl başlanır" bilgisi
+      // artık o moda İLK girişte tek bir baloncukla veriliyor.
+      // ⚠️ Zincirleme tur DEĞİL: ekranı karartmaz, "İleri" yoktur, gösterildiği
+      //    anda localStorage'a bayrak yazılır (kmHint_<mod>) → bir daha çıkmaz.
+      // ⚠️ Modal/paywall/tur açıkken gösterme VE bayrağı da yazma → ipucu
+      //    kullanıcıya görünmeden harcanmasın.
+      var KM_HINTS = {
+        wheel: {
+          sel: "#wheel-empty-card",
+          alt: "#s-wheel .irow",
+          pose: "default",
+          tx: "Seçenekleri yaz ve <b>+</b> ile ekle, sonra çarkı çevir. Aklında bir şey yoksa <b>⚡ Hızlı Başlat</b>'tan hazır konu seç ya da <b>✨ Merci doldursun</b> de.",
+        },
+        vote: {
+          sel: "#vote-mode-select",
+          alt: "#vote-steps",
+          pose: "default",
+          tx: "Önce <b>nasıl oylayacağınızı</b> seç: <b>Bu Cihazda</b> tek telefon elden ele geçer, <b>Çevrim İçi</b>'de herkes kendi telefonundan yıldız verir.",
+        },
+        cekilis: {
+          sel: "#s-cekilis .irow",
+          alt: "#s-cekilis",
+          pose: "celebrate",
+          tx: "İsimleri tek tek ekle, sonra <b>Çekilişi Başlat</b>'a bas — talihliyi canlı animasyonla ben çekeyim 🎉",
+        },
+        ai: {
+          sel: ".merci-ai-hero",
+          alt: "#ai-login-wall",
+          pose: "glasses",
+          tx: "Durumunu kendi cümlelerinle yaz ya da hazır sorulardan birine dokun. <b>Konum izni</b> verirsen yakındaki mekânları da getiririm 🐙",
+        },
+      };
+      var _kmHintEl = null;
+      var _kmHintOff = null;
+      function kmHintClose() {
+        try {
+          if (_kmHintOff) _kmHintOff();
+        } catch (e) {}
+        _kmHintOff = null;
+        try {
+          if (_kmHintEl && _kmHintEl.parentNode)
+            _kmHintEl.parentNode.removeChild(_kmHintEl);
+        } catch (e) {}
+        _kmHintEl = null;
+      }
+      window.kmHintClose = kmHintClose;
+      function kmHintSvg(p, w) {
+        try {
+          if (p === "chat") return merciSVGChat(w);
+          if (p === "think") return merciSVGThink(w);
+          if (p === "celebrate") return merciSVGCelebrate(w);
+          if (p === "glasses") return merciSVGGlasses(w);
+          return merciSVG(w);
+        } catch (e) {
+          return '<div style="font-size:30px">🐙</div>';
+        }
+      }
+      function kmModeHint(mode) {
+        var h = KM_HINTS[mode];
+        if (!h) return;
+        var key = "kmHint_" + mode;
+        try {
+          if (localStorage.getItem(key)) return;
+        } catch (e) {
+          return;
+        }
+        if (kmMode !== mode) return; // kullanıcı bu arada başka moda geçti
+        if (document.getElementById("km-tour")) return; // tur oynuyor
+        try {
+          if (typeof KM_AD !== "undefined" && KM_AD.anyModalOpen && KM_AD.anyModalOpen())
+            return;
+        } catch (e) {}
+        // Merci sekmesi kota kapısına düşecekse (paywall açılıyor) ipucunu harcama
+        if (mode === "ai") {
+          try {
+            if (!isPremium && getRemainingTopics() <= 0) return;
+          } catch (e) {}
+        }
+        var target =
+          document.querySelector(h.sel) ||
+          (h.alt ? document.querySelector(h.alt) : null);
+        if (!target || !target.offsetParent) return;
+        var r0 = target.getBoundingClientRect();
+        if (!r0.width || !r0.height) return;
+        kmHintClose();
+        var el = document.createElement("div");
+        el.className = "km-hint km-below";
+        el.setAttribute("role", "status");
+        el.innerHTML =
+          '<div class="km-hint-row"><div class="km-hint-av">' +
+          kmHintSvg(h.pose, 40) +
+          '</div><div class="km-hint-tx">' +
+          h.tx +
+          "</div></div>" +
+          '<button type="button" class="km-hint-ok">Anladım</button>';
+        document.body.appendChild(el);
+        _kmHintEl = el;
+        try {
+          localStorage.setItem(key, "1"); // gösterildi → bir daha çıkmaz
+        } catch (e) {}
+        function place() {
+          if (!_kmHintEl) return;
+          var r = target.getBoundingClientRect();
+          var adB = 0;
+          try {
+            adB =
+              parseFloat(
+                getComputedStyle(document.documentElement).getPropertyValue(
+                  "--ad-bottom",
+                ),
+              ) || 0;
+          } catch (e) {}
+          // Alt sekme çubuğu (dock) fixed → baloncuk onun ARKASINA düşmesin.
+          var dockH = 0;
+          try {
+            var _tb = document.querySelector(".tabs");
+            if (_tb && _tb.offsetParent)
+              dockH = _tb.getBoundingClientRect().height;
+          } catch (e) {}
+          var vh = window.innerHeight - adB - dockH; // kullanılabilir alt sınır
+          var bw = el.offsetWidth,
+            bh = el.offsetHeight,
+            m = 10;
+          var cx = r.left + r.width / 2;
+          var left = Math.min(
+            Math.max(m, cx - bw / 2),
+            Math.max(m, window.innerWidth - m - bw),
+          );
+          // Hedef ekranın yarısından uzunsa (boş çark kartı gibi) ok bir yeri
+          // göstermez → baloncuğu dock'un hemen üstüne sabitle, oku gizle.
+          var tall = r.height > vh * 0.5;
+          var below = r.top < vh * 0.45;
+          var top = below ? r.bottom + 12 : r.top - 12 - bh;
+          if (!below && top < m) {
+            below = true;
+            top = r.bottom + 12;
+          }
+          if (tall || top + bh > vh - m) {
+            top = Math.max(m, vh - m - bh);
+            if (tall) below = false;
+          }
+          el.style.left = left + "px";
+          el.style.top = top + "px";
+          el.classList.toggle("km-noarrow", !!tall);
+          el.classList.toggle("km-below", !tall && below);
+          el.classList.toggle("km-above", !tall && !below);
+          el.style.setProperty(
+            "--km-hint-ax",
+            Math.min(Math.max(16, cx - left), Math.max(16, bw - 16)) + "px",
+          );
+        }
+        place();
+        requestAnimationFrame(place); // yazı tipi/SVG yerleşince yeniden ölç
+        var onScroll = function () {
+          place();
+        };
+        var onOutside = function (ev) {
+          if (_kmHintEl && !_kmHintEl.contains(ev.target)) kmHintClose();
+        };
+        window.addEventListener("scroll", onScroll, true);
+        window.addEventListener("resize", onScroll);
+        // Dışarı dokunuş kapatır ama olayı YUTMAZ (uygulama normal çalışır)
+        setTimeout(function () {
+          document.addEventListener("pointerdown", onOutside, true);
+        }, 0);
+        _kmHintOff = function () {
+          window.removeEventListener("scroll", onScroll, true);
+          window.removeEventListener("resize", onScroll);
+          document.removeEventListener("pointerdown", onOutside, true);
+        };
+        el.querySelector(".km-hint-ok").onclick = function () {
+          try {
+            hImpact("LIGHT", 10);
+          } catch (e) {}
+          kmHintClose();
+        };
+      }
+      window.kmModeHint = kmModeHint;
       function _deadOldTutorial() {
         var overlay = document.createElement("div");
         overlay.id = "tutorial-overlay";
@@ -20895,6 +21266,10 @@ function drawResultCard(opts) {
       }
       function _doSw(m) {
         var _hub = document.getElementById("km-hub");
+        // Ekran değişiyor → açık kalmış mod ipucu baloncuğunu kapat
+        try {
+          kmHintClose();
+        } catch (e) {}
         // ── HUB (hiçbir sekme açık değil) ──
         if (kmIsHub(m)) {
           kmMode = null;
@@ -20974,6 +21349,13 @@ function drawResultCard(opts) {
             gentleFloat("vote-hero-merci");
           }
         }
+        // Bu moda İLK giriş → tek seferlik ipucu baloncuğu (kmModeHint).
+        // Gecikme: bölüm animasyonu + scrollTo(0,0) otursun, ölçüm doğru olsun.
+        setTimeout(function () {
+          try {
+            kmModeHint(m);
+          } catch (e) {}
+        }, 620);
         snd("click");
       }
 
@@ -22599,6 +22981,67 @@ function drawResultCard(opts) {
             signOut();
           });
 
+        // ── HESABI SİL (Apple 5.1.1(v)) ──
+        // Sunucu ucu: POST /delete-account (users/{uid}, decisions/{uid}/history,
+        // günlük sayaçlar ve Auth kaydı silinir). Odalar KORUNUR — paylaşılan veri.
+        // ⚠️ İki aşamalı onay: Apple tek tık silmeyi sevmiyor, kullanıcı da
+        // yanlışlıkla basabiliyor. İkinci adımda ne silineceği AÇIKÇA yazıyor.
+        var miDelAcc = document.getElementById("mi-delete-account");
+        if (miDelAcc)
+          miDelAcc.addEventListener("click", async function () {
+            if (!currentUser || currentUser.isAnonymous) return;
+            if (
+              !confirm(
+                "Hesabını kalıcı olarak silmek istiyor musun?\n\n" +
+                  "Silinecekler:\n" +
+                  "• Hesabın ve giriş bilgilerin\n" +
+                  "• Karar geçmişin\n" +
+                  "• Merci kullanım sayaçların\n\n" +
+                  "Bu işlem GERİ ALINAMAZ.",
+              )
+            )
+              return;
+            if (
+              !confirm(
+                "Son kez soruyorum: hesabın ve tüm karar geçmişin silinsin mi?",
+              )
+            )
+              return;
+            miDelAcc.disabled = true;
+            var _old = miDelAcc.textContent;
+            miDelAcc.textContent = "Siliniyor…";
+            try {
+              var _tk = await currentUser.getIdToken();
+              var r = await fetch("/delete-account", {
+                method: "POST",
+                headers: { Authorization: "Bearer " + _tk },
+              });
+              var d = await r.json().catch(function () {
+                return {};
+              });
+              if (!r.ok) throw new Error(d.error || "Silinemedi");
+              closeMenu();
+              alert("Hesabın silindi. Görüşmek üzere! 🐙");
+              // ⚠️ signOut() ÇAĞIRMA — o "Çıkış yapılsın mı?" onayı açıyor;
+              // hesap zaten silinmişken kullanıcıya sormak anlamsız ve "Hayır"
+              // derse geçersiz oturumla açık kalır. İçindeki işi doğrudan yap.
+              try {
+                localStorage.clear();
+                sessionStorage.clear();
+              } catch (e) {}
+              try {
+                await auth.signOut();
+              } catch (e) {}
+              window.location.reload();
+            } catch (e) {
+              // ⚠️ Dar mesaj: sunucu 401 dönerse "giriş yap", 503 dönerse
+              // "sonra dene" diyor. Kullanıcıya çözemeyeceği eylem önerme.
+              alert(e.message || "Hesap şu an silinemedi, birazdan tekrar dene.");
+              miDelAcc.disabled = false;
+              miDelAcc.textContent = _old;
+            }
+          });
+
         // (Oda kurulumu açılır pencere değil artık — dışarı tık dinleyicisi kaldırıldı.)
 
         // ── YILDIZ PUANLAMA ──
@@ -22792,6 +23235,17 @@ function drawResultCard(opts) {
           style="display: none; border-top: 2px solid var(--ac-bg)"
         >
           <span class="menu-item-icon"><svg class="ic" viewBox="0 0 24 24"><use href="#i-logout"/></svg></span> Çıkış Yap
+        </button>
+        <!-- HESABIMI SİL — Apple Kural 5.1.1(v). Hesap oluşturulabilen uygulama,
+             silmeyi de UYGULAMA İÇİNDEN başlatabilmek ZORUNDA; delete-account.html
+             ("bize e-posta atın") YETMİYOR, Apple bunu düzenli reddediyor.
+             Yalnız giriş yapmış kullanıcıda görünür (updateAuthUI yönetiyor). -->
+        <button
+          class="menu-item"
+          id="mi-delete-account"
+          style="display: none; color: #d9534f"
+        >
+          <span class="menu-item-icon"><svg class="ic" viewBox="0 0 24 24"><use href="#i-trash"/></svg></span> Hesabımı Sil
         </button>
       </div>
     </div>
