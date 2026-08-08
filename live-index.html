@@ -4656,6 +4656,37 @@
       .oitem .star:active {
         transform: scale(0.9);
       }
+      /* Seçili puanın adı — JS'e dokunmadan, :has() ile.
+         Kurallar artan sırada; 4 yıldız seçiliyse 1..4 kuralı da eşleşir ama
+         SON eşleşen kazanır, yani her zaman en yüksek yıldızın adı görünür.
+         Uygulamadaki BEŞ ayrı yıldız listesinde birden çalışır.
+         :has() desteklemeyen eski tarayıcıda etiket görünmez, yıldızlar
+         normal çalışır — zararsız düşüş. */
+      .oitem::after {
+        display: block;
+        text-align: right;
+        font-size: 11px;
+        font-weight: 900;
+        letter-spacing: 0.3px;
+        color: #d98800;
+        margin-top: -2px;
+      }
+      .oitem:has(.star.on:nth-of-type(1))::after {
+        content: "Olmaz";
+      }
+      .oitem:has(.star.on:nth-of-type(2))::after {
+        content: "Pek değil";
+      }
+      .oitem:has(.star.on:nth-of-type(3))::after {
+        content: "Olur";
+      }
+      .oitem:has(.star.on:nth-of-type(4))::after {
+        content: "İyi";
+      }
+      .oitem:has(.star.on:nth-of-type(5))::after {
+        content: "Bu!";
+      }
+
       /* ══ SONUÇ KAHRAMAN ALANI (onaylanan maketten) ══ */
       .rcard {
         border: 0;
@@ -6561,12 +6592,12 @@
               </div>
               <p class="lbl">Kaç kişi oy verecek? (sen dahil)</p>
               <div class="pcount-row" id="maxp-row" style="margin-bottom: 4px">
+                <!-- Karar (7 Ağu): hazır seçenekler 2·3·4·5·10, gerisi "Diğer".
+                     6 ve 8 kaldırıldı; sık kullanılmıyor ve satırı kalabalıklaştırıyordu. -->
                 <button class="onl-sel-btn" data-val="2" onclick="setMaxP(2)">2</button>
                 <button class="onl-sel-btn" data-val="3" onclick="setMaxP(3)">3</button>
                 <button class="onl-sel-btn" data-val="4" onclick="setMaxP(4)">4</button>
                 <button class="onl-sel-btn" data-val="5" onclick="setMaxP(5)">5</button>
-                <button class="onl-sel-btn" data-val="6" onclick="setMaxP(6)">6</button>
-                <button class="onl-sel-btn" data-val="8" onclick="setMaxP(8)">8</button>
                 <button class="onl-sel-btn" data-val="10" onclick="setMaxP(10)">10</button>
                 <button
                   class="onl-sel-btn other"
@@ -6598,10 +6629,13 @@
               </div>
               <p class="lbl" style="margin-top: 8px">Süre Limiti</p>
               <div class="onl-sel-row" id="time-row" style="margin-bottom: 4px">
-                <button class="onl-sel-btn" data-tval="5" onclick="setTimeLimit(5)">5 dk</button>
-                <button class="onl-sel-btn" data-tval="10" onclick="setTimeLimit(10)">10 dk</button>
+                <!-- Karar (7 Ağu): 15dk · 30dk · 1sa · 6sa · 24sa + Diğer.
+                     5dk/10dk çıkarıldı (oda kurulup paylaşılmadan doluyordu),
+                     6 saat eklendi (akşam planı için en çok istenen aralık). -->
+                <button class="onl-sel-btn" data-tval="15" onclick="setTimeLimit(15)">15 dk</button>
                 <button class="onl-sel-btn" data-tval="30" onclick="setTimeLimit(30)">30 dk</button>
                 <button class="onl-sel-btn" data-tval="60" onclick="setTimeLimit(60)">1 saat</button>
+                <button class="onl-sel-btn" data-tval="360" onclick="setTimeLimit(360)">6 saat</button>
                 <!-- "Sınırsız" KALDIRILDI → 24 saat (varsayılan). Süresiz odalar hiç kapanmayıp
                      Firestore okuma kotasını yakıyordu. -->
                 <button class="onl-sel-btn on" data-tval="1440" onclick="setTimeLimit(1440)">24 saat</button>
@@ -6636,6 +6670,10 @@
               <div class="ogrid" id="vol"></div>
               <!-- Ekleme geri bildirimi: tekrar atlandı / üst sınır (JS doldurur) -->
               <div id="vo-note" class="empty" style="display: none"></div>
+              <!-- Hazır paketler: çarkın SAATE GÖRE öneri altyapısı burada da
+                   kullanılıyor (sabah kahvaltı, akşam yemek/aktivite...).
+                   Yalnız liste boşken görünür, ilk seçenek eklenince kaybolur. -->
+              <div class="wd-chips" id="online-daily" style="display: none"></div>
               <div id="voe" class="empty">
                 Seçenek ekle, arkadaşların oylasın! 📡
               </div>
@@ -12339,6 +12377,12 @@ function drawResultCard(opts) {
         dir = dir < 0 ? -1 : 1; // sürükleme yönü: -1 = sola (CCW), +1 = sağa (CW)
         spinning = true;
         document.body.classList.add("wheel-spinning");
+        // 8 Ağu: göbekteki Merci dönerken heyecanlansın (beraberlik çarkındaki
+        // davranışın aynısı — kullanıcı oradan beğenip ana çarka da istedi).
+        // Duruşa geçiş finishW içinde kutlama pozuyla yapılıyor.
+        try {
+          setM("wheel-center-merci", 46, "scared");
+        } catch (e) {}
         // Dönmeye başladığı an belirgin kickoff haptiği (önemli buton basışı)
         hImpact("MEDIUM", 55);
         // Çark dönerken ekranın ortasına kaysın (odak)
@@ -12530,6 +12574,10 @@ function drawResultCard(opts) {
         wheelHi = wi;
         drawW("wcanvas", S.wheelSlices, wAngle, wi, S.wheelPeriod);
         wheelSpotlight(S.wheelSlices.length, wi, wAngle);
+        // Çark durdu → göbekteki Merci kutlamaya geçsin
+        try {
+          setM("wheel-center-merci", 46, "celebrate");
+        } catch (e) {}
         // SONUÇ GÖRÜNENE KADAR yeniden çevirme KİLİTLİ: kullanıcı sonucu görmeden
         // tekrar çeviremesin. Döndür butonu, sonuç kartına kaydırıldıktan SONRA
         // (aşağıdaki setTimeout içinde) geri gelir. Buton launch()'ta zaten gizlendi.
@@ -14824,6 +14872,10 @@ function drawResultCard(opts) {
         // Varsayılan değerleri seçili göster
         setMaxP(roomMaxP);
         setTimeLimit(roomTimeLimit);
+        // Saate göre hazır paketleri tazele (boş listede görünür)
+        try {
+          renderOnlineSuggestions();
+        } catch (e) {}
         snd("ding");
         // ⚠️ Kaydırma: eskiden block:"start" ile bölümü ekranın en tepesine
         // çekiyordu. Sahne kartı geldikten sonra bu AŞIRI kaydırma oluyordu
@@ -18132,11 +18184,54 @@ function drawResultCard(opts) {
           });
       });
 
+      // Oda kurmada hazır paketler — çarkın saate göre öneri altyapısını
+      // (WHEEL_SUGGESTIONS + dailySuggestionIndices) yeniden kullanır.
+      // Sabah kahvaltı, öğlen öğle yemeği, akşam yemek/aktivite gibi.
+      function applyOnlineSuggestion(i) {
+        try {
+          var s = WHEEL_SUGGESTIONS[i];
+          if (!s) return;
+          // Oda adı boşsa paketin başlığını ver — kullanıcı yazmak zorunda kalmasın
+          var rn = document.getElementById("room-name");
+          if (rn && !rn.value.trim()) rn.value = s.t;
+          addOnlineOpts(s.o.join("\n"));
+          renderOnlineOpts();
+        } catch (e) {}
+      }
+      function renderOnlineSuggestions() {
+        var wrap = document.getElementById("online-daily");
+        if (!wrap || typeof WHEEL_SUGGESTIONS === "undefined") return;
+        if (onlineOpts.length) {
+          wrap.style.display = "none";
+          return;
+        }
+        var idxs = [];
+        try {
+          idxs = dailySuggestionIndices(4);
+        } catch (e) {
+          return;
+        }
+        wrap.innerHTML = "";
+        idxs.slice(0, 4).forEach(function (i) {
+          var s = WHEEL_SUGGESTIONS[i];
+          if (!s) return;
+          var b = document.createElement("button");
+          b.className = "wd-chip";
+          b.type = "button";
+          b.textContent = s.e + " " + s.t;
+          b.addEventListener("click", function () {
+            applyOnlineSuggestion(i);
+          });
+          wrap.appendChild(b);
+        });
+        wrap.style.display = idxs.length ? "" : "none";
+      }
       function renderOnlineOpts() {
         var l = document.getElementById("vol");
         l.innerHTML = "";
         var e = document.getElementById("voe");
         e.style.display = onlineOpts.length ? "none" : "";
+        renderOnlineSuggestions();
         onlineOpts.forEach((item) => {
           var d = document.createElement("div");
           d.className = "chip";
