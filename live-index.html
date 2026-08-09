@@ -22559,6 +22559,53 @@ function drawResultCard(opts) {
         kmSetupSync();
       })();
 
+      // ══ KLAVYE AÇILINCA ODAKLI ALANI GÖRÜNÜR TUT ══
+      // 🔴 CİHAZDA BULUNDU (9 Ağu): seçenek yazarken klavye kutunun ÜSTÜNE
+      // çıkıyor, yazdığını göremiyorsun.
+      // ⚠️ KÖK NEDEN: capacitor.config.ts → `Keyboard: { resize: 'none' }`.
+      // WebView klavye açılınca KÜÇÜLMÜYOR (bu BİLEREK böyle: resize açılırsa
+      // AdMob banner ekranın ortasına kayıyor — vc28/vc35'te yaşanmış bir bug).
+      // Viewport küçülmediği için ne `scrollIntoView` ne de tarayıcının kendi
+      // otomatik kaydırması devreye giriyor.
+      // ✅ ÇÖZÜM: resize moduna DOKUNMADAN, klavye yüksekliği kadar geçici alt
+      // boşluk açıp odaklı alanı klavyenin üstüne kaydır. Klavye kapanınca geri al.
+      try {
+        var _kb =
+          window.Capacitor &&
+          window.Capacitor.Plugins &&
+          window.Capacitor.Plugins.Keyboard;
+        if (_kb) {
+          var _kbPad = null;
+          _kb.addListener("keyboardWillShow", function (info) {
+            var h = (info && info.keyboardHeight) || 300;
+            _kbPad = document.getElementById("scr-main");
+            if (_kbPad) _kbPad.style.paddingBottom = h + 90 + "px";
+            setTimeout(function () {
+              var el = document.activeElement;
+              if (!el || !el.getBoundingClientRect) return;
+              var r = el.getBoundingClientRect();
+              var limit = window.innerHeight - h - 16;
+              if (r.bottom > limit) {
+                try {
+                  window.scrollBy({
+                    top: r.bottom - limit + 24,
+                    behavior: "smooth",
+                  });
+                } catch (e) {
+                  window.scrollBy(0, r.bottom - limit + 24);
+                }
+              }
+            }, 60);
+          });
+          _kb.addListener("keyboardWillHide", function () {
+            if (_kbPad) {
+              _kbPad.style.paddingBottom = "";
+              _kbPad = null;
+            }
+          });
+        }
+      } catch (e) {}
+
       // ══ UNIVERSAL LINK / APP LINK İLE AÇILIŞ ══
       // 🔴 CİHAZDA BULUNDU (9 Ağu, iOS TestFlight): universal link ÇALIŞTI —
       // uygulama Safari yerine açıldı — AMA ODAYA GİRMEDİ. Sebep: Capacitor
