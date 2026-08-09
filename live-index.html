@@ -7167,6 +7167,38 @@
         padding: 2px 2px 12px;
         margin-bottom: 2px;
       }
+      /* Oy ekranındaki "kod + paylaş" hapı — kod paylaşılmadan oylamaya
+         geçildiğinde tek kurtarıcı (bkz. #hv-share markup notu). */
+      .km-vshare {
+        flex: 0 0 auto;
+        margin-left: auto;
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        padding: 8px 12px;
+        border-radius: 999px;
+        cursor: pointer;
+        border: 1.5px solid var(--ac-bd);
+        background: var(--ac-bg2);
+        color: var(--ac-d);
+        font-family: "Nunito", sans-serif;
+        font-size: 13px;
+        font-weight: 800;
+        letter-spacing: 0.6px;
+        transition: transform 0.12s;
+      }
+      .km-vshare:active {
+        transform: scale(0.95);
+      }
+      .km-vshare .ic {
+        width: 16px;
+        height: 16px;
+      }
+      html.dark .km-vshare {
+        background: rgba(var(--ac-shadow), 0.18);
+        border-color: #3d3460;
+        color: var(--ac-ll);
+      }
       .km-vback {
         flex: 0 0 auto;
         width: 36px;
@@ -9454,6 +9486,22 @@
                     <b>Oy Ver</b>
                     <span id="hv-room-name"></span>
                   </div>
+                  <!-- 🔴 CİHAZDA BULUNDU (9 Ağu): host "Oylamaya Geç"e basınca
+                       kod/karekod/paylaş sahnesi gizleniyor ve kodu HENÜZ
+                       paylaşmadıysa gönderme yolu kalmıyordu. Soldaki ‹ oda
+                       ekranına dönüyor ama kaydırınca gözden kaçıyor (üstteki
+                       uygulama ‹'si hub'a gidiyor, ikisi karışıyor).
+                       Çözüm: kod + paylaş oy ekranının İÇİNDE, her zaman elde. -->
+                  <button
+                    class="km-vshare"
+                    id="hv-share"
+                    type="button"
+                    onclick="shareWhatsApp()"
+                    aria-label="Oda kodunu paylaş"
+                  >
+                    <span id="hv-code">—</span>
+                    <svg class="ic" viewBox="0 0 24 24"><use href="#i-share"/></svg>
+                  </button>
                 </div>
                 <div class="km-vstage">
                   <div class="km-vs-top">
@@ -18970,6 +19018,10 @@ function drawResultCard(opts) {
             rn.textContent =
               (document.getElementById("room-title-display") || {}).textContent ||
               "";
+          // Oy ekranındaki paylaş hapına oda kodunu yaz (kod paylaşılmadan
+          // oylamaya geçen host'un tek kurtarıcısı).
+          var hc = document.getElementById("hv-code");
+          if (hc) hc.textContent = shareCode || "—";
         } catch (e) {}
       }
       function hostGoVote() {
