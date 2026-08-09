@@ -22559,6 +22559,59 @@ function drawResultCard(opts) {
         kmSetupSync();
       })();
 
+      // ══ UNIVERSAL LINK / APP LINK İLE AÇILIŞ ══
+      // 🔴 CİHAZDA BULUNDU (9 Ağu, iOS TestFlight): universal link ÇALIŞTI —
+      // uygulama Safari yerine açıldı — AMA ODAYA GİRMEDİ. Sebep: Capacitor
+      // `server.url` ile ÇALIŞIRKEN WebView zaten temel adreste yüklü; gelen
+      // linkteki `?room=` sorgusu adres çubuğuna HİÇ geçmiyor, dolayısıyla
+      // aşağıdaki `location.search` okuması boş dönüyor.
+      // Çözüm: @capacitor/app'in `appUrlOpen` olayı (uygulama açıkken gelen link)
+      // + `getLaunchUrl` (soğuk açılış; dinleyici kurulmadan önce gelen link).
+      function kmRoomFromUrl(u) {
+        try {
+          var q = new URL(u).searchParams.get("room");
+          return q && /^[A-Za-z0-9-]{3,12}$/.test(q) ? q : null;
+        } catch (e) {
+          return null;
+        }
+      }
+      function kmOpenRoomFromLink(code) {
+        if (!code) return;
+        // initRoomOverlay uygulama kurulumuna bağlı → hazır olana kadar bekle.
+        var tries = 0;
+        (function go() {
+          if (typeof initRoomOverlay === "function") {
+            try {
+              initRoomOverlay(code);
+            } catch (e) {}
+            return;
+          }
+          if (++tries < 40) setTimeout(go, 150);
+        })();
+      }
+      try {
+        if (
+          window.Capacitor &&
+          window.Capacitor.Plugins &&
+          window.Capacitor.Plugins.App
+        ) {
+          var _kmAppL = window.Capacitor.Plugins.App;
+          _kmAppL.addListener("appUrlOpen", function (ev) {
+            var c = kmRoomFromUrl(ev && ev.url);
+            if (c) kmOpenRoomFromLink(c);
+          });
+          if (typeof _kmAppL.getLaunchUrl === "function") {
+            _kmAppL
+              .getLaunchUrl()
+              .then(function (r) {
+                var c = kmRoomFromUrl(r && r.url);
+                if (c) setTimeout(() => kmOpenRoomFromLink(c), 900);
+              })
+              .catch(function () {});
+          }
+        }
+      } catch (e) {}
+
       // URL'den oda kodunu yakala — katılımcı overlay göster.
       // ?room= YOKSA: kaydedilmiş açık host odasını sessizce kurtar (KALICILIK).
       var urlParams = new URLSearchParams(window.location.search);
