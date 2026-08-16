@@ -4746,45 +4746,126 @@
         margin-top: 12px;
       }
 
-      /* History */
-      .hist-summary {
-        display: flex;
-        gap: 10px;
-        align-items: flex-start;
-        padding: 12px;
-        background: var(--ac-bg);
-        border: 2px solid var(--ac-ll);
-        border-radius: 12px;
-        margin-bottom: 8px;
+      /* History — "Merci'nin Notu" kompakt şerit (16 Ağu)
+         ESKİ: divhr + başlık + büyük özet kutusu + "Detayları gör"/"Temizle"
+         ikilisi = ~180px'lik blok, üstelik boş durumda bile basılıyordu.
+         YENİ: tek satırlık kart (~62px) — maskot + özet + adet rozeti + ok.
+         Dokununca .hist-card.open olur, #hist-body (grafik + liste + temizle)
+         açılır. ⚠️ Eski .hist-summary / .hist-mini-btn sınıfları KALDIRILDI. */
+      .hist-card {
+        border: 1.5px solid var(--ac-bd);
+        background: var(--ac-bg2);
+        border-radius: 16px;
+        overflow: hidden;
+        box-shadow: 0 2px 10px rgba(var(--ac-shadow), 0.07);
       }
-      .htxt2 {
+      .hist-head {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        width: 100%;
+        padding: 10px 12px;
+        border: 0;
+        background: transparent;
+        font-family: "Nunito", sans-serif;
+        text-align: left;
+        cursor: pointer;
+        transition: transform 0.12s ease;
+      }
+      .hist-head:active {
+        transform: scale(0.985);
+      }
+      .hist-head-av {
+        flex-shrink: 0;
+        width: 38px;
+        height: 38px;
+        border-radius: 12px;
+        background: var(--ac-bg3);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .hist-head-av svg {
+        display: block;
+      }
+      .hist-head-tx {
         flex: 1;
+        min-width: 0;
+      }
+      .hist-head-ttl {
+        display: block;
+        font-size: 10px;
+        font-weight: 900;
+        color: var(--ac);
+        /* uppercase YOK (Türkçe İ/I) */
+        letter-spacing: 0.02em;
+        margin-bottom: 1px;
+      }
+      /* ⚠️ TEK SATIR + ellipsis. 2 satıra izin verildiğinde histSummary()'nin
+         uzun cümleleri taşıyor ve sondaki emoji tek başına alt satıra düşüyordu
+         (şerit yüksekliği metne göre oynuyordu — kompakt şeridin amacına aykırı).
+         Kırpmanın çalışması ebeveyndeki .hist-head-tx{min-width:0}'a bağlı:
+         o olmadan flex çocuğu küçülmez ve ellipsis HİÇ devreye girmez. */
+      .htxt2 {
+        /* ⚠️ display:block ZORUNLU — bu bir <span>, yani varsayılanı inline ve
+           inline elemanda text-overflow:ellipsis HİÇ çalışmaz (kutu üretmez;
+           clientWidth/scrollWidth de 0 döner). Bu satır düşerse metin kırpılmaz,
+           sayı rozetinin altından taşar. */
+        display: block;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
         font-size: 12px;
         font-weight: 800;
         color: var(--ac-dd);
-        line-height: 1.5;
+        line-height: 1.35;
+      }
+      .hist-count {
+        flex-shrink: 0;
+        min-width: 24px;
+        height: 22px;
+        padding: 0 7px;
+        border-radius: 999px;
+        background: var(--ac);
+        color: #fff;
+        font-size: 11px;
+        font-weight: 900;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .hist-chev {
+        flex-shrink: 0;
+        width: 8px;
+        height: 8px;
+        margin: 0 3px 0 1px;
+        border-right: 2.5px solid var(--ac-l2);
+        border-bottom: 2.5px solid var(--ac-l2);
+        transform: translateY(-2px) rotate(45deg);
+        transition: transform 0.25s ease;
+      }
+      .hist-card.open .hist-chev {
+        transform: translateY(2px) rotate(-135deg);
+      }
+      .hist-body {
+        padding: 10px;
+        border-top: 1.5px solid var(--ac-bd);
+        animation: histBodyIn 0.26s ease both;
+      }
+      @keyframes histBodyIn {
+        from {
+          opacity: 0;
+          transform: translateY(-5px);
+        }
+        to {
+          opacity: 1;
+          transform: none;
+        }
       }
       .hist-actions {
         display: flex;
-        gap: 8px;
-        margin-bottom: 8px;
-      }
-      .hist-mini-btn {
-        flex: 1;
-        padding: 8px;
-        font-size: 11px;
-        font-weight: 900;
-        border-radius: 9px;
-        border: 2px solid var(--ac-ll);
-        background: var(--ac-bg2);
-        color: var(--ac-d);
-        cursor: pointer;
-        font-family: "Nunito", sans-serif;
-      }
-      .hist-mini-btn:hover {
-        background: var(--ac);
-        color: #fff;
-        border-color: var(--ac);
+        justify-content: flex-end;
+        margin-top: 2px;
       }
       .hist-clear {
         padding: 8px 12px;
@@ -4808,6 +4889,13 @@
         padding: 12px 10px 6px;
         margin-bottom: 8px;
         display: none;
+      }
+      /* ⚠️ Chart.js kabı: sabit yükseklik + position:relative ZORUNLU
+         (yoksa canvas her render'da büyüyor — bkz. markup notu). */
+      .hist-chart-box {
+        position: relative;
+        width: 100%;
+        height: 170px;
       }
       .hist-chart-title {
         font-size: 10px;
@@ -7892,11 +7980,17 @@
          ayrı bir kural gerekmiyor) */
 
 
-      /* (b) "Merci'nin Notu" özet kutusu (.hist-summary) — class-tabanlı
-         var(--ac-bg) inline catch-all'a takılmıyordu. */
-      html.dark .hist-summary {
+      /* (b) "Merci'nin Notu" kartı (.hist-card — eski .hist-summary) —
+         class-tabanlı var(--ac-bg) inline catch-all'a takılmıyordu. */
+      html.dark .hist-card {
         background: #1a1430;
         border-color: #33285a;
+      }
+      html.dark .hist-head-av {
+        background: #2a2140;
+      }
+      html.dark .hist-body {
+        border-top-color: #33285a;
       }
       html.dark .htxt2 {
         color: #ece8f7;
@@ -10001,25 +10095,52 @@
           </div>
         </div>
 
-        <!-- GEÇMİŞ -->
+        <!-- GEÇMİŞ — "Merci'nin Notu"  (16 Ağu: kompakt şerit)
+             ⚠️ BOŞ DURUMDA BÖLÜM HİÇ GÖRÜNMEZ (bkz. renderHist). Eskiden boş
+             durumda uykulu maskotlu bir davet basılıyordu; #hist-section hub'ın
+             ve TÜM mod ekranlarının altında durduğu için ilk kez açan kullanıcı
+             kartların altında sahipsiz, içi boş bir kutu görüyordu. Davet işini
+             zaten hub kartları ve #wheel-empty-card yapıyor.
+             ⚠️ Dolu durumda tek satırlık kart: maskot + özet + adet rozeti.
+             Şeride dokununca #hist-body açılır (grafik + kayıt listesi +
+             Temizle). Grafik SADECE panel açıkken çizilir — kapalıyken canvas
+             0 genişlikte ölçülüp ezik çıkıyor. -->
         <div style="padding: 0 16px 24px; display: none" id="hist-section">
           <div id="hist-content">
-            <div class="divhr"></div>
-            <p class="lbl">Merci'nin Notu</p>
-            <div class="hist-summary">
-              <div id="hist-merci" class="rmerci" style="margin: 0"></div>
-              <div class="htxt2" id="hist-summary-txt"></div>
+            <div class="hist-card" id="hist-card">
+              <button
+                class="hist-head"
+                id="hist-toggle"
+                type="button"
+                aria-expanded="false"
+                aria-controls="hist-body"
+              >
+                <span class="hist-head-av" id="hist-merci"></span>
+                <span class="hist-head-tx">
+                  <span class="hist-head-ttl">Merci'nin Notu</span>
+                  <span class="htxt2" id="hist-summary-txt"></span>
+                </span>
+                <span class="hist-count" id="hist-count"></span>
+                <span class="hist-chev" aria-hidden="true"></span>
+              </button>
+              <div class="hist-body" id="hist-body" style="display: none">
+                <div class="hist-chart-wrap" id="hist-chart-wrap">
+                  <div class="hist-chart-title">📊 En Çok Kazananlar</div>
+                  <!-- ⚠️ .hist-chart-box SABİT YÜKSEKLİKLİ + position:relative
+                       OLMAK ZORUNDA. Chart.js responsive:true +
+                       maintainAspectRatio:false ile kapsayıcıyı doldurur;
+                       yüksekliği belirsiz bir kapsayıcıda canvas her çizimde
+                       büyüyerek binlerce piksele fırlıyor. -->
+                  <div class="hist-chart-box"><canvas id="hist-chart"></canvas></div>
+                </div>
+                <div id="hist-list"></div>
+                <div class="hist-actions">
+                  <button class="hist-clear" id="hist-clear"><svg class="ic ic-t" viewBox="0 0 24 24" style="width:14px;height:14px;vertical-align:-2.5px"><use href="#i-trash"/></svg> Geçmişi temizle</button>
+                </div>
+              </div>
             </div>
-            <div class="hist-chart-wrap" id="hist-chart-wrap">
-              <div class="hist-chart-title">📊 En Çok Kazananlar</div>
-              <canvas id="hist-chart" height="160"></canvas>
-            </div>
-            <div class="hist-actions">
-              <button class="hist-mini-btn" id="hist-toggle">Detayları gör</button
-              ><button class="hist-clear" id="hist-clear"><svg class="ic ic-t" viewBox="0 0 24 24" style="width:14px;height:14px;vertical-align:-2.5px"><use href="#i-trash"/></svg> Temizle</button>
-            </div>
-            <div id="hist-list" style="display: none"></div>
           </div>
+          <!-- (boş durum kabı: artık gösterilmiyor, markup kasıtlı bırakıldı) -->
           <div id="hist-empty" class="hist-empty" style="display: none">
             <div class="hist-empty-merci m-idle" id="hist-empty-merci"></div>
             <div class="hist-empty-txt">Henüz karar yok — ilk çarkını çevir, sonucun burada biriksin! 🎡</div>
@@ -11209,23 +11330,13 @@
           else cf.classList.remove("on");
           return true;
         }
-        // 3) Paywall kutusu
-        if (document.getElementById("paywall-wrap")) {
-          try {
-            hidePaywall();
-          } catch (e) {
-            var pw = document.getElementById("paywall-wrap");
-            if (pw && pw.parentNode) pw.parentNode.removeChild(pw);
-          }
-          return true;
-        }
-        // 4) Sohbet geçmişi katmanı (dinamik oluşuyor)
+        // 3) Sohbet geçmişi katmanı (dinamik oluşuyor)
         var ch = document.getElementById("chat-hist-overlay");
         if (ch && ch.parentNode) {
           ch.parentNode.removeChild(ch);
           return true;
         }
-        // 5) Diğer açık katmanlar → .on'u kaldır (DOM'daki SON açık olan üstte)
+        // 4) Diğer açık katmanlar → .on'u kaldır (DOM'daki SON açık olan üstte)
         var lay = document.querySelectorAll(
           ".modal-overlay.on, .info-modal.on, .pro-modal.on, .auth-modal.on, .settings-panel.on, #modal-settings.on",
         );
@@ -11233,7 +11344,7 @@
           lay[lay.length - 1].classList.remove("on");
           return true;
         }
-        // 6) Menü çekmecesi
+        // 5) Menü çekmecesi
         var md = document.getElementById("menu-drawer");
         if (md && md.classList.contains("on")) {
           md.classList.remove("on");
@@ -11241,6 +11352,28 @@
           if (mo) mo.classList.remove("on");
           var ms = document.getElementById("modal-settings");
           if (ms) ms.classList.remove("on");
+          return true;
+        }
+        // 6) Merci kota duvarı (paywall) → kapat VE ana ekrana dön.
+        // ⚠️ 16 AĞU, cihazda yakalandı: bu blok eskiden 3. sıradaydı ve yalnız
+        // hidePaywall() çağırıyordu. hidePaywall() giriş kutusunu yeniden ENABLE
+        // ediyor (showPaywall onu disabled yapmıştı) → geri tuşuyla duvar
+        // kalkıyor, kullanıcı yazabileceğini sanıyor, ilk mesajda duvar geri
+        // geliyordu. Duvar bir KOTA SINIRI, kapatılabilir modal değil; geri tuşu
+        // Merci'den çıkarmalı. Sekmeye tekrar girildiğinde hak yoksa duvar
+        // zaten yeniden gösteriliyor (bkz. showPaywall("merci_tab")).
+        // ⚠️ SIRA da değişti: PRO modalı paywall'ın ÜSTÜNE açılıyor; blok 3.
+        // sıradayken geri tuşu alttaki duvarı kapatıp üstteki modalı açık
+        // bırakıyordu. Artık katman + menü kontrollerinden SONRA geliyor.
+        if (document.getElementById("paywall-wrap")) {
+          try {
+            hidePaywall();
+          } catch (e) {
+            var pw = document.getElementById("paywall-wrap");
+            if (pw && pw.parentNode) pw.parentNode.removeChild(pw);
+          }
+          if (typeof window.kmGoHub === "function") window.kmGoHub();
+          else _doSw(null);
           return true;
         }
         // 7) Ana ekranda BİR MOD açıksa → hub'a dön (uygulamadan ÇIKMA!)
@@ -11302,8 +11435,17 @@
               handled = false;
             }
             if (handled) return;
+            // ⚠️ exitApp() SADECE Android'de. iOS'ta uygulamayı programatik
+            // kapatmak Apple HIG ihlalidir ("kullanıcı uygulamayı kendisi
+            // kapatır") ve ret sebebi olur. `backButton` olayı bugün zaten
+            // Android'e özgü ama eklenti iOS build'ine de gireceği için
+            // guard'sız bırakılamaz.
             try {
-              _kmApp.exitApp();
+              var _plt =
+                typeof window.Capacitor.getPlatform === "function"
+                  ? window.Capacitor.getPlatform()
+                  : "";
+              if (_plt === "android") _kmApp.exitApp();
             } catch (e) {}
           });
         }
@@ -14134,7 +14276,7 @@ function drawResultCard(opts) {
             settle: 260,
             pose: "glasses",
             title: "🕘 Karar Geçmişi",
-            body: "Verdiğin her karar burada birikir; grafikle <b>en çok neyi seçtiğini</b> görürsün. Bunun için <b>Google ile giriş</b> yeterli (ücretsiz), PRO'da geçmişin çok daha uzun tutulur. İşte örnek 👇",
+            body: "Verdiğin her karar burada birikir. <b>Üstüne dokun</b> → grafikle <b>en çok neyi seçtiğini</b> ve tüm kayıtlarını gör. Bunun için <b>Google ile giriş</b> yeterli (ücretsiz), PRO'da geçmişin çok daha uzun tutulur. 👇",
             open: function () {
               var hs = document.getElementById("hist-section");
               if (hs && hs.style.display !== "none" && hs.offsetParent) {
@@ -21682,25 +21824,40 @@ function drawResultCard(opts) {
           wrap.style.display = "none";
           return;
         }
-        wrap.style.display = "";
+        // ⚠️ display:"" YETMEZ — .hist-chart-wrap'in CSS'inde display:none var,
+        // boş string CSS'e geri düşüyordu → grafik hiç görünmüyordu (16 Ağu fix).
+        wrap.style.display = "block";
         var labels = sorted.map((x) =>
           x[0].length > 14 ? x[0].slice(0, 13) + "…" : x[0],
         );
         var values = sorted.map((x) => x[1]);
         var maxV = Math.max(...values);
+        // ⚠️ CANVAS var() ANLAMAZ. Chart.js renkleri doğrudan ctx.fillStyle'a
+        // veriyor; "var(--ac)" geçersiz sayılıyordu. Tema değişkenlerini
+        // çalışma anında GERÇEK renge çevir (PRO temaları + koyu tema korunur).
+        var _cs = getComputedStyle(document.documentElement);
+        var cv = function (n, fb) {
+          var v = (_cs.getPropertyValue(n) || "").trim();
+          return v || fb;
+        };
         var palette = [
-          "var(--ac)",
-          "var(--ac-l2)",
-          "var(--ac-m)",
-          "var(--ac-ll)",
-          "var(--ac-d2)",
-          "var(--ac-bg3)",
-          "var(--ac-d)",
-          "var(--ac-lll)",
+          cv("--ac", "#7c3aed"),
+          cv("--ac-l2", "#a78bfa"),
+          cv("--ac-m", "#8b5cf6"),
+          cv("--ac-ll", "#c4b5fd"),
+          cv("--ac-d2", "#6d28d9"),
+          cv("--ac-bg3", "#ede9fe"),
+          cv("--ac-d", "#5b21b6"),
+          cv("--ac-lll", "#ddd6fe"),
         ];
         var colors = values.map((v, i) =>
-          v === maxV ? "var(--ac)" : palette[i % palette.length],
+          v === maxV ? palette[0] : palette[i % palette.length],
         );
+        // Eksen/ızgara renkleri de canvas'a gidiyor → var() değil gerçek renk.
+        var _dk = document.documentElement.classList.contains("dark");
+        var _tickX = _dk ? "#ece8f7" : cv("--ac-d", "#5b21b6");
+        var _tickY = _dk ? "#b9addf" : cv("--ac-l2", "#a78bfa");
+        var _grid = _dk ? "#342a4f" : cv("--ac-bg3", "#ede9fe");
         if (histChartInst) {
           histChartInst.destroy();
           histChartInst = null;
@@ -21734,7 +21891,7 @@ function drawResultCard(opts) {
                 grid: { display: false },
                 ticks: {
                   font: { family: "Nunito", weight: "800", size: 10 },
-                  color: "var(--ac-d)",
+                  color: _tickX,
                   maxRotation: 30,
                 },
               },
@@ -21743,9 +21900,9 @@ function drawResultCard(opts) {
                 ticks: {
                   stepSize: 1,
                   font: { family: "Nunito", weight: "800", size: 10 },
-                  color: "var(--ac-l2)",
+                  color: _tickY,
                 },
-                grid: { color: "var(--ac-bg3)" },
+                grid: { color: _grid },
               },
             },
           },
@@ -21756,23 +21913,32 @@ function drawResultCard(opts) {
         var content = document.getElementById("hist-content");
         var empty = document.getElementById("hist-empty");
         if (!S.history.length) {
-          // H1 — boş durum: gizlemek yerine maskotlu davet (Deploy #15)
-          sec.style.display = "";
+          // 16 Ağu — BOŞ DURUM ARTIK TAMAMEN GİZLİ.
+          // (Eski H1/Deploy #15 davranışı: uykulu maskotlu davet basılıyordu.
+          //  #hist-section hub'ın ve her mod ekranının altında durduğu için
+          //  hiç kararı olmayan kullanıcı aynı boş kutuyu 5 ekranda görüyordu.)
+          sec.style.display = "none";
           if (content) content.style.display = "none";
-          if (empty) {
-            empty.style.display = "";
-            var em = document.getElementById("hist-empty-merci");
-            if (em && !em.innerHTML) setM("hist-empty-merci", 62, "sleepy");
-          }
+          if (empty) empty.style.display = "none";
           return;
         }
         if (content) content.style.display = "";
         if (empty) empty.style.display = "none";
         sec.style.display = "";
-        setM("hist-merci", 40);
+        setM("hist-merci", 30, "glasses");
         document.getElementById("hist-summary-txt").textContent = histSummary();
-        renderChart();
+        var _cnt = document.getElementById("hist-count");
+        if (_cnt) _cnt.textContent = S.history.length;
+        // Grafik yalnız panel AÇIKKEN çizilebilir: kapalıyken kapsayıcı
+        // display:none → canvas 0 genişlikte ölçülür. Açılışta hist-toggle
+        // yeniden çağırıyor.
+        var _card = document.getElementById("hist-card"),
+          _body = document.getElementById("hist-body"),
+          _open = !!(_card && _card.classList.contains("open"));
+        if (_body) _body.style.display = _open ? "" : "none";
+        if (_open) renderChart();
         var list = document.getElementById("hist-list");
+        list.style.display = "";
         list.innerHTML = "";
         S.history.forEach((h, _i) => {
           var d = document.createElement("div");
@@ -21961,15 +22127,22 @@ function drawResultCard(opts) {
       bind("masa-finish", masaFinish);
       bind("tb-start-btn", startTb);
       bind("tb-close-btn", closeTb);
+      // "Merci'nin Notu" şeridi → grafik + kayıt listesi panelini aç/kapa.
+      // ⚠️ Buton artık zengin içerikli (maskot/rozet/ok) — textContent YAZMA.
       bind("hist-toggle", () => {
-        var l = document.getElementById("hist-list"),
-          b = document.getElementById("hist-toggle");
-        if (l.style.display === "none" || !l.style.display) {
-          l.style.display = "block";
-          b.textContent = "Gizle";
-        } else {
-          l.style.display = "none";
-          b.textContent = "Detayları gör";
+        var card = document.getElementById("hist-card"),
+          body = document.getElementById("hist-body"),
+          btn = document.getElementById("hist-toggle");
+        if (!card || !body) return;
+        var open = !card.classList.contains("open");
+        card.classList.toggle("open", open);
+        body.style.display = open ? "" : "none";
+        if (btn) btn.setAttribute("aria-expanded", open ? "true" : "false");
+        if (open) {
+          // canvas ancak görünürken doğru ölçülür
+          try {
+            renderChart();
+          } catch (e) {}
         }
         snd("click");
       });
