@@ -275,8 +275,11 @@
         <button class="btn ghost sm" id="logout-btn">Çıkış</button>
       </div>
       <div class="tabs" id="tabs">
-        <button class="tab on" data-tab="ulasin">📮 Bize Ulaşın<span class="cnt" id="cnt-ulasin">·</span></button>
+        <button class="tab on" data-tab="ozet">📈 Özet</button>
+        <button class="tab" data-tab="kullanici">🔍 Kullanıcı</button>
+        <button class="tab" data-tab="ulasin">📮 Bize Ulaşın<span class="cnt" id="cnt-ulasin">·</span></button>
         <button class="tab" data-tab="puan">⭐ Puanlama<span class="cnt" id="cnt-puan">·</span></button>
+        <button class="tab" data-tab="duyuru">📣 Duyuru</button>
         <button class="tab" data-tab="merci">🤖 Merci AI<span class="cnt" id="cnt-merci">·</span></button>
         <button class="tab" data-tab="kota">📊 AI Kota<span class="cnt" id="cnt-kota">·</span></button>
         <button class="tab" data-tab="oda">🚪 Odalar<span class="cnt" id="cnt-oda">·</span></button>
@@ -391,7 +394,7 @@
       });
 
       // ── Sekmeler ──
-      var currentTab = "ulasin";
+      var currentTab = "ozet";
       Array.prototype.forEach.call(document.querySelectorAll(".tab"), function (t) {
         t.onclick = function () {
           Array.prototype.forEach.call(document.querySelectorAll(".tab"), function (x) {
@@ -405,7 +408,10 @@
       function switchTab(tab) {
         currentTab = tab;
         $("list").innerHTML = '<div class="empty">Yükleniyor…</div>';
-        if (tab === "ulasin") loadFeedback("contact");
+        if (tab === "ozet") loadOzet();
+        else if (tab === "kullanici") loadKullanici();
+        else if (tab === "duyuru") loadDuyuru();
+        else if (tab === "ulasin") loadFeedback("contact");
         else if (tab === "puan") loadFeedback("rating");
         else if (tab === "merci") loadMerci();
         else if (tab === "kota") loadUsage();
@@ -439,6 +445,260 @@
           );
         });
       }
+
+      function _get(url) {
+        return _adminHeaders().then(function (h) {
+          return fetch(url, { headers: h, cache: "no-store" }).then(function (r) {
+            return r.json().then(function (j) {
+              if (!r.ok) throw new Error(j.error || "HTTP " + r.status);
+              return j;
+            });
+          });
+        });
+      }
+
+      // ══════════════════════════════════════════════════════════════════════
+      // 📈 ÖZET — tek bakışta işin durumu
+      // ══════════════════════════════════════════════════════════════════════
+      // ⚠️⚠️ KOTA: bu sekme Firestore'a HİÇ dokunmaz. Bütün sayılar sunucudaki
+      // /admin/stats ucundan geliyor; orada Firestore aggregation (count/sum)
+      // kullanılıyor → dokümanlar indirilmiyor, 1000 indeks girişi = 1 okuma.
+      // ⛔ Buraya db.collection(...).get() EKLEME. Yeni bir sayı gerekiyorsa
+      //    sunucudaki /admin/stats'a aggregation olarak ekle.
+      function _kart(baslik, ic) {
+        return '<div class="card"><h3 style="margin:0 0 10px">' + baslik + "</h3>" + ic + "</div>";
+      }
+      function _sayi(v) {
+        if (v === null || v === undefined) return '<span style="color:#999">—</span>';
+        return "<b>" + v + "</b>";
+      }
+      function _fark(bugun, dun) {
+        if (bugun === null || dun === null || dun === undefined) return "";
+        var d = bugun - dun;
+        if (d === 0) return ' <span style="color:#888;font-size:12px">= dünle aynı</span>';
+        var yukari = d > 0;
+        return (
+          ' <span style="color:' + (yukari ? "#1a9c5b" : "#c0392b") +
+          ';font-size:12px">' + (yukari ? "▲ +" : "▼ ") + d + " (dün " + dun + ")</span>"
+        );
+      }
+      function loadOzet() {
+        $("toolbar").innerHTML = "";
+        _get("/admin/stats")
+          .then(function (s) {
+            var k = s.kullanici || {};
+            var o = s.oda || {};
+            var ai = s.ai || {};
+            var m = s.merci || {};
+            var toplamOy = (m.begeni || 0) + (m.begenmeme || 0);
+            var memnun = toplamOy ? Math.round((m.begeni / toplamOy) * 100) : null;
+            $("list").innerHTML =
+              _kart(
+                "👥 Kullanıcılar",
+                "<div>Toplam kayıtlı: " + _sayi(k.toplam) + "</div>" +
+                  "<div>Son 7 gün yeni: " + _sayi(k.yeni7) + "</div>" +
+                  "<div>Son 30 gün yeni: " + _sayi(k.yeni30) + "</div>" +
+                  "<div>PRO (Firestore): " + _sayi(s.pro) + "</div>" +
+                  '<div style="font-size:12px;color:#888;margin-top:6px">⚠️ PRO sayısı yalnız Firestore ayağını sayar; RevenueCat üzerinden gelen abonelikler burada görünmeyebilir.</div>' +
+                  (k.kesildi ? '<div style="font-size:12px;color:#c0392b">⚠️ 20.000 üstü — sayım kesildi.</div>' : ""),
+              ) +
+              _kart(
+                "🚪 Odalar",
+                "<div>Bugün açılan: " + _sayi(o.bugun) + _fark(o.bugun, o.dun) + "</div>" +
+                  "<div>Şu an açık: " + _sayi(o.acik) + "</div>" +
+                  "<div>Toplam: " + _sayi(o.toplam) + "</div>",
+              ) +
+              _kart(
+                "🤖 Merci AI",
+                "<div>Bugün mesaj: " + _sayi(ai.mesajBugun) + "</div>" +
+                  "<div>Bugün kullanan kişi: " + _sayi(ai.kisiBugun) + "</div>" +
+                  "<div>👍 " + _sayi(m.begeni) + " · 👎 " + _sayi(m.begenmeme) +
+                  (memnun !== null ? " · memnuniyet <b>%" + memnun + "</b>" : "") + "</div>",
+              ) +
+              _kart(
+                "🎲 Kararlar",
+                "<div>Bugün kaydedilen: " + _sayi(s.kararBugun) + "</div>" +
+                  '<div style="font-size:12px;color:#888;margin-top:6px">⚠️ ' + esc(s.kararNot || "") +
+                  " — ücretsiz kullanıcıların geçmişi yalnız kendi cihazlarında tutuluyor, bu sayı gerçek kullanımdan DÜŞÜKTÜR.</div>",
+              ) +
+              _kart(
+                "📮 Gelen kutusu",
+                "<div>Bize Ulaşın + Puanlama: " + _sayi(s.ulasin) + " kayıt</div>",
+              ) +
+              _kart(
+                "🩺 Kota",
+                '<div>Firestore kota kullanımı buradan OKUNAMAZ — Firebase o sayıyı API ile vermiyor.</div>' +
+                  '<div style="margin-top:6px"><a href="https://console.firebase.google.com/project/_/usage" target="_blank" rel="noopener">Firebase Console → Usage</a> sayfasından bak.</div>' +
+                  '<div style="font-size:12px;color:#888;margin-top:6px">⚠️ Spark tavanı 50K okuma/gün. 17 Tem 2026\'da bu tavan dolunca uygulama komple durmuştu. TomTom ve sunucu durumu için 🩺 Sağlık sekmesine bak.</div>',
+              ) +
+              '<div class="empty" style="margin-top:4px">' +
+              (s.onbellek ? "↻ Önbellekten (60 sn)" : "✓ Taze veri") +
+              " · " + new Date(s.zaman).toLocaleString("tr-TR") + "</div>";
+          })
+          .catch(function (e) {
+            $("list").innerHTML = '<div class="empty">Özet okunamadı: ' + esc(e.message) + "</div>";
+          });
+      }
+
+      // ══════════════════════════════════════════════════════════════════════
+      // 🔍 KULLANICI — destek yazışması için tek kullanıcı araması
+      // ══════════════════════════════════════════════════════════════════════
+      // Firestore'da LİSTE taraması YOK: e-posta/UID ile tek kayıt çekilir.
+      function loadKullanici() {
+        $("toolbar").innerHTML = "";
+        $("list").innerHTML =
+          '<div class="card"><h3 style="margin:0 0 10px">🔍 Kullanıcı ara</h3>' +
+          '<div class="row" style="gap:8px;flex-wrap:wrap">' +
+          '<input id="uq" placeholder="e-posta veya UID" style="flex:1;min-width:220px;padding:9px;border:1px solid #ddd;border-radius:8px">' +
+          '<button class="btn sm" onclick="userAra()">Ara</button></div>' +
+          '<div style="font-size:12px;color:#888;margin-top:8px">E-posta tam yazılmalı (Firebase kısmi arama desteklemez).</div></div>' +
+          '<div id="usonuc"></div>';
+        var i = $("uq");
+        if (i) i.addEventListener("keydown", function (e) { if (e.key === "Enter") window.userAra(); });
+      }
+      window.userAra = function () {
+        var q = ($("uq").value || "").trim();
+        if (!q) return;
+        $("usonuc").innerHTML = '<div class="empty">Aranıyor…</div>';
+        _get("/admin/user?q=" + encodeURIComponent(q))
+          .then(function (u) {
+            var proMetin = u.pro
+              ? "🟢 PRO" + (u.proBitis ? " (bitiş " + new Date(u.proBitis).toLocaleDateString("tr-TR") + ")" : " (süresiz)")
+              : "⚪ Ücretsiz";
+            $("usonuc").innerHTML =
+              '<div class="card"><h3 style="margin:0 0 10px">' + esc(u.email || u.uid) + "</h3>" +
+              '<div class="uidbox" style="margin-bottom:8px">' + esc(u.uid) + "</div>" +
+              "<div>Durum: <b>" + proMetin + "</b>" + (u.banli ? ' · <span style="color:#c0392b">🚫 BANLI</span>' : "") +
+              (u.devreDisi ? ' · <span style="color:#c0392b">hesap devre dışı</span>' : "") + "</div>" +
+              "<div>Kayıt: " + (u.olusturma ? new Date(u.olusturma).toLocaleString("tr-TR") : "—") + "</div>" +
+              "<div>Son giriş: " + (u.sonGiris ? new Date(u.sonGiris).toLocaleString("tr-TR") : "—") + "</div>" +
+              "<div>Giriş yöntemi: " + esc((u.saglayici || []).join(", ") || "—") + "</div>" +
+              "<div>Kayıtlı karar: " + _sayi(u.kararSayisi) + "</div>" +
+              '<div style="font-size:12px;color:#888">⚠️ Ücretsiz kullanıcıların kararları 16 Ağu\'dan beri sunucuya yazılmıyor → bu sayı düşük görünebilir.</div>' +
+              '<div class="row" style="gap:8px;margin-top:12px;flex-wrap:wrap">' +
+              '<button class="btn sm" onclick="proHediye(\'' + u.uid + '\',30)">🎁 30 gün PRO</button>' +
+              '<button class="btn sm" onclick="proHediye(\'' + u.uid + '\',365)">🎁 1 yıl PRO</button>' +
+              '<button class="btn ghost sm" onclick="proKapat(\'' + u.uid + '\')">PRO kaldır</button>' +
+              banBtn(u.uid) +
+              "</div></div>";
+          })
+          .catch(function (e) {
+            $("usonuc").innerHTML = '<div class="empty">' + esc(e.message) + "</div>";
+          });
+      };
+      window.proHediye = function (uid, gun) {
+        if (!confirm(uid + "\n\n" + gun + " günlük PRO verilsin mi?")) return;
+        _post("/admin/gift-pro", { uid: uid, gun: gun })
+          .then(function () { alert("✅ PRO verildi."); window.userAra(); })
+          .catch(function (e) { alert("Hata: " + e.message); });
+      };
+      window.proKapat = function (uid) {
+        if (!confirm(uid + "\n\nPRO hakkı kaldırılsın mı?")) return;
+        _post("/admin/gift-pro", { uid: uid, kapat: true })
+          .then(function () { alert("PRO kaldırıldı."); window.userAra(); })
+          .catch(function (e) { alert("Hata: " + e.message); });
+      };
+
+      // ══════════════════════════════════════════════════════════════════════
+      // 📣 DUYURU — uygulamanın üstünde çıkan şerit
+      // ══════════════════════════════════════════════════════════════════════
+      // ⚠️ KOTA: duyuru Firestore'da DEĞİL, sunucu belleğinde tutuluyor ve
+      // GET /announce ile dağıtılıyor. Firestore'da tutulsaydı her kullanıcı
+      // her açılışta 1 okuma yapardı (duyuru yokken bile).
+      // ⚠️ Bedeli: sunucu yeniden başlarsa duyuru düşer.
+      function loadDuyuru() {
+        $("toolbar").innerHTML = "";
+        fetch("/announce", { cache: "no-store" })
+          .then(function (r) { return r.json(); })
+          .then(function (d) {
+            $("list").innerHTML =
+              '<div class="card"><h3 style="margin:0 0 10px">📣 Uygulama içi duyuru</h3>' +
+              "<div>Şu anki durum: " +
+              (d.var
+                ? '<b style="color:#1a9c5b">YAYINDA</b> — "' + esc(d.metin) + '"' +
+                  (d.bitis ? " (bitiş " + new Date(d.bitis).toLocaleString("tr-TR") + ")" : " (süresiz)")
+                : "<b>yayında duyuru yok</b>") +
+              "</div>" +
+              '<div style="margin-top:12px"><input id="dmetin" maxlength="200" placeholder="Duyuru metni (en fazla 200 karakter)" style="width:100%;padding:9px;border:1px solid #ddd;border-radius:8px" value="' +
+              esc(d.metin || "") + '"></div>' +
+              '<div class="row" style="gap:8px;margin-top:8px;flex-wrap:wrap">' +
+              '<select id="dtur" style="padding:9px;border:1px solid #ddd;border-radius:8px">' +
+              '<option value="bilgi">ℹ️ Bilgi</option><option value="uyari">⚠️ Uyarı</option><option value="bakim">🛠️ Bakım</option></select>' +
+              '<input id="dsaat" type="number" min="0" max="720" value="24" style="width:110px;padding:9px;border:1px solid #ddd;border-radius:8px" placeholder="saat">' +
+              '<span style="align-self:center;font-size:12px;color:#888">saat sonra kendiliğinden kalkar (0 = süresiz)</span></div>' +
+              '<div class="row" style="gap:8px;margin-top:12px">' +
+              '<button class="btn sm" onclick="duyuruYayinla()">Yayınla</button>' +
+              '<button class="btn ghost sm" onclick="duyuruKaldir()">Kaldır</button></div>' +
+              '<div style="font-size:12px;color:#888;margin-top:10px">⚠️ Sunucu yeniden başlarsa duyuru düşer (bellekte tutuluyor — Firestore okuma kotası yakmamak için).</div></div>';
+          })
+          .catch(function (e) {
+            $("list").innerHTML = '<div class="empty">Okunamadı: ' + esc(e.message) + "</div>";
+          });
+      }
+      window.duyuruYayinla = function () {
+        var metin = ($("dmetin").value || "").trim();
+        if (!metin) { alert("Metin boş."); return; }
+        if (!confirm('"' + metin + '"\n\nBu yazı UYGULAMAYI AÇAN HERKESE görünecek. Emin misin?')) return;
+        _post("/admin/announce", { metin: metin, tur: $("dtur").value, saat: +$("dsaat").value })
+          .then(function () { alert("✅ Yayınlandı."); loadDuyuru(); })
+          .catch(function (e) { alert("Hata: " + e.message); });
+      };
+      window.duyuruKaldir = function () {
+        if (!confirm("Duyuru kaldırılsın mı?")) return;
+        _post("/admin/announce", { metin: "", saat: 0 })
+          .then(function () { loadDuyuru(); })
+          .catch(function (e) { alert("Hata: " + e.message); });
+      };
+
+      // ── 🧪 YALNIZ BANA TEST ──────────────────────────────────────────────
+      // Yanlış bildirimi binlerce kişiye göndermenin geri dönüşü yok. Bu buton
+      // aynı metni `user_<adminUid>` topic'ine yollar; live-index.html'de her
+      // girişli kullanıcı kendi `user_<UID>` topic'ine abone oluyor.
+      window.pushTestBana = function () {
+        var title = $("pt").value.trim(), body = $("pb").value.trim();
+        if (!title || !body) { alert("Başlık ve metin zorunlu."); return; }
+        var me = auth.currentUser && auth.currentUser.uid;
+        if (!me) { alert("Oturum yok."); return; }
+        _post("/admin/push", {
+          title: title, body: body, url: $("pu").value.trim(), topic: "user_" + me,
+        })
+          .then(function () { alert("🧪 Test gönderildi — yalnız senin cihazına."); })
+          .catch(function (e) { alert("Hata: " + e.message); });
+      };
+
+      // ── 📋 ŞABLONLAR (localStorage — Firestore'a dokunmaz) ───────────────
+      function sablonOku() {
+        try { return JSON.parse(localStorage.getItem("kmPushSablon") || "[]"); }
+        catch (e) { return []; }
+      }
+      function sablonlariCiz() {
+        var arr = sablonOku(), el = $("sablonlar");
+        if (!el) return;
+        if (!arr.length) { el.innerHTML = '<div class="empty" style="margin:0">Kayıtlı şablon yok.</div>'; return; }
+        el.innerHTML = arr.map(function (s, i) {
+          return '<div class="row" style="gap:8px;margin-bottom:6px">' +
+            '<button class="btn ghost sm" style="flex:1;text-align:left" onclick="sablonYukle(' + i + ')">' +
+            esc(s.t) + ' <span style="color:#888">— ' + esc((s.b || "").slice(0, 40)) + '</span></button>' +
+            '<button class="btn ghost sm" onclick="sablonSil(' + i + ')">🗑</button></div>';
+        }).join("");
+      }
+      window.sablonYukle = function (i) {
+        var s = sablonOku()[i]; if (!s) return;
+        $("pt").value = s.t || ""; $("pb").value = s.b || ""; $("pu").value = s.u || "";
+      };
+      window.sablonKaydet = function () {
+        var t = $("pt").value.trim(), b = $("pb").value.trim();
+        if (!t || !b) { alert("Önce başlık ve metni doldur."); return; }
+        var arr = sablonOku();
+        arr.unshift({ t: t, b: b, u: $("pu").value.trim() });
+        try { localStorage.setItem("kmPushSablon", JSON.stringify(arr.slice(0, 20))); } catch (e) {}
+        sablonlariCiz();
+      };
+      window.sablonSil = function (i) {
+        var arr = sablonOku(); arr.splice(i, 1);
+        try { localStorage.setItem("kmPushSablon", JSON.stringify(arr)); } catch (e) {}
+        sablonlariCiz();
+      };
 
       window.pushSendNow = function () {
         var title = $("pt").value.trim();
@@ -523,8 +783,17 @@
           '<input id="pb" placeholder="Metin" style="width:100%;padding:9px;margin-bottom:6px">' +
           '<input id="pu" placeholder="Link (opsiyonel — sponsorlu için)" style="width:100%;padding:9px;margin-bottom:6px">' +
           '<input id="ptopic" value="tum-kullanicilar" style="width:100%;padding:9px;margin-bottom:8px">' +
+          '<div class="row" style="gap:8px;flex-wrap:wrap">' +
           '<button class="btn" id="pbtn" onclick="pushSendNow()">📤 Şimdi Gönder</button>' +
-          '<div style="font-size:12px;color:#888;margin-top:6px">⚠️ Geri alınamaz. Yalnız uygulamayı kurup bildirime izin verenlere gider.</div></div>' +
+          '<button class="btn ghost sm" onclick="pushTestBana()">🧪 Yalnız bana test gönder</button>' +
+          "</div>" +
+          '<div style="font-size:12px;color:#888;margin-top:6px">⚠️ Geri alınamaz. Yalnız uygulamayı kurup bildirime izin verenlere gider.<br>🧪 Test, <b>user_&lt;senin UID&gt;</b> topic\'ine gider — yalnız kendi cihazına düşer. Görmek için uygulamada bu hesapla giriş yapmış ve bildirime izin vermiş olmalısın.</div></div>' +
+
+          '<div class="card"><h3 style="margin:0 0 10px">📋 Şablonlar</h3>' +
+          '<div id="sablonlar"></div>' +
+          '<div class="row" style="gap:8px;margin-top:10px">' +
+          '<button class="btn ghost sm" onclick="sablonKaydet()">💾 Üstteki metni şablon olarak kaydet</button></div>' +
+          '<div style="font-size:12px;color:#888;margin-top:6px">Şablonlar bu tarayıcıda saklanır (Firestore kotası yakmaz).</div></div>' +
 
           '<div class="card"><h3 style="margin:0 0 10px">⏰ Zamanla</h3>' +
           '<input id="st" placeholder="Başlık" style="width:100%;padding:9px;margin-bottom:6px">' +
@@ -540,6 +809,7 @@
           '<div style="font-size:12px;color:#888;margin-top:6px">Saatler <b>Türkiye saati</b>. Haftalık seçilmezse gün alanı yok sayılır.</div></div>' +
           '<div id="plist"><div class="empty">Yükleniyor…</div></div>';
         $("list").innerHTML = html;
+        sablonlariCiz();
 
         // Zamanlanmışlar + son gönderilenler
         db.collection("pushSchedule").limit(50).get().then(function (snap) {
@@ -701,10 +971,19 @@
       }
 
       // ── Bize Ulaşın + Puanlama (ikisi de feedback koleksiyonu) ──
+      // ⚠️ KOTA: 300 → 150. Sayaçlar bu 150'yi yansıtır; GERÇEK toplam 📈 Özet
+      // sekmesinde (aggregation ile, doküman indirmeden).
+      // ⚠️ d.id de alınıyor — "okundu" işareti için doküman kimliği gerekiyor.
+      var sonKayitlar = [];
       function loadFeedback(kind) {
-        db.collection("feedback").limit(300).get().then(function (snap) {
+        db.collection("feedback").orderBy("ts", "desc").limit(150).get().then(function (snap) {
           var docs = [];
-          snap.forEach(function (d) { docs.push(d.data()); });
+          snap.forEach(function (d) {
+            var o = d.data();
+            o._id = d.id;
+            docs.push(o);
+          });
+          sonKayitlar = docs;
           // rating alanı VARSA puanlama, YOKSA iletişim
           var contact = docs.filter(function (x) { return x.rating == null; });
           var rating = docs.filter(function (x) { return x.rating != null; });
@@ -735,34 +1014,99 @@
               );
             }
             return (
-              '<div class="card"><div class="meta">' +
+              '<div class="card"' + (x.okundu ? ' style="opacity:.62"' : "") + '><div class="meta">' +
               (konuMap[x.konu] || '<span class="pill gray">' + esc(x.konu || "?") + "</span>") +
               "<span>" + fmtTs(x.ts) + "</span>" +
               (x.email ? '<span>· <a href="mailto:' + esc(x.email) + '">' + esc(x.email) + "</a></span>" : "<span>· e-posta yok</span>") +
+              (x.okundu ? '<span class="pill green">✅ okundu</span>' : "") +
               "</div>" +
-              '<div class="body">' + esc(x.mesaj) + "</div></div>"
+              '<div class="body">' + esc(x.mesaj) + "</div>" +
+              '<div class="row" style="margin:10px 0 0">' +
+              '<button class="btn ghost sm" onclick="okunduIsaretle(\'' + x._id + '\',' + (x.okundu ? "false" : "true") + ')">' +
+              (x.okundu ? "↩︎ Okunmadı yap" : "✅ Okundu işaretle") + "</button>" +
+              (x.email
+                ? '<a class="btn ghost sm" style="text-decoration:none" href="mailto:' + esc(x.email) +
+                  "?subject=" + encodeURIComponent("Karar Mercii - mesajınız hakkında") + '">✉️ Yanıtla</a>'
+                : "") +
+              "</div></div>"
             );
           }).join("");
-          $("list").innerHTML = html;
+          var arac =
+            '<div class="row" style="gap:8px;margin-bottom:10px">' +
+            '<button class="btn ghost sm" onclick="csvIndir(\'' + kind + '\')">📤 CSV indir</button>' +
+            '<span style="align-self:center;font-size:12px;color:#888">son 150 kayıt · gerçek toplam 📈 Özet\'te</span></div>';
+          $("list").innerHTML = arac + html;
         }).catch(renderErr);
       }
+      // ⚠️ Firestore kuralı: feedback update YALNIZ admin'e açık (allow update:
+      // if isAdmin()). Kural güncellenmeden bu buton "permission denied" verir.
+      window.okunduIsaretle = function (id, deger) {
+        db.collection("feedback").doc(id).set({ okundu: deger }, { merge: true })
+          .then(function () { loadFeedback(currentTab === "puan" ? "rating" : "contact"); })
+          .catch(function (e) {
+            alert("Yazılamadı: " + e.message + "\n\nFirestore kuralında feedback update admin'e açık mı?");
+          });
+      };
+      // CSV: ekrandaki kayıtlardan üretilir, YENİ Firestore okuması YAPMAZ.
+      window.csvIndir = function (kind) {
+        var arr = sonKayitlar.filter(function (x) {
+          return kind === "rating" ? x.rating != null : x.rating == null;
+        });
+        var satir = function (a) {
+          return a.map(function (v) {
+            return '"' + String(v == null ? "" : v).replace(/"/g, '""') + '"';
+          }).join(",");
+        };
+        var csv = [satir(["tarih", "tur", "puan", "konu", "eposta", "mesaj", "okundu"])];
+        arr.forEach(function (x) {
+          csv.push(satir([
+            fmtTs(x.ts), kind === "rating" ? "puanlama" : "iletisim",
+            x.rating == null ? "" : x.rating, x.konu || "",
+            x.email || "", x.text || x.mesaj || "", x.okundu ? "evet" : "hayir",
+          ]));
+        });
+        // ﻿ = BOM → Excel Türkçe karakterleri doğru açsın.
+        var blob = new Blob(["﻿" + csv.join("\r\n")], { type: "text/csv;charset=utf-8" });
+        var a = document.createElement("a");
+        a.href = URL.createObjectURL(blob);
+        a.download = "karar-mercii-" + kind + "-" + new Date().toISOString().slice(0, 10) + ".csv";
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+      };
 
       // ── Merci AI feedback ──
+      // ⚠️ KOTA: eskiden limit(300) ile 300 doküman çekilip JS'te sıralanıyordu.
+      // Artık 60 kayıt + filtre. 👎 filtresi Merci'nin nerede saçmaladığını
+      // görmenin en doğrudan yolu (soru + cevap yan yana duruyor).
+      // ⚠️ where("vote") ile orderBy("ts") BİRLİKTE kullanılmıyor: ikisi farklı
+      // alan olduğu için composite index isterdi ve indeks yoksa sorgu HATA
+      // verirdi. Filtreliyken sıralama JS'te yapılıyor (60 kayıt, ucuz).
+      var merciFiltre = "hepsi";
+      window.merciFiltreSec = function (f) { merciFiltre = f; loadMerci(); };
       function loadMerci() {
-        db.collection("merci_feedback").limit(300).get().then(function (snap) {
+        var q = db.collection("merci_feedback");
+        q = merciFiltre === "hepsi"
+          ? q.orderBy("ts", "desc").limit(60)
+          : q.where("vote", "==", merciFiltre).limit(60);
+        q.get().then(function (snap) {
           var arr = [];
           snap.forEach(function (d) { arr.push(d.data()); });
           $("cnt-merci").textContent = arr.length;
           arr.sort(function (a, b) { return tsVal(b.ts) - tsVal(a.ts); });
+          var btn = function (f, etiket) {
+            return '<button class="btn ' + (merciFiltre === f ? "" : "ghost ") +
+              'sm" onclick="merciFiltreSec(\'' + f + '\')">' + etiket + "</button>";
+          };
+          var head =
+            '<div class="row" style="gap:8px">' + btn("hepsi", "Hepsi") +
+            btn("dislike", "👎 Beğenilmeyenler") + btn("like", "👍 Beğenilenler") +
+            '</div><div class="empty" style="margin:0 0 10px">Son ' + arr.length +
+            " kayıt gösteriliyor · toplam sayılar 📈 Özet sekmesinde</div>";
           if (!arr.length) {
-            $("list").innerHTML = '<div class="empty">Kayıt yok.</div>';
+            $("list").innerHTML = head + '<div class="empty">Bu filtrede kayıt yok.</div>';
             return;
           }
-          var likes = arr.filter(function (x) { return x.vote === "like"; }).length;
-          var dis = arr.length - likes;
-          var head =
-            '<div class="row"><span class="pill green">👍 ' + likes +
-            '</span><span class="pill red">👎 ' + dis + "</span></div>";
           var html = arr.map(function (x) {
             var v = x.vote === "like"
               ? '<span class="pill green">👍 Beğendi</span>'
