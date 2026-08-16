@@ -480,7 +480,10 @@ async function autoCloseExpiredRooms() {
       .orderBy("closesAt")
       .limit(50) // tur başına tavan; kalanları bir sonraki tur alır
       .get();
+    // Kapatılıp bildirilmesi gereken oda kodları (push transaction DIŞINDA atılır)
+    const kapananlar = [];
     for (const docSnap of snap.docs) {
+      let bildirilecek = null;
       await adminDb.runTransaction(async (tx) => {
         const fresh = await tx.get(docSnap.ref);
         if (!fresh.exists) return;
@@ -528,8 +531,36 @@ async function autoCloseExpiredRooms() {
           tieItems: [],
           closedBy: "server",
           closedAt: Date.now(),
+          // ⚠️ Bildirimi bu tur BİZ göndereceğiz → /room/notify'ın tekrar
+          // göndermesini engelle (aynı sonuç için ikinci bildirim gitmesin).
+          notifiedAt: Date.now(),
         });
+        bildirilecek = docSnap.id;
       });
+      if (bildirilecek) kapananlar.push(bildirilecek);
+    }
+    // ⭐ 16 AĞU — EKSİK OLAN BUYDU: sunucu odayı kapatıyordu ama BİLDİRİM
+    // GÖNDERMİYORDU. Host uygulamayı kapatıp gittiğinde oda closesAt ile burada
+    // sessizce kapanıyor, katılımcılar sonuçtan haberdar olmuyordu.
+    // ⚠️ Push transaction DIŞINDA: transaction yeniden denenebilir, içine yan
+    // etki koyulursa aynı bildirim birden çok kez gidebilir.
+    for (const code of kapananlar) {
+      try {
+        const title = "Oylama sonuçlandı! 🐙";
+        const body = "Kazananı görmek için dokun 👀";
+        await sendPush({ topic: "oda_" + code, title, body, room: code });
+        await logPush({
+          title,
+          body,
+          topic: "oda_" + code,
+          by: "server",
+          kind: "result",
+          ok: true,
+        });
+      } catch (e) {
+        // Bildirim gitmezse oda yine de kapalı — akış bozulmaz.
+        console.error("autoClose push (" + code + "):", e.message);
+      }
     }
   } catch (e) {
     // Index yoksa Firestore FAILED_PRECONDITION + oluşturma linki döner. Sorgu hiç
@@ -2511,21 +2542,18 @@ app.post("/room/notify", rateLimit, async (req, res) => {
     return res.status(400).json({ error: "Oda kodu geçersiz." });
   const kind = String((req.body && req.body.kind) || "result");
   try {
-    const snap = await adminDb.collection("rooms").doc(code).get();
-    if (!snap.exists) return res.status(404).json({ error: "Oda yok." });
-    const r = snap.data() || {};
-    // ⚠️⚠️ YETKİ — KAPALI BAŞARISIZLIK (fail-closed). ÖNCE `r.hostUid && ...`
-    // yazmıştım: oda dokümanında `hostUid` ALANI YOK (yalnız `hostId: deviceId`
-    // var, o da Firebase UID DEĞİL) → koşul her zaman false, kontrol SESSİZCE
-    // ATLANIYORDU. Sonuç: giriş yapmış herhangi biri, oda kodunu bilen herkese
-    // sahte bildirim gönderebilirdi. Artık alan YOKSA da REDDEDİLİR.
-    // ⚠️ Bu yüzden client oda kurarken `hostUid: <firebase uid>` YAZMAK ZORUNDA.
-    // Eski odalarda alan olmadığı için bildirim gitmez — kabul edilen davranış
-    // (push zaten yeni sürümle geliyor), sessiz güvenlik açığına yeğdir.
-    if (!r.hostUid || r.hostUid !== uid)
-      return res
-        .status(403)
-        .json({ error: "Bu odanın sahibi değilsin (ya da oda eski sürümde kuruldu)." });
+    // ⚠️ 16 AĞU — YETKİ GENİŞLETİLDİ, SEBEBİ ÖNEMLİ:
+    // Eskiden yalnız `r.hostUid === uid` geçiyordu. Ama odayı host DEĞİL,
+    // süre dolunca odada kalan HERHANGİ bir katılımcı da kapatabiliyor
+    // (client `deadlineClose`). O durumda sonuç Firestore'a yazılıyor, ama
+    // bildirim 403 yiyip düşüyordu → katılımcılar sonuçtan habersiz kalıyordu.
+    // ⭐ Yerine gelen koruma DAHA GÜÇLÜ, çünkü artık yetkiye değil DURUMA bakıyor:
+    //   1) Oda gerçekten kapanmış ve kazanan yazılmış olmalı (aşağıda),
+    //   2) Bildirim oda başına TEK KEZ gider (notifiedAt kilidi),
+    //   3) İstek sahibi giriş yapmış olmalı (uidFromReq).
+    // Oda kodunu bilen biri zaten odayı kapatabiliyordu (Firestore kuralı
+    // `rooms` update'ine girişli herkese izin veriyor), dolayısıyla hostUid
+    // kontrolü spam'i engellemiyordu; notifiedAt engelliyor.
 
     // ⚠️ YALNIZ "result" DESTEKLENİYOR (2 Ağu kararı). "Odaya davet edildin"
     // bildirimi BİLEREK YOK: davet WhatsApp'tan ?room= linkiyle gidiyor, sistem
@@ -2534,9 +2562,30 @@ app.post("/room/notify", rateLimit, async (req, res) => {
     // gönderilemez. Profil özelliği gelirse `user_<UID>` topic'iyle eklenebilir.
     if (kind !== "result")
       return res.status(400).json({ error: "Bilinmeyen bildirim türü." });
-    // Sonuç gerçekten açıklanmış olmalı — "closed" değilken bildirim YOK.
-    if (r.status !== "closed" || !r.winner)
+
+    // ⚠️ DOĞRULAMA + KİLİT TEK TRANSACTION'DA olmak zorunda. Ayrı get→update
+    // yazılsaydı, odayı kapatan kişi belli olmadığı için (deadlineClose'u
+    // odadaki HERKES çağırabilir) iki katılımcı aynı anda tetiklediğinde ikisi
+    // de notifiedAt'ı boş görüp AYNI bildirimi iki kez gönderirdi.
+    const ref = adminDb.collection("rooms").doc(code);
+    const durum = await adminDb.runTransaction(async (tx) => {
+      const fresh = await tx.get(ref);
+      if (!fresh.exists) return "yok";
+      const r = fresh.data() || {};
+      // Sonuç gerçekten açıklanmış olmalı — "closed" değilken bildirim YOK.
+      if (r.status !== "closed" || !r.winner) return "acilmadi";
+      if (r.notifiedAt) return "zaten";
+      tx.update(ref, { notifiedAt: Date.now() });
+      return "ok";
+    });
+    if (durum === "yok") return res.status(404).json({ error: "Oda yok." });
+    if (durum === "acilmadi")
       return res.status(409).json({ error: "Sonuç henüz açıklanmadı." });
+    if (durum === "zaten")
+      return res
+        .status(409)
+        .json({ error: "Bu oda için bildirim zaten gönderildi." });
+
     // ⚠️ KAZANANI BİLDİRİMDE YAZMA (2 Ağu kullanıcı kararı). Bildirim gölgeliği
     // sonucu ele verirse uygulamayı açmaya gerek kalmıyor: merak sönüyor,
     // kullanıcı gelmiyor, kutlama anı (konfeti + kart) kaçıyor.
