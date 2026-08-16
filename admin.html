@@ -301,9 +301,14 @@
       // Ağu'da YENİ bir UID ile yeniden oluştu. Firebase'de UID hesaba değil
       // KAYDA bağlıdır — silinen kayıt geri gelmez, panel kimseye açılmıyordu.
       // UID değişirse ÜÇ YER birden güncellenmeli: burası + live-server.js
-      // (ADMIN_UID) + firestore.rules (isAdmin). Biri eksik kalırsa panel açılır
+      // (ADMIN_UIDS) + firestore.rules (isAdmin). Biri eksik kalırsa panel açılır
       // ama veri okunamaz, ya da tersi.
-      var ADMIN_UID = "r3vZcg4qouP1Kjo1WHjAkZR7eOL2";
+      // ⭐ İKİ HESAP birden yetkili (16 Ağu): biri yine silinirse/kaybolursa
+      // panel diğeriyle açılabilsin diye. [0] = ufukkurucan7, [1] = asytechstudio
+      var ADMIN_UIDS = [
+        "r3vZcg4qouP1Kjo1WHjAkZR7eOL2",
+        "Zc0eea7rhQMuKK42WaTpNmS9HRi1",
+      ];
 
       firebase.initializeApp({
         apiKey: "AIzaSyBE-mhjBnY1HcIo37FOESGSc3wzzektFdQ",
@@ -358,8 +363,9 @@
           $("gate-extra").innerHTML = "";
           return;
         }
-        var locked = ADMIN_UID && ADMIN_UID.indexOf("__") !== 0;
-        if (locked && user.uid !== ADMIN_UID) {
+        var locked =
+          ADMIN_UIDS.length > 0 && ADMIN_UIDS[0].indexOf("__") !== 0;
+        if (locked && ADMIN_UIDS.indexOf(user.uid) === -1) {
           // Yetkisiz hesap
           $("app").style.display = "none";
           $("gate").style.display = "flex";
@@ -413,7 +419,7 @@
       // ══════════════════════════════════════════════════════════════════════
       // Bu panel Firestore'a DOĞRUDAN yazmaz; gönderim sunucudaki /admin/push
       // ucundan geçer. Sebep: FCM gönderimi sunucu anahtarı gerektirir ve
-      // yetki tek yerde (ADMIN_UID) doğrulanır.
+      // yetki tek yerde (ADMIN_UIDS) doğrulanır.
       // ⚠️ Zamanlanmış kayıtlar da sunucuya gider — `nextAt`i SUNUCU hesaplar
       // (TR saati → UTC), panelden yanlış değer gelse bile zamanlayıcı tutarlı.
       function _adminHeaders() {
