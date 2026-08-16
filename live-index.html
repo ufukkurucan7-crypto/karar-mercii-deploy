@@ -369,6 +369,46 @@
         /* Scroll gölgesi yumuşakça girip çıksın (GPU-dostu: blur yok, yalnız box-shadow) */
         transition: box-shadow 0.25s ease, border-color 0.25s ease;
       }
+      /* 📣 Duyuru bandı (panelden yönetilir). Renkler AÇIK YAZILDI —
+         var(--ac-bg) gibi toplu kurallar koyu temada okunmaz hale getiriyor
+         (konum modalı dersi). Üç tür: bilgi / uyarı / bakım. */
+      .km-duyuru {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 9px 14px;
+        font-size: 13px;
+        font-weight: 800;
+        line-height: 1.35;
+        background: #e8f0ff;
+        color: #1f3a63;
+        border-bottom: 1px solid #c9dcff;
+      }
+      .km-duyuru.uyari {
+        background: #fff4e0;
+        color: #6b4408;
+        border-bottom-color: #f2d9a8;
+      }
+      .km-duyuru.bakim {
+        background: #ffe9e9;
+        color: #7a2020;
+        border-bottom-color: #f3c4c4;
+      }
+      .km-duyuru span {
+        flex: 1;
+        min-width: 0;
+      }
+      .km-duyuru button {
+        flex-shrink: 0;
+        border: 0;
+        background: transparent;
+        color: inherit;
+        font-size: 15px;
+        font-weight: 900;
+        cursor: pointer;
+        opacity: 0.65;
+        padding: 2px 4px;
+      }
       /* Scroll'da beliren yumuşak gölge — JS pasif scroll listener .scrolled basar */
       .hdr.scrolled {
         border-bottom-color: transparent;
@@ -8796,6 +8836,15 @@
           <div class="hdr-pro" id="hdr-pro" style="display: none">⭐ PRO</div>
           <button class="menu-btn" id="menu-btn" aria-label="Menü"><svg class="ic" viewBox="0 0 24 24"><use href="#i-menu"/></svg></button>
         </div>
+        <!-- 📣 DUYURU BANDI — panelden yönetilir (admin.html → 📣 Duyuru).
+             ⚠️ Metin SUNUCUDAN (GET /announce) geliyor, Firestore'dan DEĞİL:
+             Firestore'da tutulsaydı her kullanıcı her açılışta 1 okuma yapardı
+             (duyuru yokken bile) → kullanıcı×açılış kadar boşa kota.
+             Kapatılınca o duyuru bir daha gösterilmez (localStorage damgası). -->
+        <div id="km-duyuru" class="km-duyuru" style="display: none">
+          <span id="km-duyuru-tx"></span>
+          <button id="km-duyuru-x" aria-label="Duyuruyu kapat">✕</button>
+        </div>
 
         <!-- ══════════ ANA EKRAN HUB (2×2) ══════════
              Sekmeler aşağı indi; burası "hiçbir sekme açık değil" hâli.
@@ -10909,10 +10958,68 @@
           if (this.ok()) {
             this.ensureChannel();
             this.subscribe(this.TOPIC_ALL);
+            // ⭐ 16 AĞU — KİŞİYE ÖZEL TOPIC: `user_<UID>`. İki işi birden çözer:
+            //   1) Panelden bildirim göndermeden ÖNCE "yalnız bana test gönder"
+            //      (yanlış bildirimi herkese atmanın geri dönüşü yok),
+            //   2) İleride hedefli bildirim (destek yanıtı, kişiye özel duyuru)
+            //      — kodda "profil gelirse user_<UID> topic'iyle eklenebilir"
+            //      diye not düşülmüştü, altyapısı artık hazır.
+            // ⚠️ Anonim/misafirde UID yok → abone olunmaz, sessizce atlanır.
+            this.subscribeUser();
           }
+        },
+        // ⚠️ AYRI METOD OLMAK ZORUNDA: init() `_inited` ile korumalı ve auth
+        // ÇÖZÜLMEDEN önce çalışıyor → o anda currentUser henüz null. Abonelik
+        // yalnız init içinde kalsaydı hiçbir zaman gerçekleşmezdi. Bu yüzden
+        // onAuthStateChanged'den de çağrılıyor (tekrar çağrı zararsız).
+        subscribeUser: function () {
+          try {
+            if (!this.ok()) return;
+            var u = window.currentUser;
+            if (u && u.uid) this.subscribe("user_" + u.uid);
+          } catch (e) {}
         },
       };
       window.KM_PUSH = KM_PUSH;
+
+      // ══ 📣 DUYURU BANDI ══
+      // Panelden (admin.html → 📣 Duyuru) yazılan kısa mesajı üstte gösterir.
+      // ⚠️ KAYNAK SUNUCU (GET /announce), Firestore DEĞİL — Firestore'da tutmak
+      // her kullanıcının her açılışında 1 okuma demekti (duyuru yokken bile).
+      // ⚠️ Ateşle-unut: uç yoksa/hata verirse hiçbir şey gösterilmez, uygulama
+      // akışı etkilenmez (eski sürümlerde bu uç hiç yok).
+      function kmDuyuruYukle() {
+        try {
+          fetch("/announce", { cache: "no-store" })
+            .then(function (r) { return r.json(); })
+            .then(function (d) {
+              if (!d || !d.var || !d.metin) return;
+              // Aynı duyuru kapatıldıysa bir daha gösterme (metin damgası).
+              var damga = "kmDuyuru_" + String(d.metin).slice(0, 40);
+              try {
+                if (localStorage.getItem(damga) === "1") return;
+              } catch (e) {}
+              var el = document.getElementById("km-duyuru");
+              var tx = document.getElementById("km-duyuru-tx");
+              var x = document.getElementById("km-duyuru-x");
+              if (!el || !tx) return;
+              tx.textContent = d.metin;
+              el.className = "km-duyuru" + (d.tur === "uyari" ? " uyari" : d.tur === "bakim" ? " bakim" : "");
+              el.style.display = "flex";
+              if (x)
+                x.onclick = function () {
+                  el.style.display = "none";
+                  try {
+                    localStorage.setItem(damga, "1");
+                  } catch (e) {}
+                };
+            })
+            .catch(function () {});
+        } catch (e) {}
+      }
+      if (document.readyState === "loading")
+        document.addEventListener("DOMContentLoaded", kmDuyuruYukle);
+      else kmDuyuruYukle();
 
       // ⚠️ SOĞUK AÇILIŞ YARIŞI: Uygulama KAPALIYKEN bildirime dokunulursa
       // notificationActionPerformed olayı, auth çözülmeden ÖNCE gelebilir.
@@ -11187,6 +11294,10 @@
         // init geç kalırsa derin bağlantı sessizce kaybolur.
         try {
           KM_PUSH.init();
+          // ⚠️ init() `_inited` korumalı → ikinci çağrıda gövdesi çalışmaz.
+          // Kişiye özel topic aboneliği bu yüzden AYRICA çağrılıyor: UID ancak
+          // burada belli oluyor (init auth'tan önce çalışmış olabilir).
+          KM_PUSH.subscribeUser();
           _kmDrainPendingRoom();
         } catch (e) {}
         isPremium = false;
