@@ -2383,7 +2383,13 @@ app.post("/nearby", rateLimit, async (req, res) => {
 // ⚠️ 16 AĞU — UID DEĞİŞTİ (eski: gq8uRlcr4TOwe41qWnKk18DZ0Wt1). Uygulama içi
 // "Hesabımı Sil" testinde Auth kaydı silindi → aynı e-posta yeniden girince
 // YENİ UID aldı. UID değişirse admin.html ve firestore.rules de güncellenmeli.
-const ADMIN_UID = "r3vZcg4qouP1Kjo1WHjAkZR7eOL2";
+// ⭐ İKİ HESAP birden yetkili: biri silinirse/kaybolursa panel diğeriyle
+// açılabilsin. [0] = ufukkurucan7@gmail.com, [1] = asytechstudio@gmail.com
+const ADMIN_UIDS = [
+  "r3vZcg4qouP1Kjo1WHjAkZR7eOL2",
+  "Zc0eea7rhQMuKK42WaTpNmS9HRi1",
+];
+const isAdminUid = (u) => ADMIN_UIDS.includes(u);
 const TOPIC_ALL = "tum-kullanicilar";
 
 // FCM topic adı kuralı: [a-zA-Z0-9-_.~%]+ . Oda kodu dışarıdan geldiği için
@@ -2476,7 +2482,7 @@ async function logPush(rec) {
 app.post("/admin/push", rateLimit, async (req, res) => {
   const uid = await uidFromReq(req);
   if (!uid) return res.status(401).json({ error: "Oturum doğrulanamadı." });
-  if (uid !== ADMIN_UID) return res.status(403).json({ error: "Yetkin yok." });
+  if (!isAdminUid(uid)) return res.status(403).json({ error: "Yetkin yok." });
   const { title, body, url } = req.body || {};
   const topic = safeTopic((req.body && req.body.topic) || TOPIC_ALL);
   if (!title || !body)
@@ -2645,7 +2651,7 @@ _tickTimer.unref?.();
 app.post("/admin/push/schedule", rateLimit, async (req, res) => {
   const uid = await uidFromReq(req);
   if (!uid) return res.status(401).json({ error: "Oturum doğrulanamadı." });
-  if (uid !== ADMIN_UID) return res.status(403).json({ error: "Yetkin yok." });
+  if (!isAdminUid(uid)) return res.status(403).json({ error: "Yetkin yok." });
   const b = req.body || {};
   if (!b.title || !b.body)
     return res.status(400).json({ error: "Başlık ve metin zorunlu." });
