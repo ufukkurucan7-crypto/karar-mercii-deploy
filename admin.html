@@ -295,7 +295,15 @@
     <script>
       // ⚠️ ADMIN UID — kilitlenene kadar boş. Giriş yapınca UID ekranda görünür;
       // onu buraya (ve firestore.rules'a) yazınca panel kilitlenir.
-      var ADMIN_UID = "gq8uRlcr4TOwe41qWnKk18DZ0Wt1";
+      // ⚠️ 16 AĞU — UID DEĞİŞTİ. Eskisi (gq8uRlcr4TOwe41qWnKk18DZ0Wt1) 8 Ağu'da
+      // eklenen uygulama içi "Hesabımı Sil" (Apple 5.1.1(v)) test edilirken
+      // silindi; Auth kaydı gidince aynı e-posta (ufukkurucan7@gmail.com) 9
+      // Ağu'da YENİ bir UID ile yeniden oluştu. Firebase'de UID hesaba değil
+      // KAYDA bağlıdır — silinen kayıt geri gelmez, panel kimseye açılmıyordu.
+      // UID değişirse ÜÇ YER birden güncellenmeli: burası + live-server.js
+      // (ADMIN_UID) + firestore.rules (isAdmin). Biri eksik kalırsa panel açılır
+      // ama veri okunamaz, ya da tersi.
+      var ADMIN_UID = "r3vZcg4qouP1Kjo1WHjAkZR7eOL2";
 
       firebase.initializeApp({
         apiKey: "AIzaSyBE-mhjBnY1HcIo37FOESGSc3wzzektFdQ",
