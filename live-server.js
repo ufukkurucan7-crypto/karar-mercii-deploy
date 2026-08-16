@@ -589,11 +589,23 @@ setTimeout(autoCloseExpiredRooms, 8000); // başlangıçta birikmiş süresi dol
 
 // Günlük Merci mesaj limitleri (kullanıcı başına). Abuse/maliyet tavanı.
 // MODEL (22 Tem): Pro OLMAYAN için ücretsiz günlük hak YOK — client'ta ödüllü reklam
-// başına 4 mesaj (FREE_MSG_PER_DAY=0, AD_MSG_BONUS=4). Bu 60 sadece abuse tavanı
-// (çok reklam izleyen için ~15 reklam/gün); reklam sonrası soru cevapsız kalmasın diye yüksek.
-// Pro: UI'da "günde 50 mesaj" olarak sunulur; 300 abuse tavanı (Pro asla 50'de kesilmez, hep üzerinde).
-const FREE_DAILY_LIMIT = 60;
-const PRO_DAILY_LIMIT = 300;
+// başına 4 mesaj (FREE_MSG_PER_DAY=0, AD_MSG_BONUS=4).
+//
+// ⭐ 17 AĞU — İKİSİ DE DÜŞÜRÜLDÜ (60→8, 300→60). Gerekçe, ölçülmüş maliyetle:
+// Haiku 4.5 ($1/1M girdi, $5/1M çıktı) + ~8.000 karakterlik Türkçe sistem promptu
+// (satır ~892) HER mesajda baştan gönderiliyor → mesaj başı ≈ $0,005. Konum soran
+// mesaj araç döngüsü yüzünden ~2 katı.
+//   • Ücretsiz 60: ~15 reklam izleyen kullanıcı günde 60 mesaj = ≈$0,30 maliyet,
+//     karşılığında ~$0,015-0,06 reklam geliri → HER reklamda 5-20 kat ZARAR.
+//     Üstelik reklam bonusu client'ta tutulduğu için (localStorage.kmTopicUsage)
+//     hiç reklam izlemeden de 60'a kadar çıkılabiliyordu — bu tavan o sömürünün
+//     de tek gerçek freni. 8 = 2 reklam × 4 mesaj (client AD_MAX_PER_DAY ile eşleşir).
+//   • PRO 300: UI'da "günde 50 mesaj" deniyor, sunucu 300'e izin veriyordu → vaadin
+//     6 katı kuyruk riski. 60, 50'lik vaade pay bırakır ama tavanı 5 kat daraltır.
+// ⚠️ KULLANICIYA GÖRÜNEN "50" RAKAMI DEĞİŞMEDİ — mağaza metni, ekran görüntüleri ve
+//    uygulama içi 15 metin AYNEN duruyor. Bu iki sabit hiçbir yerde gösterilmiyor.
+const FREE_DAILY_LIMIT = 8;
+const PRO_DAILY_LIMIT = 60;
 
 // ── PRO GEÇERLİLİK ──
 // isPro:true TEK BAŞINA yeterli değil: RC 'EXPIRATION' webhook'u kaçarsa bayrak
