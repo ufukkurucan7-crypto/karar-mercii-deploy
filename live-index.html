@@ -20769,15 +20769,60 @@ function drawResultCard(opts) {
       // izin oranı çok daha yüksek. (Konum modalı dersi: sohbete KART BASMA,
       // normal modal kullan; renkleri AÇIK yaz, var(--ac-bg) kullanma — koyu
       // temada toplu kural kutuyu okunmaz yapıyor.)
+      // ⚠️ 16 AĞU — TEKRAR SORMA MANTIĞI GEVŞETİLDİ.
+      // ESKİDEN: `kmPushPrompted` damgası bir kez yazılıyordu ve modal BİR DAHA
+      // hiç gösterilmiyordu. "Şimdi değil" diyen ya da o anı kaçıran kullanıcı
+      // bildirimleri bir daha AÇAMIYORDU (Ayarlar satırı da yoktu) → oylama
+      // sonucu bildirimleri dahil hiçbir şey almıyorlardı.
+      // ŞİMDİ: en fazla 3 kez, aralarında en az 3 gün. Bunaltmadan ikinci şans.
+      // ⛔ İLK AÇILIŞTA SORMA FİKRİ REDDEDİLDİ (16 Ağu, kullanıcıyla konuşuldu):
+      //    Android 13+/iOS'ta sistem penceresi TEK ATIŞLIK — bir kez "izin verme"
+      //    denince requestPermissions bir daha pencere AÇMAZ, sessizce reddeder.
+      //    Uygulamayı henüz tanımayan kullanıcıya bağlamsız sormak red oranını
+      //    yükseltir ve o kullanıcıyı KALICI olarak kaybettirir. Soru, anlamlı
+      //    olduğu yerde (oda kurma/katılma) sorulmalı.
+      var KM_PUSH_MAX_SORU = 3;
+      var KM_PUSH_ARA_MS = 3 * 86400000;
+      function _kmPushSoruDurum() {
+        var sayi = 0,
+          son = 0;
+        try {
+          sayi = parseInt(localStorage.getItem("kmPushSoruSayi") || "0", 10) || 0;
+          son = parseInt(localStorage.getItem("kmPushSoruSon") || "0", 10) || 0;
+          // Eski tek-seferlik damga → 1 soru sayılır (kullanıcıyı sıfırlamayalım).
+          if (!sayi && localStorage.getItem("kmPushPrompted")) sayi = 1;
+        } catch (e) {}
+        return { sayi: sayi, son: son };
+      }
+      function _kmPushSorulabilir() {
+        var d = _kmPushSoruDurum();
+        if (d.sayi >= KM_PUSH_MAX_SORU) return false;
+        if (d.son && Date.now() - d.son < KM_PUSH_ARA_MS) return false;
+        return true;
+      }
       function _kmAskPushForRoom(code) {
         try {
+          // Şerit "Aç"a basıldığında hangi odanın topic'ine abone olacağını
+          // bilmesi için son oda kodu saklanır (şerit modaldan sonra çıkabilir).
+          window._kmSonOdaKodu = code;
           if (!KM_PUSH.plug()) return; // web / eski sürüm → sessizce geç
           if (KM_PUSH.ok()) {
             _kmJoinRoomTopic(code);
             return;
           }
-          if (localStorage.getItem("kmPushPrompted")) return; // bir kez sorulur
           if (document.getElementById("km-push-modal")) return;
+          // ⚠️ ÇİFTLENME KORUMASI: modal gösterilmeyecekse (kota doldu ya da
+          // 3 gün geçmedi) bunun yerine oda ekranında ince şerit gösterilir.
+          // İkisi ASLA aynı anda çıkmaz — bkz. _kmPushSeritGoster çağrısı.
+          if (!_kmPushSorulabilir()) {
+            _kmPushSeritGoster();
+            return;
+          }
+          var _d = _kmPushSoruDurum();
+          try {
+            localStorage.setItem("kmPushSoruSayi", String(_d.sayi + 1));
+            localStorage.setItem("kmPushSoruSon", String(Date.now()));
+          } catch (e) {}
           localStorage.setItem("kmPushPrompted", "1");
 
           var dark = document.documentElement.classList.contains("dark");
@@ -20844,6 +20889,84 @@ function drawResultCard(opts) {
           card.appendChild(row);
           ov.appendChild(card);
           document.body.appendChild(ov);
+        } catch (e) {}
+      }
+
+      // ── 🔔 BİLDİRİM ŞERİDİ (modalın YEDEĞİ, asla onunla birlikte çıkmaz) ──
+      // Modal hakkı bittiğinde (3 soru ya da 3 gün kuralı) sessiz kalmak yerine
+      // ekranın altında ince, kapatılabilir bir hatırlatma gösterilir.
+      // ⚠️ Sistem penceresi KALICI reddedilmişse ask() pencere açmaz ve false
+      // döner → kullanıcıya telefon ayarları yolu söylenir, sessizce yutulmaz.
+      function _kmPushSeritGoster() {
+        try {
+          if (!KM_PUSH.plug() || KM_PUSH.ok()) return;
+          if (document.getElementById("km-push-serit")) return;
+          if (document.getElementById("km-push-modal")) return; // çiftlenme yok
+          try {
+            if (localStorage.getItem("kmPushSeritKapali") === "1") return;
+          } catch (e) {}
+          var dark = document.documentElement.classList.contains("dark");
+          var el = document.createElement("div");
+          el.id = "km-push-serit";
+          el.style.cssText =
+            "position:fixed;left:12px;right:12px;bottom:calc(72px + var(--ad-bottom,0px));" +
+            "z-index:399997;display:flex;align-items:center;gap:10px;padding:11px 13px;" +
+            "border-radius:14px;font-family:'Nunito',sans-serif;font-size:13px;font-weight:800;" +
+            "box-shadow:0 10px 30px rgba(0,0,0,.28);" +
+            (dark
+              ? "background:#241b3b;color:#ece8f7;border:1px solid #3a2f55"
+              : "background:#fff;color:#2a2440;border:1px solid #e6e1f2");
+          var tx = document.createElement("span");
+          tx.style.cssText = "flex:1;min-width:0;line-height:1.35";
+          tx.textContent = "🔔 Sonuç çıkınca haber verelim mi?";
+          var ac = document.createElement("button");
+          ac.style.cssText =
+            "flex-shrink:0;border:none;background:var(--ac,#7c3aed);color:#fff;" +
+            "padding:8px 14px;border-radius:10px;font-weight:900;font-size:12.5px;" +
+            "font-family:'Nunito',sans-serif;cursor:pointer";
+          ac.textContent = "Aç";
+          var kapat = function () {
+            if (el.parentNode) el.parentNode.removeChild(el);
+          };
+          ac.onclick = function () {
+            ac.textContent = "…";
+            KM_PUSH.ask().then(function (granted) {
+              kapat();
+              if (granted) {
+                try {
+                  KM_PUSH.subscribeUser();
+                } catch (e) {}
+                if (window._kmSonOdaKodu) _kmJoinRoomTopic(window._kmSonOdaKodu);
+                _kmToast("Bildirimler açıldı 🔔");
+                logEv("push_permission_granted");
+              } else {
+                // Kalıcı red → sistem penceresi bir daha açılmaz, yol göster.
+                _kmToast(
+                  "Telefon Ayarları > Uygulamalar > Karar Mercii > Bildirimler'den açabilirsin.",
+                );
+                logEv("push_permission_denied");
+              }
+            });
+          };
+          var x = document.createElement("button");
+          x.style.cssText =
+            "flex-shrink:0;border:none;background:transparent;color:inherit;" +
+            "font-size:15px;font-weight:900;opacity:.55;cursor:pointer;padding:2px 4px";
+          x.textContent = "✕";
+          x.setAttribute("aria-label", "Kapat");
+          x.onclick = function () {
+            kapat();
+            // Kapatan kullanıcıyı bir daha rahatsız etme (Ayarlar'dan açabilir).
+            try {
+              localStorage.setItem("kmPushSeritKapali", "1");
+            } catch (e) {}
+          };
+          el.appendChild(tx);
+          el.appendChild(ac);
+          el.appendChild(x);
+          document.body.appendChild(el);
+          // 15 sn sonra kendiliğinden kalksın (damga YAZILMAZ — sonra tekrar çıkar)
+          setTimeout(kapat, 15000);
         } catch (e) {}
       }
 
