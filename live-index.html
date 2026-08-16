@@ -13077,14 +13077,28 @@ function drawResultCard(opts) {
       // Pro: yüksek sabit kota (sunucuda enforce; UI'da "günde 50 mesaj" olarak sunulur).
       var FREE_MSG_PER_DAY = 0; // ücretsiz günlük hak KALDIRILDI (reklam-kapılı)
       var AD_MSG_BONUS = 4; // ödüllü reklam başına kazanılan mesaj
+      // ⭐ 17 AĞU — GÜNLÜK REKLAM TAVANI. Öncesinde SINIRSIZDI: 15 reklam izleyen
+      // 60 mesaj alıyordu, yani PRO'ya vaat edilen 50'den FAZLASINI ücretsiz.
+      // PRO'nun değer önerisi matematiksel olarak yoktu. Ayrıca her reklam zarar
+      // ettiriyor (mesaj başı ≈$0,005 maliyet, reklam başı ≈$0,001-0,005 gelir) →
+      // sınırsız reklam = sınırsız zarar. 2 × 4 = günde 8 mesaj, sunucudaki
+      // FREE_DAILY_LIMIT=8 ile birebir eşleşir (asıl zorlama orada; buradaki
+      // sayaç localStorage'da olduğu için tek başına güvenlik değil, UX sınırı).
+      var AD_MAX_PER_DAY = 2;
       function getTopicUsage() {
         var today = new Date().toDateString();
         var usage = JSON.parse(localStorage.getItem("kmTopicUsage") || "{}");
         if (usage.date !== today) {
-          usage = { date: today, count: 0, extraFromAd: 0 };
+          usage = { date: today, count: 0, extraFromAd: 0, adsWatched: 0 };
           localStorage.setItem("kmTopicUsage", JSON.stringify(usage));
         }
         return usage;
+      }
+      // Bugün kaç reklam hakkı kaldı. ⚠️ `adsWatched` alanı 17 Ağu'da eklendi →
+      // eski kayıtta YOK; `|| 0` olmazsa NaN döner ve karşılaştırma hep false olur.
+      function kalanReklamHakki() {
+        var u = getTopicUsage();
+        return Math.max(0, AD_MAX_PER_DAY - (u.adsWatched || 0));
       }
       function saveTopicUsage(usage) {
         localStorage.setItem("kmTopicUsage", JSON.stringify(usage));
@@ -13120,12 +13134,26 @@ function drawResultCard(opts) {
         // (kaçağı kapatır + web→app dönüşümünü besler). Native yol değişmedi.
         var _pwNative = _capNative();
         var _pwSub, _pwBtn2, _pwCounter;
-        if (_pwNative) {
+        // ⚠️ 17 AĞU — REKLAM HAKKI BİTTİĞİNDE AYRI METİN ŞART.
+        // Günlük tavan (AD_MAX_PER_DAY) geldikten sonra eski metin YALAN olurdu:
+        // "kısa bir reklam izle" der, buton reklam açmaz, kullanıcı arar durur.
+        var _pwKalanReklam = _pwNative ? kalanReklamHakki() : 0;
+        if (_pwNative && _pwKalanReklam > 0) {
           _pwSub =
-            "Kısa bir reklam izle, +4 mesaj kazan — ya da PRO ile günde 50 mesaj, reklamsız konuş.";
+            "Kısa bir reklam izle, +" + AD_MSG_BONUS +
+            " mesaj kazan — ya da PRO ile günde 50 mesaj, reklamsız konuş.";
           _pwBtn2 =
-            '<button class="paywall-btn-ad" onclick="watchAdForTopic()">📺 Reklam İzle (+4 mesaj)</button>';
-          _pwCounter = "Her reklam +4 mesaj • Pro'da günde 50 🌙";
+            '<button class="paywall-btn-ad" onclick="watchAdForTopic()">📺 Reklam İzle (+' +
+            AD_MSG_BONUS + " mesaj)</button>";
+          _pwCounter =
+            "Bugün " + _pwKalanReklam + " reklam hakkın kaldı • Pro'da günde 50 🌙";
+        } else if (_pwNative) {
+          // Hak bitti: reklam butonu HİÇ basılmıyor, tek yol PRO ya da yarın.
+          _pwSub =
+            "Bugünkü " + AD_MAX_PER_DAY +
+            " reklam hakkını kullandın. Yarın yenilenir — beklemek istemezsen PRO ile günde 50 mesaj, reklamsız.";
+          _pwBtn2 = "";
+          _pwCounter = "Reklam hakkın yarın yenilenir • Pro'da günde 50 🌙";
         } else if (!_kmIsIOSWeb()) {
           // Android/masaüstü tarayıcı → Play linki anlamlı
           _pwSub =
@@ -13501,10 +13529,22 @@ function drawResultCard(opts) {
       // ── REKLAM İZLE ──
       window.watchAdForTopic = function () {
         var btn = document.querySelector(".paywall-btn-ad");
+        // Savunma katmanı: hak bittiyse duvar bu butonu zaten basmıyor, ama eski
+        // bir duvar ekranda kalmış olabilir (ör. son reklam izlendikten sonra).
+        if (kalanReklamHakki() <= 0) {
+          appendMsg(
+            "merci",
+            "Bugünkü " + AD_MAX_PER_DAY +
+              " reklam hakkını kullandın 🐙 Yarın yenilenir — ya da PRO ile beklemeden devam edebilirsin.",
+          );
+          if (btn) btn.remove();
+          return;
+        }
         function grant() {
           logEv("rewarded_complete");
           var usage = getTopicUsage();
           usage.extraFromAd = (usage.extraFromAd || 0) + AD_MSG_BONUS;
+          usage.adsWatched = (usage.adsWatched || 0) + 1; // 17 Ağu: günlük tavan sayacı
           saveTopicUsage(usage);
           hidePaywall();
           var pq = window._pendingQ;
@@ -14624,11 +14664,11 @@ function drawResultCard(opts) {
                 var _w = document.getElementById("ai-login-wall");
                 this.sel = _w && _w.offsetParent ? "#ai-login-wall" : ".merci-ai-hero";
                 this.body =
-                  "Merci'ye danışmak için <b>Google ile giriş</b> yeterli — <b>kısa bir reklam izle, 4 mesaj</b> kazan! (PRO'da günde 50 mesaj, reklamsız.) Girince 'ne yesem, nereye gitsem' diye sorabilir, yakındaki mekan önerisi alabilirsin.";
+                  "Merci'ye danışmak için <b>Google ile giriş</b> yeterli — <b>kısa bir reklam izle, 4 mesaj</b> kazan (günde 2 reklam)! PRO'da günde 50 mesaj, reklamsız. Girince 'ne yesem, nereye gitsem' diye sorabilir, yakındaki mekan önerisi alabilirsin.";
               } else {
                 this.sel = ".merci-ai-hero";
                 this.body =
-                  "Ne yesek, nereye gitsek, ne izlesek… durumunu anlat, sana en iyi seçenekleri öneririm. <b>Reklam başına 4 mesaj</b> (PRO'da günde 50, reklamsız). Kararsız kalırsan senin için seçerim 🐙";
+                  "Ne yesek, nereye gitsek, ne izlesek… durumunu anlat, sana en iyi seçenekleri öneririm. <b>Reklam başına 4 mesaj, günde 2 reklam</b> (PRO'da günde 50, reklamsız). Kararsız kalırsan senin için seçerim 🐙";
               }
             },
           },
@@ -15209,7 +15249,7 @@ function drawResultCard(opts) {
           {
             icon: "🧠",
             title: "Merci'ye Danış!",
-            body: "Ne yesek, nereye gidelim gibi sorularını Merci'ye sor! Yapay zeka asistanımız grubunun geçmişine bakarak öneri yapar. <b>Reklam başına 4 mesaj</b>, günde 50 mesaj için Pro ol! 🐙",
+            body: "Ne yesek, nereye gidelim gibi sorularını Merci'ye sor! Yapay zeka asistanımız grubunun geçmişine bakarak öneri yapar. <b>Reklam başına 4 mesaj, günde 2 reklam</b> — günde 50 mesaj için Pro ol! 🐙",
             color: "var(--ac-d2)",
           },
         ];
