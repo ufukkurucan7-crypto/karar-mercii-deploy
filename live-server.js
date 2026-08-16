@@ -449,6 +449,10 @@ const {
   // FieldPath: /delete-account'ta `${uid}_${tarih}` biçimli sayaç belgelerini
   // belge kimliğine göre aralık sorgusuyla bulmak için.
   FieldPath,
+  // ⭐ AggregateField: /admin/stats sayaçları için. count()/sum() sunucu tarafında
+  // hesaplanır; dokümanlar İNDİRİLMEZ. 1000 indeks girişi = 1 okuma → panelin
+  // eski "koleksiyonu çek ve JS'te say" yöntemine göre ~1000 kat ucuz.
+  AggregateField,
 } = require("firebase-admin/firestore");
 
 initializeApp({
@@ -2495,6 +2499,312 @@ async function sendPush(o) {
     },
   });
 }
+
+// ═══════════════════════════════════════════════════════════════════════════
+// ADMIN İSTATİSTİK — /admin/stats
+// ═══════════════════════════════════════════════════════════════════════════
+// ⚠️⚠️ KOTA TASARIMI — BU UCUN VAROLUŞ SEBEBİ.
+// Panel eskiden sayıları kendi hesaplıyordu: aiUsage 1000 + bans 500 + rooms 400
+// + feedback 300 + merci_feedback 300 ... = tüm sekmeler gezildiğinde ~2570
+// Firestore OKUMASI. Günde birkaç tur = 10K+ okuma; Spark tavanı 50K/gün ve
+// 17 Tem'de o tavan dolunca Firestore KOMPLE durmuştu ([[firestore-kota-kacagi]]).
+// ⭐ Burada dokümanlar İNDİRİLMİYOR: Firestore aggregation (count/sum) sunucuda
+// çalışıyor, faturalandırma 1000 indeks girişi başına 1 okuma. Tüm gösterge
+// tablosu ≈ birkaç okuma. Üstüne 60 sn önbellek → panel arka arkaya açılsa da
+// sorgu tekrarlanmaz.
+// ⛔ BURAYA ".get()" İLE KOLEKSİYON ÇEKME EKLEME. Sayacak bir şey varsa
+//    .count() / AggregateField.sum() kullan.
+const STATS_TTL_MS = 60 * 1000;
+let _statsCache = { at: 0, data: null };
+
+// Auth kullanıcı sayımı Firestore DEĞİL (kota yakmaz) ama yine de pahalı bir
+// listeleme → ayrı ve daha uzun önbellek (5 dk).
+const AUTH_TTL_MS = 5 * 60 * 1000;
+let _authCache = { at: 0, data: null };
+
+async function sayAuthKullanicilari() {
+  if (_authCache.data && Date.now() - _authCache.at < AUTH_TTL_MS)
+    return _authCache.data;
+  let toplam = 0,
+    yeni7 = 0,
+    yeni30 = 0,
+    sayfa,
+    tur = 0;
+  const simdi = Date.now();
+  const g7 = simdi - 7 * 86400000;
+  const g30 = simdi - 30 * 86400000;
+  do {
+    const r = await getAuth().listUsers(1000, sayfa);
+    r.users.forEach((u) => {
+      toplam++;
+      const t = Date.parse((u.metadata && u.metadata.creationTime) || "");
+      if (!Number.isFinite(t)) return;
+      if (t >= g7) yeni7++;
+      if (t >= g30) yeni30++;
+    });
+    sayfa = r.pageToken;
+    tur++;
+    // Güvenlik tavanı: 20 sayfa = 20.000 kullanıcı. Aşarsa sayı "20000+" olur;
+    // o boyutta zaten sayaç dokümanına geçmek gerekir.
+    if (tur >= 20) break;
+  } while (sayfa);
+  const d = { toplam, yeni7, yeni30, kesildi: !!sayfa };
+  _authCache = { at: Date.now(), data: d };
+  return d;
+}
+
+// Tek bir sayımı güvenle çalıştır: indeks eksikse/hata varsa null döner ve
+// gösterge tablosunun tamamı çökmez (o satır "—" gösterilir).
+async function guvenliSayim(etiket, fn) {
+  try {
+    return await fn();
+  } catch (e) {
+    console.error("stats/" + etiket + ":", e.code || "", e.message);
+    return null;
+  }
+}
+
+app.get("/admin/stats", rateLimit, async (req, res) => {
+  const uid = await uidFromReq(req);
+  if (!uid) return res.status(401).json({ error: "Oturum doğrulanamadı." });
+  if (!isAdminUid(uid)) return res.status(403).json({ error: "Yetkin yok." });
+
+  if (_statsCache.data && Date.now() - _statsCache.at < STATS_TTL_MS)
+    return res.json({ ...(_statsCache.data), onbellek: true });
+
+  const bugunBas = new Date();
+  bugunBas.setHours(0, 0, 0, 0);
+  const bugunMs = bugunBas.getTime();
+  const dunMs = bugunMs - 86400000;
+  const bugunUTC = new Date().toISOString().slice(0, 10);
+  const say = (q) => q.count().get().then((s) => s.data().count);
+
+  try {
+    const [
+      auth,
+      pro,
+      odaBugun,
+      odaDun,
+      odaAcik,
+      odaToplam,
+      aiBugun,
+      aiKisiBugun,
+      begeni,
+      begenmeme,
+      ulasin,
+      kararBugun,
+    ] = await Promise.all([
+      guvenliSayim("auth", () => sayAuthKullanicilari()),
+      guvenliSayim("pro", () =>
+        say(adminDb.collection("users").where("isPro", "==", true)),
+      ),
+      guvenliSayim("odaBugun", () =>
+        say(adminDb.collection("rooms").where("created", ">=", bugunMs)),
+      ),
+      guvenliSayim("odaDun", () =>
+        say(
+          adminDb
+            .collection("rooms")
+            .where("created", ">=", dunMs)
+            .where("created", "<", bugunMs),
+        ),
+      ),
+      guvenliSayim("odaAcik", () =>
+        say(adminDb.collection("rooms").where("status", "==", "open")),
+      ),
+      guvenliSayim("odaToplam", () => say(adminDb.collection("rooms"))),
+      // Bugünkü AI MESAJ sayısı: aiUsage/{uid}_{tarih}.count alanlarının TOPLAMI.
+      guvenliSayim("aiBugun", () =>
+        adminDb
+          .collection("aiUsage")
+          .where("date", "==", bugunUTC)
+          .aggregate({ t: AggregateField.sum("count") })
+          .get()
+          .then((s) => s.data().t || 0),
+      ),
+      // Bugün AI kullanan KİŞİ sayısı (doküman başına bir kullanıcı).
+      guvenliSayim("aiKisi", () =>
+        say(adminDb.collection("aiUsage").where("date", "==", bugunUTC)),
+      ),
+      guvenliSayim("begeni", () =>
+        say(adminDb.collection("merci_feedback").where("vote", "==", "like")),
+      ),
+      guvenliSayim("begenmeme", () =>
+        say(adminDb.collection("merci_feedback").where("vote", "==", "dislike")),
+      ),
+      guvenliSayim("ulasin", () => say(adminDb.collection("feedback"))),
+      // ⚠️ Karar sayısı ARTIK EKSİK: 16 Ağu'dan beri ücretsiz kullanıcıların
+      // geçmişi Firestore'a YAZILMIYOR (kota tasarrufu) → bu sayı yalnız PRO
+      // kullanıcıları kapsar. Panelde bu not gösteriliyor.
+      // collectionGroup sorgusu ayrı indeks ister; yoksa null döner, çökmez.
+      guvenliSayim("kararBugun", () =>
+        say(
+          adminDb
+            .collectionGroup("history")
+            .where("ts", ">=", bugunMs),
+        ),
+      ),
+    ]);
+
+    const data = {
+      zaman: Date.now(),
+      kullanici: auth || { toplam: null, yeni7: null, yeni30: null },
+      pro,
+      oda: {
+        bugun: odaBugun,
+        dun: odaDun,
+        acik: odaAcik,
+        toplam: odaToplam,
+      },
+      ai: { mesajBugun: aiBugun, kisiBugun: aiKisiBugun },
+      merci: { begeni, begenmeme },
+      ulasin,
+      kararBugun,
+      // Panelin uyarı basması için: bu sayı yalnız PRO'yu kapsıyor.
+      kararNot: "16 Ağu'dan beri yalnız PRO kullanıcıların kararları kaydediliyor",
+    };
+    _statsCache = { at: Date.now(), data };
+    res.json({ ...data, onbellek: false });
+  } catch (e) {
+    console.error("admin/stats hata:", e.message);
+    res.status(500).json({ error: "İstatistik okunamadı." });
+  }
+});
+
+// ── ADMIN: KULLANICI ARA (destek yazışması için) ─────────────────────────
+// E-posta veya UID ile tek kullanıcı. Auth'tan kimlik, Firestore'dan PRO durumu
+// ve karar sayısı. ⚠️ Hepsi TEK dokümanlık okuma + 1 aggregation — liste YOK.
+app.get("/admin/user", rateLimit, async (req, res) => {
+  const uid = await uidFromReq(req);
+  if (!uid) return res.status(401).json({ error: "Oturum doğrulanamadı." });
+  if (!isAdminUid(uid)) return res.status(403).json({ error: "Yetkin yok." });
+  const q = String(req.query.q || "").trim();
+  if (!q || q.length > 200)
+    return res.status(400).json({ error: "Arama boş ya da çok uzun." });
+  try {
+    let u = null;
+    try {
+      u = q.includes("@")
+        ? await getAuth().getUserByEmail(q)
+        : await getAuth().getUser(q);
+    } catch (e) {
+      return res.status(404).json({ error: "Kullanıcı bulunamadı." });
+    }
+    const [profil, kararSayisi, ban] = await Promise.all([
+      guvenliSayim("user/profil", () =>
+        adminDb
+          .collection("users")
+          .doc(u.uid)
+          .get()
+          .then((s) => (s.exists ? s.data() : null)),
+      ),
+      guvenliSayim("user/karar", () =>
+        adminDb
+          .collection("decisions")
+          .doc(u.uid)
+          .collection("history")
+          .count()
+          .get()
+          .then((s) => s.data().count),
+      ),
+      guvenliSayim("user/ban", () =>
+        adminDb
+          .collection("bans")
+          .doc(u.uid)
+          .get()
+          .then((s) => s.exists),
+      ),
+    ]);
+    res.json({
+      uid: u.uid,
+      email: u.email || null,
+      ad: u.displayName || null,
+      olusturma: (u.metadata && u.metadata.creationTime) || null,
+      sonGiris: (u.metadata && u.metadata.lastSignInTime) || null,
+      saglayici: (u.providerData || []).map((p) => p.providerId),
+      devreDisi: !!u.disabled,
+      pro: profil ? isProValid(profil) : false,
+      proAlan: profil ? profil.isPro === true : false,
+      proBitis: profil && profil.proExpiresAt ? profil.proExpiresAt : null,
+      kararSayisi,
+      banli: ban === true,
+    });
+  } catch (e) {
+    console.error("admin/user hata:", e.message);
+    res.status(500).json({ error: "Okunamadı." });
+  }
+});
+
+// ── ADMIN: PRO HEDİYE ET / GERİ AL ───────────────────────────────────────
+// ⚠️ users/{uid}.isPro'yu İSTEMCİ değiştiremez (Firestore kuralı isPro'nun
+// değişmesini engelliyor) — bu yüzden buradan, Admin SDK ile yazılıyor.
+// ⚠️ RevenueCat aboneliğini ETKİLEMEZ: client isPremium'u iki kaynağın OR'u
+// olarak hesaplıyor (RC + Firestore), yani bu yalnız Firestore ayağını açar.
+app.post("/admin/gift-pro", rateLimit, async (req, res) => {
+  const uid = await uidFromReq(req);
+  if (!uid) return res.status(401).json({ error: "Oturum doğrulanamadı." });
+  if (!isAdminUid(uid)) return res.status(403).json({ error: "Yetkin yok." });
+  const hedef = String((req.body && req.body.uid) || "").trim();
+  const gun = Number((req.body && req.body.gun) || 0);
+  const kapat = (req.body && req.body.kapat) === true;
+  if (!hedef || hedef.length > 128)
+    return res.status(400).json({ error: "Hedef UID geçersiz." });
+  if (!kapat && (!Number.isFinite(gun) || gun < 1 || gun > 3650))
+    return res.status(400).json({ error: "Gün 1-3650 arasında olmalı." });
+  try {
+    if (kapat) {
+      await adminDb
+        .collection("users")
+        .doc(hedef)
+        .set({ isPro: false, proExpiresAt: null }, { merge: true });
+      return res.json({ ok: true, pro: false });
+    }
+    const bitis = Date.now() + gun * 86400000;
+    await adminDb
+      .collection("users")
+      .doc(hedef)
+      .set(
+        { isPro: true, proExpiresAt: bitis, proKaynak: "admin-hediye" },
+        { merge: true },
+      );
+    res.json({ ok: true, pro: true, bitis });
+  } catch (e) {
+    console.error("admin/gift-pro hata:", e.message);
+    res.status(500).json({ error: "Yazılamadı." });
+  }
+});
+
+// ── UYGULAMA İÇİ DUYURU BANDI ────────────────────────────────────────────
+// ⚠️⚠️ KOTA: duyuruyu Firestore'da tutup HER İSTEMCİNİN açılışta okuması
+// kullanıcı×açılış kadar okuma demekti (1000 kullanıcı = günde 1000+ okuma,
+// hiçbir duyuru yokken bile). Bunun yerine metin SUNUCU BELLEĞİNDE duruyor ve
+// GET /announce ile dağıtılıyor → Firestore okuması SIFIR.
+// ⚠️ Bedeli kabul edildi: sunucu yeniden başlarsa duyuru düşer. Kalıcı olması
+// gerekirse tek dokümanlık bir okumayla açılışta yüklenebilir — şimdilik
+// duyurular kısa ömürlü (bakım/uyarı) olduğu için gereksiz.
+let _duyuru = { metin: "", tur: "bilgi", bitis: 0 };
+app.get("/announce", (req, res) => {
+  const d = _duyuru;
+  if (!d.metin || (d.bitis && d.bitis < Date.now()))
+    return res.json({ var: false });
+  res.json({ var: true, metin: d.metin, tur: d.tur, bitis: d.bitis });
+});
+app.post("/admin/announce", rateLimit, async (req, res) => {
+  const uid = await uidFromReq(req);
+  if (!uid) return res.status(401).json({ error: "Oturum doğrulanamadı." });
+  if (!isAdminUid(uid)) return res.status(403).json({ error: "Yetkin yok." });
+  const metin = String((req.body && req.body.metin) || "").slice(0, 200);
+  const tur = ["bilgi", "uyari", "bakim"].includes((req.body || {}).tur)
+    ? req.body.tur
+    : "bilgi";
+  const saat = Number((req.body && req.body.saat) || 0);
+  _duyuru = {
+    metin,
+    tur,
+    bitis: metin && saat > 0 ? Date.now() + saat * 3600000 : 0,
+  };
+  res.json({ ok: true, duyuru: _duyuru });
+});
 
 // Gönderilenlerin kaydı (admin panelde "son gönderilenler"). Tek doküman
 // yazımı — koleksiyon taraması YOK.
