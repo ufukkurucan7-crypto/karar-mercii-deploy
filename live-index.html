@@ -16547,9 +16547,9 @@ function drawResultCard(opts) {
           d.className = "chip";
           d.innerHTML =
             "<span>" +
-            item +
+            _kmEsc(item) +
             '</span><button class="chx" onclick="removeCekilis(\'' +
-            esc(item) +
+            _kmEscAttr(item) +
             "')\">×</button>";
           l.appendChild(d);
         });
@@ -18333,7 +18333,7 @@ function drawResultCard(opts) {
               '"><span class="dot">' +
               (isVoted ? "✓" : "⏳") +
               '</span><span class="nm">' +
-              esc(p.name || "?") +
+              _kmEsc(p.name || "?") +
               " " +
               tags +
               '</span><span class="st">' +
@@ -19032,7 +19032,11 @@ function drawResultCard(opts) {
           '<div class="oitop"><span class="km-vcnum">' +
           (idx + 1) +
           '</span><span class="oname">' +
-          name +
+          // ⚠️ 17 AĞU — XSS: burası HAM basıyordu. Oy kartını host, katılımcı,
+          // ?room= misafiri ve yerel masa modu ORTAK kullanıyor; seçenek adı
+          // Firestore'dan (başka bir cihazın yazdığı veri) geliyor → tek nokta,
+          // dört akış. Kaçış burada olunca dördü birden kapanıyor.
+          _kmEsc(name) +
           '</span><span class="km-vctag">' +
           (r > 0 ? r + " · " + KM_STAR_LBL[r - 1] : "puan yok") +
           "</span>" +
@@ -19400,7 +19404,7 @@ function drawResultCard(opts) {
           var d = document.createElement("div");
           d.className = kmVoteCardCls(r);
           d.innerHTML = kmVoteCardHtml(idx, name, r, function (i) {
-            return "setHostStar('" + esc(name) + "'," + i + ")";
+            return "setHostStar('" + _kmEscAttr(name) + "'," + i + ")";
           });
           l.appendChild(d);
         });
@@ -19982,9 +19986,9 @@ function drawResultCard(opts) {
           d.className = "chip";
           d.innerHTML =
             "<span>" +
-            item +
+            _kmEsc(item) +
             '</span><button class="chx" onclick="newRoundOpts=newRoundOpts.filter(x=>x!==\'' +
-            esc(item) +
+            _kmEscAttr(item) +
             "');renderNROpts()\">×</button>";
           l.appendChild(d);
         });
@@ -20085,9 +20089,21 @@ function drawResultCard(opts) {
       }
 
       async function joinRoom(code) {
-        // Giriş yapmamışsa engelle (Firestore kuralları da yazmayı reddeder)
-        if (!currentUser) {
-          document.getElementById("modal-auth").classList.add("on");
+        // ⭐ 17 AĞU — GİRİŞ DUVARI KALDIRILDI (tutarsızlık düzeltmesi).
+        // Eskiden burada `if (!currentUser) → giriş modalı` vardı. Ama ?room=
+        // linkiyle gelen YABANCI zaten girişsiz oy verebiliyordu (ensureRoomAuth
+        // → anonim oturum, satır ~20470). Yani aynı eylem iki farklı kapıdan
+        // geçiyordu: linki tıklayan serbest, kodu ELLE giren duvara çarpıyordu —
+        // üstelik duvara çarpan bizim kendi kullanıcımızdı.
+        // ⚠️ Oda KURMAK hâlâ giriş istiyor (createRoom): hostUid oda sahipliğine,
+        //    oturum restore'una ve Firestore kurallarındaki host yetkisine bağlı.
+        // ⚠️ Bu değişiklik ancak 17 Ağu oda kurallarıyla BİRLİKTE güvenli:
+        //    anonim katılımcı artık yalnız `participants` alanına yazabiliyor,
+        //    options/name/status/winner'a dokunamıyor.
+        try {
+          await ensureRoomAuth();
+        } catch (e) {
+          alert("Bağlantı hatası! Odaya katılmak için internet gerekiyor.");
           return;
         }
         code = (code || "").toUpperCase().trim();
@@ -20137,6 +20153,11 @@ function drawResultCard(opts) {
         }
         myParticipantName = name;
         try {
+          // Yazmadan önce auth garanti (girişsiz katılımcı = anonim oturum).
+          // ⚠️ joinRoom zaten çağırıyor ama sayfa yenilenmesi/persistence
+          //    gecikmesi ihtimaline karşı yazma yolunda tekrarlanıyor —
+          //    ?room= misafir akışında da aynı desen kullanılıyor.
+          await ensureRoomAuth();
           var doc = await db.collection("rooms").doc(shareCode).get();
           if (!doc.exists) return;
           var data = doc.data();
@@ -20261,7 +20282,7 @@ function drawResultCard(opts) {
           var d = document.createElement("div");
           d.className = kmVoteCardCls(r);
           d.innerHTML = kmVoteCardHtml(idx, name, r, function (i) {
-            return "setPVote('" + esc(name) + "'," + i + ")";
+            return "setPVote('" + _kmEscAttr(name) + "'," + i + ")";
           });
           l.appendChild(d);
         });
@@ -20284,6 +20305,7 @@ function drawResultCard(opts) {
         if (!shareCode) return;
         clearTimerInterval();
         try {
+          await ensureRoomAuth(); // girişsiz katılımcı → anonim oturum (17 Ağu)
           await db
             .collection("rooms")
             .doc(shareCode)
@@ -20492,11 +20514,29 @@ function drawResultCard(opts) {
       //   _kmShowRoomResult()  → bildirime tıklayınca (salt-okunur)
       // İkisi elle kopyalanmış iki HTML bloğuydu; biri güncellenip diğeri
       // unutulursa kullanıcı bildirimden AYRI (eski) kart görür. Artık tek yer.
+      // ⭐ HTML KAÇIŞLAYICI — innerHTML'e giren HER kullanıcı verisi bundan geçer.
+      // ⚠️ 17 AĞU: tırnaklar da eklendi. Öncesinde yalnız & < > kaçıyordu; oda
+      // seçeneği bir HTML ÖZNİTELİĞİ içine (onclick="...", aria-label="...")
+      // basıldığında " veya ' ile öznitelikten ÇIKILABİLİYORDU.
+      // ⚠️ Bu fonksiyonun adı `esc` OLAN akrabasıyla KARIŞTIRILMAMALI: `esc()`
+      // sadece JS-string kaçışlayıcıdır (\ ve '), HTML'e karşı HİÇBİR koruma
+      // sağlamaz. HTML'e yazarken DAİMA _kmEsc / _kmEscAttr kullan.
       function _kmEsc(s) {
         return String(s == null ? "" : s)
           .replace(/&/g, "&amp;")
           .replace(/</g, "&lt;")
-          .replace(/>/g, "&gt;");
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;")
+          .replace(/'/g, "&#39;");
+      }
+      // ⭐ onclick="fn('<BURASI>')" gibi ÖZNİTELİK İÇİNDEKİ JS STRING'i için.
+      // İKİ katman var, sıra önemli:
+      //   1) JS-string kaçışı (\ ve ') → string erken kapanmasın,
+      //   2) HTML kaçışı (& < > " ') → öznitelikten çıkılamasın.
+      // Tarayıcı önce HTML varlıklarını çözer, geriye 1. adımın ürettiği geçerli
+      // JS string'i kalır. Ters sırada yapılırsa JS kaçışı da kaçışlanır, bozulur.
+      function _kmEscAttr(s) {
+        return _kmEsc(String(s == null ? "" : s).replace(/\\/g, "\\\\").replace(/'/g, "\\'"));
       }
 
       // Oda dokümanından tüm seçeneklerin puan toplamı. Sunucu/oda dokümanı
@@ -21076,7 +21116,7 @@ function drawResultCard(opts) {
           var d = document.createElement("div");
           d.className = kmVoteCardCls(r);
           d.innerHTML = kmVoteCardHtml(idx, name, r, function (i) {
-            return "setRoStar('" + esc(name) + "'," + i + ")";
+            return "setRoStar('" + _kmEscAttr(name) + "'," + i + ")";
           });
           l.appendChild(d);
         });
@@ -21406,9 +21446,13 @@ function drawResultCard(opts) {
       }
 
       // ═══════════════════ DATA OPS ═══════════════════
-      function esc(s) {
-        return s.replace(/\\/g, "\\\\").replace(/'/g, "\\'");
-      }
+      // ⛔ 17 AĞU — `esc()` SİLİNDİ. Adı "escape" çağrıştırdığı için HTML'e karşı
+      // koruduğu SANILIYORDU; oysa yalnız \ ve ' kaçıran bir JS-string
+      // yardımcısıydı — < > " dokunulmadan geçiyordu. Oda seçenekleri ve
+      // katılımcı isimleri bununla innerHTML'e basıldığı için depolanmış XSS
+      // açığı vardı. Tüm çağrıları _kmEsc (metin) / _kmEscAttr (öznitelik
+      // içindeki JS string) ile değiştirildi.
+      // ⚠️ GERİ EKLEME. HTML üretiyorsan _kmEsc / _kmEscAttr kullan.
       function addOpt(mode) {
         if (mode === "wheel" && spinning) return;
         var ids = { wheel: "ri", vote: "vi" };
@@ -21685,9 +21729,9 @@ function drawResultCard(opts) {
             d.className = "chip";
             d.innerHTML =
               "<span>" +
-              item +
+              _kmEsc(item) +
               "</span><button class=\"chx\" onclick=\"removeOpt('wheel','" +
-              esc(item) +
+              _kmEscAttr(item) +
               "')\">×</button>";
             l.appendChild(d);
           });
@@ -21704,14 +21748,14 @@ function drawResultCard(opts) {
             var removeBtn = masaPeopleConfirmed
               ? ""
               : "<button class=\"rbtn\" onclick=\"removeOpt('vote','" +
-                esc(name) +
+                _kmEscAttr(name) +
                 "')\">×</button>";
             d.innerHTML = kmVoteCardHtml(
               idx,
               name,
               r,
               function (i) {
-                return "setStars('" + esc(name) + "'," + i + ")";
+                return "setStars('" + _kmEscAttr(name) + "'," + i + ")";
               },
               removeBtn,
             );
@@ -22261,21 +22305,27 @@ function drawResultCard(opts) {
           var d = document.createElement("div");
           d.className = "hist-item";
           d.style.animationDelay = Math.min(_i, 8) * 40 + "ms"; // H2 kademeli slide-in
+          // ⚠️ 17 AĞU — XSS: bu altı alan HAM basılıyordu. Geçmiş yalnız kendi
+          // yazdıklarından oluşmuyor: oda KAZANANI (başka bir cihazın Firestore'a
+          // yazdığı seçenek adı) de buraya kaydediliyor → yük kullanıcının
+          // cihazında KALICILAŞIYOR, oda kapansa bile her açılışta yeniden
+          // çalışırdı. Oda kuralları artık enjeksiyonu engelliyor, bu da ikinci
+          // savunma katmanı (derinlemesine savunma — biri yeterli sayılmaz).
           d.innerHTML =
             '<span class="hist-badge">' +
-            h.emoji +
+            _kmEsc(h.emoji) +
             '</span><div class="hist-txt"><b>' +
-            h.item +
+            _kmEsc(h.item) +
             '</b><br><span style="font-size:10px;color:var(--ac-l2)">' +
-            h.mode +
+            _kmEsc(h.mode) +
             " · " +
-            (h.date || "") +
+            _kmEsc(h.date || "") +
             "</span>" +
             (h.comment
-              ? '<div class="hist-cmt">"' + h.comment + '"</div>'
+              ? '<div class="hist-cmt">"' + _kmEsc(h.comment) + '"</div>'
               : "") +
             '</div><span class="hist-time">' +
-            h.t +
+            _kmEsc(h.t) +
             "</span>";
           list.appendChild(d);
         });
@@ -23452,50 +23502,9 @@ function drawResultCard(opts) {
         //    "izin verme" derse requestPermissions bir daha pencere AÇMAZ,
         //    sessizce reddeder. O yüzden başarısızlıkta kullanıcıya sistem
         //    ayarlarından açması söyleniyor — sessiz kalmak yanlış olurdu.
-        var pushBtn = document.getElementById("push-btn");
-        if (pushBtn) {
-          var pState = document.getElementById("push-state");
-          var _syncPush = function () {
-            var native = false;
-            try {
-              native = !!(window.KM_PUSH && KM_PUSH.plug());
-            } catch (e) {}
-            pushBtn.style.display = native ? "" : "none";
-            if (!native) return;
-            var acik = false;
-            try {
-              acik = KM_PUSH.ok();
-            } catch (e) {}
-            if (pState) pState.textContent = acik ? "Açık" : "Kapalı";
-          };
-          _syncPush();
-          pushBtn.addEventListener("click", function () {
-            var acik = false;
-            try {
-              acik = KM_PUSH.ok();
-            } catch (e) {}
-            if (acik) {
-              _kmToast("Bildirimler zaten açık 🔔");
-              return;
-            }
-            try {
-              KM_PUSH.ask().then(function (granted) {
-                _syncPush();
-                if (granted) {
-                  // İzin yeni verildi → kişiye özel topic'e de abone ol.
-                  try {
-                    KM_PUSH.subscribeUser();
-                  } catch (e) {}
-                  _kmToast("Bildirimler açıldı 🔔");
-                } else {
-                  _kmToast(
-                    "İzin verilmedi. Telefon Ayarları > Uygulamalar > Karar Mercii > Bildirimler'den açabilirsin.",
-                  );
-                }
-              });
-            } catch (e) {}
-          });
-        }
+        // ⛔ 17 AĞU — push-btn işleyicisi kaldırıldı (satırın kendisi de yok,
+        //    gerekçe Ayarlar HTML'indeki yorumda). İzin isteme yolu artık
+        //    yalnız _kmAskPushForRoom (oda anları) + _kmPushSeritGoster (şerit).
         var darkBtn = document.getElementById("dark-btn");
         if (darkBtn) {
           var dState = document.getElementById("dark-state");
@@ -24053,18 +24062,18 @@ function drawResultCard(opts) {
           <span class="set-lbl">Titreşim</span>
           <span class="set-state" id="vib-state">Açık</span>
         </button>
-        <!-- 🔔 BİLDİRİM — 16 Ağu'da eklendi.
-             ⚠️ SEBEP: izin YALNIZCA ilk oda kurma/katılma anında isteniyordu
-             (_kmAskPushForRoom) ve `kmPushPrompted` damgası yüzünden bir kez
-             sorulup bir daha SORULMUYORDU. O anı kaçıran ya da "Şimdi değil"
-             diyen kullanıcı bildirimleri bir daha AÇAMIYORDU — oylama sonucu
-             bildirimleri de dahil hiçbir şey gelmiyordu.
-             ⚠️ Web'de gizli (push yalnız native). -->
-        <button class="set-row" id="push-btn" style="display: none">
-          <span class="set-ic">🔔</span>
-          <span class="set-lbl">Bildirimler</span>
-          <span class="set-state" id="push-state">Kapalı</span>
-        </button>
+        <!-- ⛔ 17 AĞU — 🔔 "Bildirimler" SATIRI KALDIRILDI (kullanıcı kararı).
+             16 Ağu'da izin açtırmak için eklenmişti ama TEK YÖNLÜ bir sokaktı:
+             izin verilmişse dokununca yalnız "zaten açık" toast'ı çıkıyor,
+             kapatmanın yolu yoktu. Komşu Ses/Titreşim/Karanlık Mod satırlarıyla
+             birebir aynı göründüğü için kullanıcı anahtar sanıp dokunuyor,
+             hiçbir şey olmuyordu — yanıltıcıydı.
+             ⭐ İzin isteme işi zaten anlamlı yerlerde yapılıyor:
+                _kmAskPushForRoom → oda kurma / kodla katılma / ?room= linki
+                _kmPushSeritGoster → modal hakkı bitince alttaki şerit (3/3 kuralı)
+             ⚠️ KABUL EDİLEN BEDEL: uygulama içinden bildirim KAPATILAMIYOR;
+                kapatmak isteyen Telefon Ayarları > Uygulamalar > Karar Mercii >
+                Bildirimler yolunu kullanmak zorunda. -->
         <button class="set-row" id="dark-btn">
           <span class="set-ic">🌙</span>
           <span class="set-lbl">Karanlık Mod</span>
