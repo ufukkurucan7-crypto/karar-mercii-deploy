@@ -4852,6 +4852,35 @@
         border-top: 1.5px solid var(--ac-bd);
         animation: histBodyIn 0.26s ease both;
       }
+      /* 16 Ağu — kapalı şerit artık SON KARARI gösteriyor (somut bilgi).
+         Merci'nin yorumu buraya, açılır panelin en üstüne taşındı. */
+      .hist-note {
+        background: var(--ac-bg3);
+        border-radius: 12px;
+        padding: 9px 11px;
+        margin-bottom: 8px;
+      }
+      .hist-note-ttl {
+        display: block;
+        font-size: 10px;
+        font-weight: 900;
+        color: var(--ac);
+        letter-spacing: 0.02em;
+        margin-bottom: 2px;
+      }
+      .hist-note-tx {
+        font-size: 12px;
+        font-weight: 800;
+        color: var(--ac-dd);
+        line-height: 1.35;
+      }
+      /* Geçmiş şeridi YALNIZ ana ekranda (hub). Mod açıkken karar veriliyor,
+         ekranın altında geçmiş durmasının faydası yok — üstelik #hist-section
+         hub'ın VE dört mod panelinin ortak kardeşi olduğu için hepsinde birden
+         görünüyordu. renderHist() inline display yazdığı için !important şart. */
+      html.km-in-mode #hist-section {
+        display: none !important;
+      }
       @keyframes histBodyIn {
         from {
           opacity: 0;
@@ -10117,13 +10146,17 @@
               >
                 <span class="hist-head-av" id="hist-merci"></span>
                 <span class="hist-head-tx">
-                  <span class="hist-head-ttl">Merci'nin Notu</span>
+                  <span class="hist-head-ttl">Son karar</span>
                   <span class="htxt2" id="hist-summary-txt"></span>
                 </span>
                 <span class="hist-count" id="hist-count"></span>
                 <span class="hist-chev" aria-hidden="true"></span>
               </button>
               <div class="hist-body" id="hist-body" style="display: none">
+                <div class="hist-note">
+                  <span class="hist-note-ttl">Merci'nin Notu</span>
+                  <span class="hist-note-tx" id="hist-note-tx"></span>
+                </div>
                 <div class="hist-chart-wrap" id="hist-chart-wrap">
                   <div class="hist-chart-title">📊 En Çok Kazananlar</div>
                   <!-- ⚠️ .hist-chart-box SABİT YÜKSEKLİKLİ + position:relative
@@ -21535,6 +21568,10 @@ function drawResultCard(opts) {
         // ── HUB (hiçbir sekme açık değil) ──
         if (kmIsHub(m)) {
           kmMode = null;
+          // Geçmiş şeridi yalnız hub'da görünsün (bkz. html.km-in-mode kuralı)
+          try {
+            document.documentElement.classList.remove("km-in-mode");
+          } catch (e) {}
           ["wheel", "vote", "cekilis", "ai"].forEach((x) => {
             var el = document.getElementById("s-" + x);
             if (el) el.classList.remove("on");
@@ -21554,6 +21591,9 @@ function drawResultCard(opts) {
           return;
         }
         kmMode = m;
+        try {
+          document.documentElement.classList.add("km-in-mode");
+        } catch (e) {}
         // Moda giriyoruz → geçmişe bir "tuzak" kaydı bırak ki donanım geri tuşu
         // uygulamadan çıkmak yerine önce onu tüketsin (popstate → hub).
         try {
@@ -21648,13 +21688,23 @@ function drawResultCard(opts) {
         // Pro'da sınırsız, ücretsizde son 5
         var limit = isPremium ? 200 : 5;
         if (S.history.length > limit) S.history.pop();
-        try {
-          await db
-            .collection("decisions")
-            .doc(currentUser.uid)
-            .collection("history")
-            .add(h);
-        } catch (e) {}
+        // ⭐ 16 AĞU — FIRESTORE'A YALNIZ PRO'DA YAZ.
+        // Ücretsizde ekranda zaten son 5 kayıt gösteriliyor (okurken limit(5)),
+        // ama HER karar Firestore'a yazılıyor ve hiç silinmiyordu → depolama
+        // süresiz büyüyor + her kararda 1 yazma kotası. Kullanıcıların çoğu
+        // ücretsiz olacağı için bu gereksiz yük. Ücretsizde geçmiş artık
+        // yalnız localStorage'da (aşağıdaki satır). → [[firestore-kota-kacagi]]
+        // ⚠️ Bedeli kabul edildi: ücretsiz kullanıcı uygulamayı silerse 5
+        // kayıtlık geçmişi gider ve PRO'ya geçince eskiler geri gelmez.
+        if (isPremium) {
+          try {
+            await db
+              .collection("decisions")
+              .doc(currentUser.uid)
+              .collection("history")
+              .add(h);
+          } catch (e) {}
+        }
         localStorage.setItem(
           "kmH_" + currentUser.uid,
           JSON.stringify(S.history.slice(0, limit)),
@@ -21669,20 +21719,27 @@ function drawResultCard(opts) {
           return;
         }
         var limit = isPremium ? 200 : 5;
-        try {
-          var snap = await db
-            .collection("decisions")
-            .doc(currentUser.uid)
-            .collection("history")
-            .orderBy("ts", "desc")
-            .limit(limit)
-            .get();
-          if (!snap.empty) {
-            S.history = snap.docs.map((d) => d.data());
-            renderHist();
-            return;
-          }
-        } catch (e) {}
+        // ⭐ Ücretsizde Firestore'a hiç GİTME: addHist artık oraya yazmıyor,
+        // yani sorgu her açılışta boş dönerdi — bedava okuma kotası yakmak
+        // olurdu. Ücretsiz geçmişin tek kaynağı localStorage.
+        // (PRO'dan düşen kullanıcının Firestore kayıtları duruyor ama ücretsiz
+        //  hakkı 5 kayıt ve o 5 zaten localStorage'da mevcut.)
+        if (isPremium) {
+          try {
+            var snap = await db
+              .collection("decisions")
+              .doc(currentUser.uid)
+              .collection("history")
+              .orderBy("ts", "desc")
+              .limit(limit)
+              .get();
+            if (!snap.empty) {
+              S.history = snap.docs.map((d) => d.data());
+              renderHist();
+              return;
+            }
+          } catch (e) {}
+        }
         var s = localStorage.getItem("kmH_" + currentUser.uid);
         if (s) {
           // Bulgu 5: yerel fallback 'limit'i ATLIYORDU → PRO'su biten kullanıcı
@@ -21772,6 +21829,13 @@ function drawResultCard(opts) {
             '" konusunda grup hemfikir (' +
             top[1] +
             " kez). Başka kategorileri de deneyin! 🎯";
+        } else if (top[1] === 2) {
+          // ⚠️ 16 AĞU, kullanıcı cihazda yakaladı: bu dal YOKTU. Tek bir seçenek
+          // 2 kez çıktığında (tied.length===1, top[1]===2) yukarıdaki iki koşul
+          // da tutmuyor ve aşağıdaki else'e düşüyordu → aynı sonuç üst üste
+          // gelmesine rağmen "Grup çeşitli kararlar verdi" yazıyordu.
+          // else artık YALNIZ gerçek çeşitlilikte (top[1]===1, hiç tekrar yok).
+          msg1 = '"' + top[0] + '" iki kez çıktı — Merci not aldı 📌';
         } else {
           msg1 = "Grup çeşitli kararlar verdi — maceracısınız! 🎲";
         }
@@ -21926,7 +21990,26 @@ function drawResultCard(opts) {
         if (empty) empty.style.display = "none";
         sec.style.display = "";
         setM("hist-merci", 30, "glasses");
-        document.getElementById("hist-summary-txt").textContent = histSummary();
+        // ⭐ Kapalı şerit = SON KARAR (somut bilgi). Merci'nin genel yorumu
+        // ("Grup çeşitli kararlar verdi..." gibi) açılır panelin üstünde.
+        // S.history en yenisi başta (addHist unshift ediyor).
+        var _last = S.history[0] || {};
+        // Tarih: addHist toLocaleDateString("tr-TR") yazıyor ("16.08.2026").
+        // Şeritte tam tarih hantal duruyor → bugün/dün'e çevir, eskisi kalsın.
+        var _tar = _last.date || "";
+        try {
+          var _bug = new Date().toLocaleDateString("tr-TR");
+          var _dun = new Date(Date.now() - 86400000).toLocaleDateString("tr-TR");
+          if (_tar === _bug) _tar = "bugün";
+          else if (_tar === _dun) _tar = "dün";
+        } catch (e) {}
+        document.getElementById("hist-summary-txt").textContent =
+          (_last.emoji ? _last.emoji + " " : "") +
+          (_last.item || "") +
+          (_tar ? " · " + _tar : "") +
+          (_last.t ? " " + _last.t : "");
+        var _note = document.getElementById("hist-note-tx");
+        if (_note) _note.textContent = histSummary();
         var _cnt = document.getElementById("hist-count");
         if (_cnt) _cnt.textContent = S.history.length;
         // Grafik yalnız panel AÇIKKEN çizilebilir: kapalıyken kapsayıcı
@@ -22146,7 +22229,21 @@ function drawResultCard(opts) {
         }
         snd("click");
       });
-      bind("hist-clear", clearHist);
+      // ⚠️ 16 AĞU — ONAY YOKTU (kullanıcı sordu, haklıydı): tek dokunuş hem
+      // ekrandaki listeyi hem Firestore'daki TÜM kayıtları batch delete ile
+      // siliyordu, geri alma yok. Artık showConfirm arkasında.
+      // (Geri tuşu confirm-modal'ı "Hayır" sayıyor → kmHandleBack adım 2.)
+      bind("hist-clear", function () {
+        var _n = S.history.length;
+        showConfirm(
+          "Geçmiş silinsin mi?",
+          _n +
+            " kayıt kalıcı olarak silinecek. Bu işlem geri alınamaz.",
+          clearHist,
+          "Evet, sil",
+          "Vazgeç",
+        );
+      });
       bind("ask-merci", () =>
         sendAI(document.getElementById("ai-ctx").value.trim()),
       );
