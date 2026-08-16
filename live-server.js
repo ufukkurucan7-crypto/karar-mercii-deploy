@@ -2380,7 +2380,10 @@ app.post("/nearby", rateLimit, async (req, res) => {
 // Gönderim = tek API çağrısı, **0 Firestore okuması**. Token hiç saklanmıyor.
 //
 // ⚠️ Cloud Functions KULLANILMIYOR — Blaze planı ister. Bu sunucu yeterli.
-const ADMIN_UID = "gq8uRlcr4TOwe41qWnKk18DZ0Wt1";
+// ⚠️ 16 AĞU — UID DEĞİŞTİ (eski: gq8uRlcr4TOwe41qWnKk18DZ0Wt1). Uygulama içi
+// "Hesabımı Sil" testinde Auth kaydı silindi → aynı e-posta yeniden girince
+// YENİ UID aldı. UID değişirse admin.html ve firestore.rules de güncellenmeli.
+const ADMIN_UID = "r3vZcg4qouP1Kjo1WHjAkZR7eOL2";
 const TOPIC_ALL = "tum-kullanicilar";
 
 // FCM topic adı kuralı: [a-zA-Z0-9-_.~%]+ . Oda kodu dışarıdan geldiği için
