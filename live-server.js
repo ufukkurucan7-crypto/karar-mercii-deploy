@@ -77,16 +77,51 @@ app.get("/.well-known/assetlinks.json", (req, res) => {
 // ⚠️ Bu route TEK BAŞINA yetmez: uygulamada `com.apple.developer.associated-domains`
 // entitlement'ı da olmalı (App.entitlements'a eklendi) ve YENİ BUILD gerekir —
 // native değişiklik mevcut TestFlight sürümüne yansımaz.
+// ⚠️ 18 AĞU — "TÜM YOLLAR" DARALTILDI.
+// Eskiden burada tek bir `"/": "*"` vardı: uygulama kuruluysa kararmercii.com'a
+// giden HER link tarayıcı yerine uygulamayı açıyordu. Kullanıcı App Store ürün
+// sayfasındaki "Gizlilik Politikası" bağlantısına dokununca politika yerine
+// uygulamanın açıldığını fark etti.
+// 🔴 NEDEN ÖNEMLİ: Apple gizlilik politikası bağlantısının POLİTİKAYI
+// göstermesini bekler; incelemeci oraya dokunup uygulamaya düşerse uyum sorunu
+// olur. Aynı şekilde /indir sayfası da uygulamayı açarsa "indir" akışı anlamsız
+// hale gelir ve yeni kullanıcıya gösterilmesi gereken mağaza bağlantıları
+// gösterilemez.
+// ⭐ Uygulamada AÇILMASI GEREKEN tek şey oda davet linkleri (kök + ?room=).
+// Aşağıdaki `exclude` girdileri SIRAYLA değerlendirilir: önce hariç tutulanlar,
+// sonra genel kural. Sıra bozulursa hariç tutma çalışmaz.
+// ⚠️ iOS bu dosyayı Apple'ın CDN'i üzerinden önbellekler → değişiklik mevcut
+// kurulumlarda ANINDA geçerli olmaz; yeni kurulumda/güncellemede devreye girer.
+const _AASA_EXCLUDE = [
+  "/privacy.html", // App Store ürün sayfasındaki gizlilik bağlantısı
+  "/terms.html",
+  "/delete-account.html", // Apple 5.1.1(v) — web sayfası olarak da erişilebilir kalmalı
+  "/indir", // akıllı indirme linki: mağazaya götürmeli, uygulamaya değil
+  "/download",
+  "/app-ads.txt",
+  "/admin.html",
+];
 const _AASA = {
   applinks: {
     apps: [],
     details: [
       {
         appIDs: ["3W82BX76S7.app.kararmercii.com"],
-        components: [{ "/": "*", comment: "tum yollar - Android app-link ile ayni" }],
+        components: [
+          ..._AASA_EXCLUDE.map((p) => ({
+            "/": p,
+            exclude: true,
+            comment: "tarayicida acilmali - uygulamaya YONLENDIRME",
+          })),
+          { "/": "*", comment: "kalan tum yollar - Android app-link ile ayni" },
+        ],
       },
       // Eski iOS sürümleri için geriye dönük biçim (components'i anlamayanlar).
-      { appID: "3W82BX76S7.app.kararmercii.com", paths: ["*"] },
+      // ⚠️ Bu biçim `exclude` DESTEKLEMEZ; NOT ile başlayan yollar hariç tutulur.
+      {
+        appID: "3W82BX76S7.app.kararmercii.com",
+        paths: [..._AASA_EXCLUDE.map((p) => "NOT " + p), "*"],
+      },
     ],
   },
 };
@@ -1035,6 +1070,28 @@ async function authAndQuota(req, res, next) {
 
     const userSnap = await adminDb.collection("users").doc(uid).get();
     const isPro = userSnap.exists && isProValid(userSnap.data());
+
+    // ── 18 AĞU: TARAYICIDA ÜCRETSİZ AI YOK (PRO hariç) ──
+    // Gerekçe: tarayıcıda hiçbir gelir kalemi çalışmıyor. AdMob native-only,
+    // AdSense onayı da yok → web'de gösterilecek reklam YOK. Ücretsiz web
+    // kullanıcısı günde 8 mesaj × ~$0,005 = ~$0,04 maliyet üretip karşılığında
+    // sıfır gelir getiriyordu. Uygulamada en azından ödüllü reklam bir miktar
+    // dönüyor ve kullanıcı elde kalıyor.
+    // 429 seçildi (403 değil): istemci 429'u ZATEN paywall'a bağlıyor
+    // (live-index.html ~18139) ve web paywall'ı "Uygulamayı İndir" butonu
+    // gösteriyor → ekstra istemci kodu gerekmeden doğru akış çalışıyor.
+    // ⚠️ `platform` istemciden geliyor, yani teorik olarak taklit edilebilir.
+    // Sertleştirmiyoruz çünkü taklit edenin kazancı günde 8 mesaj (~$0,04) ile
+    // ZATEN sınırlı; bu bir suistimal kalkanı değil, gelir/maliyet ayarı.
+    const _plt = String((req.body && req.body.platform) || "web").toLowerCase();
+    const nativeApp = _plt === "ios" || _plt === "android";
+    if (!nativeApp && !isPro) {
+      return res.status(429).json({
+        error:
+          "Merci uygulamada çalışıyor 📲 Uygulamayı indirip ücretsiz sorabilir ya da PRO ile tarayıcıdan da devam edebilirsin.",
+      });
+    }
+
     const limit = isPro ? PRO_DAILY_LIMIT : FREE_DAILY_LIMIT;
 
     const today = new Date().toISOString().slice(0, 10); // UTC günü (YYYY-MM-DD)
