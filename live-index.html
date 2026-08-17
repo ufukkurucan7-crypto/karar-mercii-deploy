@@ -8743,7 +8743,7 @@
       <div class="screen" id="scr-ob2">
         <div class="ob-auth">
           <div class="ob-auth-logo m-idle" id="ob2-merci"></div>
-          <div class="ob-auth-title">Karar Mercii'ne Hoş Geldin!</div>
+          <div class="ob-auth-title">Karar Mercii'ye Hoş Geldin!</div>
           <div class="ob-auth-sub">
             Grubunuzun resmi karar hakemi. İster tek tek, ister hep beraber;
             kararsızlıkları eğlenceye dönüştürün!
@@ -10498,15 +10498,41 @@
         } catch (e) {}
         return null;
       }
-      // Play Store'a yönlendir (puanla akışı). Native'de Play uygulamasını market://
-      // ile DOĞRUDAN açar (yorum bölümüne düşer); olmazsa/web'de https Play linki.
-      // Eski "g.page/r/" linki Google Arama'ya düşüyordu — düzeltildi.
+      // Mağazadaki puanlama ekranına yönlendir.
+      // ⚠️ 18 AĞU — iOS'ta HİÇ ÇALIŞMIYORDU: fonksiyon her platformda
+      // `market://details?id=...` açmaya çalışıyordu. `market://` **Android'e
+      // özgü** bir şema; iOS onu sessizce yok sayar (hata da vermez), bu yüzden
+      // iPad/iPhone'da "mağazada puanla" düğmesi hiçbir şey yapmıyordu.
+      // Yedek `https` linki de Play Store'a gidiyordu → iOS'ta yine işe yaramaz.
+      // Artık platforma göre doğru mağaza açılıyor:
+      //   iOS     → itms-apps://...?action=write-review  (App Store, yorum ekranı)
+      //   Android → market://details?id=...              (Play, yorum bölümü)
+      // Ad "openPlayStore" olarak KORUNDU: HTML'de onclick ile çağrılıyor ve
+      // window'a bağlı; yeniden adlandırmak sessiz bir kırılma riski.
       function openPlayStore() {
         var pkg = "app.kararmercii.com";
-        var web = "https://play.google.com/store/apps/details?id=" + pkg;
+        var APPLE_ID = "6797318526";
+        var ios = false;
+        try {
+          ios =
+            !!(window.Capacitor && window.Capacitor.getPlatform) &&
+            window.Capacitor.getPlatform() === "ios";
+        } catch (e) {}
+        // Tarayıcıdaki iOS kullanıcısı da App Store'a gitsin (Capacitor yok).
+        if (!ios && typeof _kmIsIOSWeb === "function") {
+          try {
+            ios = _kmIsIOSWeb();
+          } catch (e) {}
+        }
+        var web = ios
+          ? "https://apps.apple.com/app/id" + APPLE_ID + "?action=write-review"
+          : "https://play.google.com/store/apps/details?id=" + pkg;
+        var native = ios
+          ? "itms-apps://apps.apple.com/app/id" + APPLE_ID + "?action=write-review"
+          : "market://details?id=" + pkg;
         try {
           if (_capNative()) {
-            window.open("market://details?id=" + pkg, "_system");
+            window.open(native, "_system");
           } else {
             window.open(web, "_blank");
           }
@@ -12260,7 +12286,7 @@ function drawResultCard(opts) {
           say +
           '"' +
           details +
-          "\n\nSen de karar ver 👉 https://play.google.com/store/apps/details?id=app.kararmercii.com";
+          "\n\nSen de karar ver 👉 https://kararmercii.com/indir";
         // Görsel kart paylaşımı (destekleniyorsa), yoksa metin fallback
         var _cs = type === "wheel" ? null : (_lastVoteScores || {});
         var _cp = type === "wheel" ? 0 : (_lastVotePeopleCount || 0);
@@ -13145,27 +13171,30 @@ function drawResultCard(opts) {
           _pwBtn2 =
             '<button class="paywall-btn-ad" onclick="watchAdForTopic()">📺 Reklam İzle (+' +
             AD_MSG_BONUS + " mesaj)</button>";
-          _pwCounter =
-            "Bugün " + _pwKalanReklam + " reklam hakkın kaldı • Pro'da günde 50 🌙";
+          // ⚠️ Buraya "Pro'da günde 50" EKLEME: reklam hakkıyla aynı satırda
+          // durunca "PRO'da da reklam hakkı var" gibi okunuyordu (kullanıcı
+          // fark etti). PRO'nun mesaj hakkı zaten üstteki _pwSub'da anlatılıyor.
+          _pwCounter = "Bugün " + _pwKalanReklam + " reklam hakkın kaldı";
         } else if (_pwNative) {
           // Hak bitti: reklam butonu HİÇ basılmıyor, tek yol PRO ya da yarın.
           _pwSub =
             "Bugünkü " + AD_MAX_PER_DAY +
             " reklam hakkını kullandın. Yarın yenilenir — beklemek istemezsen PRO ile günde 50 mesaj, reklamsız.";
           _pwBtn2 = "";
-          _pwCounter = "Reklam hakkın yarın yenilenir • Pro'da günde 50 🌙";
-        } else if (!_kmIsIOSWeb()) {
-          // Android/masaüstü tarayıcı → Play linki anlamlı
+          _pwCounter = "Reklam hakkın yarın yenilenir";
+        } else {
+          // ⚠️ 18 AĞU — iOS tarayıcı için AYRI DAL KALDIRILDI.
+          // Eskiden `!_kmIsIOSWeb()` ile ikiye ayrılıyordu: iPhone/iPad tarayıcı
+          // kullanıcısına indirme butonu HİÇ gösterilmiyordu, çünkü App Store
+          // sürümü yoktu ve elde yalnız Play linki vardı. Uygulama 17 Ağu'da
+          // App Store'da yayına girdi ve indirme artık /indir üzerinden
+          // (platforma göre doğru mağaza) yapılıyor → ayrım gereksiz, üstelik
+          // iOS'ta dönüşüm kaybettiriyordu.
           _pwSub =
             "Uygulamada kısa bir reklam izleyip +4 mesaj kazanabilirsin — ya da PRO ile günde 50 mesaj, reklamsız konuş.";
           _pwBtn2 =
             '<button class="paywall-btn-ad" onclick="_kmPaywallInstall()">📲 Uygulamayı İndir — Reklamla +4 Mesaj</button>';
-          _pwCounter = "Ödüllü reklam uygulamada • Pro'da günde 50 🌙";
-        } else {
-          // iOS tarayıcı: App Store sürümü henüz yok → gösterilecek mağaza linki yok
-          _pwSub = "PRO ile günde 50 mesaj, reklamsız konuş.";
-          _pwBtn2 = "";
-          _pwCounter = "Pro'da günde 50 mesaj 🌙";
+          _pwCounter = "Ödüllü reklam uygulamada";
         }
         wrap.innerHTML =
           '<div class="paywall-emoji">🐙</div>' +
@@ -13360,18 +13389,41 @@ function drawResultCard(opts) {
             // (adaptive banner çoğu telefonda ~50-60dp; 75 güvenli, buton banner arkasında kalmasın).
             document.documentElement.style.setProperty("--ad-bottom", "75px");
           }
-          // Banner yüksekliğini öğrenip içeriğe o kadar alt boşluk bırak
-          // (banner alttaki seçenek/butonların üstüne binmesin).
-          if (!this._sizeListenerAdded && AdMob.addListener) {
-            this._sizeListenerAdded = true;
+          // ⚠️ 18 AĞU — REKLAM GELMEZSE BOŞLUK KALIYORDU
+          // Yukarıdaki 75px, reklam YÜKLENSİN YÜKLENMESİN anında rezerve ediliyor.
+          // Reklam hiç gelmezse (iOS'ta yeni uygulama = "sınırlı reklam yayını";
+          // ayrıca PRO olmayan her doldurulamayan istek) o boşluk ekranda kalıyordu.
+          // Görünür etkisi: "nasıl kullanılır" turu alt sınırı `innerHeight - adBottom`
+          // ile hesapladığı için (bkz. ~14825) vurgu kutusu 75px kayıyor ve
+          // kullanıcıya sebepsiz boşluk gibi görünüyordu.
+          //
+          // ⭐ NEDEN OPTİMİST REZERV KALDI: bu AdMob sürümünün olay yayınlayacağı
+          // garanti değil. Rezervi baştan kaldırsaydık, olaylar gelmeyen bir
+          // cihazda banner içeriğin ÜSTÜNE binerdi (Android'de reklam doluyor).
+          // Bu yüzden boşluğu YALNIZCA eklenti "yüklenemedi" derse geri veriyoruz —
+          // olay hiç gelmezse davranış bugünküyle birebir aynı kalır, regresyon yok.
+          if (!this._bannerListenersAdded && AdMob.addListener) {
+            this._bannerListenersAdded = true;
+            var _setAd = function (v) {
+              document.documentElement.style.setProperty("--ad-bottom", v);
+            };
             try {
               // Bu AdMob sürümünde addListener Promise DEĞİL, doğrudan handle döner.
+              // Banner yüksekliğini öğrenip içeriğe o kadar alt boşluk bırak
+              // (banner alttaki seçenek/butonların üstüne binmesin).
               AdMob.addListener("bannerAdSizeChanged", function (size) {
                 var h = size && size.height ? size.height : 0;
-                document.documentElement.style.setProperty(
-                  "--ad-bottom",
-                  h > 0 ? h + "px" : "0px"
-                );
+                _setAd(h > 0 ? h + "px" : "0px");
+              });
+              // Reklam gelmedi → yer tutma, boşluğu geri ver.
+              AdMob.addListener("bannerAdFailedToLoad", function () {
+                _setAd("0px");
+              });
+              // Reklam geldi → rezerv dursun (kesin yükseklik sizeChanged'den gelir).
+              AdMob.addListener("bannerAdLoaded", function () {
+                var cur =
+                  document.documentElement.style.getPropertyValue("--ad-bottom");
+                if (!cur || cur === "0px") _setAd("75px");
               });
             } catch (e) {}
           }
@@ -14460,7 +14512,7 @@ function drawResultCard(opts) {
             settle: 260,
             pose: "glasses",
             title: "🕘 Karar Geçmişi",
-            body: "Verdiğin her karar burada birikir. <b>Üstüne dokun</b> → grafikle <b>en çok neyi seçtiğini</b> ve tüm kayıtlarını gör. Bunun için <b>Google ile giriş</b> yeterli (ücretsiz), PRO'da geçmişin çok daha uzun tutulur. 👇",
+            body: "Verdiğin her karar burada birikir. <b>Üstüne dokun</b> → grafikle <b>en çok neyi seçtiğini</b> ve tüm kayıtlarını gör. Bunun için <b>giriş yapman</b> yeterli (ücretsiz), PRO'da geçmişin çok daha uzun tutulur. 👇",
             open: function () {
               var hs = document.getElementById("hist-section");
               if (hs && hs.style.display !== "none" && hs.offsetParent) {
@@ -14664,7 +14716,7 @@ function drawResultCard(opts) {
                 var _w = document.getElementById("ai-login-wall");
                 this.sel = _w && _w.offsetParent ? "#ai-login-wall" : ".merci-ai-hero";
                 this.body =
-                  "Merci'ye danışmak için <b>Google ile giriş</b> yeterli — <b>kısa bir reklam izle, 4 mesaj</b> kazan (günde 2 reklam)! PRO'da günde 50 mesaj, reklamsız. Girince 'ne yesem, nereye gitsem' diye sorabilir, yakındaki mekan önerisi alabilirsin.";
+                  "Merci'ye danışmak için <b>giriş yapman</b> yeterli — <b>kısa bir reklam izle, 4 mesaj</b> kazan (günde 2 reklam)! PRO'da günde 50 mesaj, reklamsız. Girince 'ne yesem, nereye gitsem' diye sorabilir, yakındaki mekan önerisi alabilirsin.";
               } else {
                 this.sel = ".merci-ai-hero";
                 this.body =
@@ -15513,10 +15565,93 @@ function drawResultCard(opts) {
       // çizimin açısına (_wDrawnAngle) göre CSS transform ile döndür (yalnız
       // GPU-composite; repaint yok). Kazanan matematiği (wfA/avoidEdge/wi)
       // wAngle değişkeni üzerinden çalışır — çizim yönteminden bağımsızdır.
+      //
+      // ⚠️ P0-1'in GÖRSEL BEDELİ ve ÇÖZÜMÜ (17 Ağu):
+      // CSS ile canvas'ın TAMAMI döndüğü için drawW'nin YATAY çizdiği dilim
+      // yazıları da dönüyordu → alt yarıdaki yazılar baş aşağı görünüyor,
+      // duruşta (tam çizim) bir anda düzeliyordu. Çözüm: yazıyı açısal HIZA
+      // göre yönet —
+      //   • hızlı (>= _wTxtHide rad/sn): yazısız TEK tam çizim + ucuz CSS
+      //     rotate (yazı zaten okunmuyor; ters dönecek bir şey de kalmıyor)
+      //   • yavaşlarken: her karede YAZILI tam çizim (yatay çizildiği için her
+      //     açıda düz) + opaklık 0→1 yumuşak (smoothstep) rampa
+      // Eşik p'ye (ilerleme oranı) DEĞİL hıza bağlı: spin süresi/hızı değişken.
+      // 6 rad/sn ≈ 1 tur/sn. Tipik spinde yazı duruştan ~2.4-3.7 sn önce
+      // belirmeye başlar, ~1.2-1.9 sn önce TAM okunur olur (kullanıcı isteği:
+      // "durmadan hemen değil, biraz daha önce gözüksün ki adil olsun").
       var _wDrawnAngle = 0;
+      var W_TXT_SHOW = 1.6; // rad/sn — bunun ALTINDA yazı tam opak
+      var _wTxtHide = 6.0; // rad/sn — bunun ÜSTÜNDE yazı hiç çizilmez (cihaza uyarlanır)
+      var _wTxtAlpha = 1, // canvas'ta O AN çizili yazı opaklığı
+        _wSpeed = 0, // yumuşatılmış açısal hız (rad/sn)
+        _wPrevA = 0,
+        _wPrevT = 0,
+        _wDrawCost = 0; // tam çizimin ölçülen maliyeti (ms) — zayıf cihaz uyarlaması
+      /* Spin/drag BAŞLARKEN hız ölçümünü sıfırla.
+         fast=true (fırlatma): "şu an çok hızlı" varsayımıyla başla ki ilk
+         karede yazı çizilmesin. _wTxtAlpha'ya DOKUNULMAZ — canvas'ta gerçekte
+         ne çizili olduğunu drawW tutuyor. */
+      function wTxtReset(angle, fast) {
+        _wPrevA = angle || 0;
+        _wPrevT = performance.now();
+        _wSpeed = fast ? 99 : 0;
+        // Zayıf cihaz: önceki dönüşte ölçülen tam-çizim maliyeti yüksekse
+        // pahalı "her kare çizim" penceresini KISALT (eşiği aşağı çek).
+        // Eşik yalnız BURADA değişir → dönüş ortasında yazı geri kaybolmaz.
+        _wTxtHide = _wDrawCost > 6 ? 3.5 : _wDrawCost > 3.5 ? 4.5 : 6.0;
+      }
       function wRotateTo(angle) {
         var c = document.getElementById("wcanvas");
-        if (c) c.style.transform = "rotate(" + (angle - _wDrawnAngle) + "rad)";
+        if (!c) return;
+        var items =
+          S.wheelSlices && S.wheelSlices.length ? S.wheelSlices : S.wheel;
+        if (!items || items.length < 2) {
+          // Boş/tek seçenekli çark: eski davranış (yalnız CSS rotate)
+          c.style.transform = "rotate(" + (angle - _wDrawnAngle) + "rad)";
+          return;
+        }
+        var now = performance.now(),
+          dt = now - _wPrevT;
+        if (dt > 0) {
+          var inst = (Math.abs(angle - _wPrevA) / dt) * 1000;
+          // ~40ms EMA: sürüklemedeki sıçramaları yumuşatır, spin'de lag yaratmaz
+          _wSpeed += (inst - _wSpeed) * Math.min(1, dt / 40);
+          _wPrevA = angle;
+          _wPrevT = now;
+        }
+        var t;
+        if (_wSpeed >= _wTxtHide) t = 0;
+        else if (_wSpeed <= W_TXT_SHOW) t = 1;
+        else t = (_wTxtHide - _wSpeed) / (_wTxtHide - W_TXT_SHOW);
+        t = t * t * (3 - 2 * t); // smoothstep → belirme yumuşak, "pat" yok
+        if (t <= 0.004) {
+          // ── HIZLI FAZ ── yazısız tam çizimi BİR KEZ yap, gerisi ucuz CSS rotate
+          if (_wTxtAlpha > 0.004) {
+            drawW("wcanvas", items, angle, -1, S.wheelPeriod, 0); // _wTxtAlpha=0 orada set edilir
+            return; // drawW transform'u sıfırladı + _wDrawnAngle'ı güncelledi
+          }
+          c.style.transform = "rotate(" + (angle - _wDrawnAngle) + "rad)";
+          return;
+        }
+        // ── YAVAŞ FAZ ── yazılı tam çizim (yazı yatay → her açıda düz okunur)
+        var _c0 = performance.now();
+        drawW("wcanvas", items, angle, -1, S.wheelPeriod, t);
+        var _cost = performance.now() - _c0;
+        _wDrawCost = _wDrawCost ? _wDrawCost + (_cost - _wDrawCost) * 0.25 : _cost;
+      }
+      /* Çark DURDU ama tam çizim yapılmayacak yollar için güvenlik ağı.
+         Örn. hızlıca savurup fırlatma eşiğini geçemeden bırakmak: yazı gizli
+         kalırken çark duruyordu (yazısız çark ekranda kalıyordu). Spin biten
+         yolda finishW zaten tam çizim yapıyor; burada sadece eksik kalanı
+         tamamlıyoruz. */
+      function wTxtRestore() {
+        if (_wTxtAlpha > 0.996) return;
+        var items =
+          S.wheelSlices && S.wheelSlices.length ? S.wheelSlices : S.wheel;
+        if (!items || items.length < 2) return;
+        _wTxtAlpha = 1;
+        _wSpeed = 0;
+        drawW("wcanvas", items, wAngle, wheelHi, S.wheelPeriod, 1);
       }
       // Dilim rengine göre okunur etiket rengi (açık zeminde koyu yazı)
       function _textOn(hex) {
@@ -15622,8 +15757,13 @@ function drawResultCard(opts) {
           return "#4c1d95";
         }
       }
-      function drawW(cid, items, angle, hi, period) {
+      /* txtA = dilim yazılarının opaklığı (0 = yazıyı HİÇ çizme, 1 = tam).
+         Varsayılan 1 → mevcut çağrı noktaları etkilenmez. Yalnız wRotateTo
+         (ana çarkın dönüş kareleri) 0..1 arası değer geçirir; bkz. wRotateTo
+         üstündeki açıklama. */
+      function drawW(cid, items, angle, hi, period, txtA) {
         if (hi === undefined) hi = -1;
+        if (txtA === undefined) txtA = 1;
         var c = document.getElementById(cid);
         if (!c) return;
         var ctx = c.getContext("2d");
@@ -15632,6 +15772,10 @@ function drawResultCard(opts) {
         if (cid === "wcanvas") {
           _wDrawnAngle = angle || 0;
           c.style.transform = "";
+          // Yazı opaklığının TEK doğru kaynağı burası: updW/finishW gibi dışarıdan
+          // gelen tam çizimler de defteri güncellesin, yoksa wRotateTo "yazı zaten
+          // gizli" sanıp ucuz CSS yoluna girer ve yazı yeniden ters döner.
+          _wTxtAlpha = txtA;
         }
         // Retina: backing store'u cihaz çözünürlüğüne ölçekle (bulanıklık biter)
         // dpr en fazla 2: dpr=3 cihazda ~990px yerine ~660px backing (P0-2)
@@ -15731,6 +15875,9 @@ function drawResultCard(opts) {
            ASLA sıkıştırılmaz (ctx.scale yok) → font bozuk görünmez. */
         var pr = r * 0.62; // yazı bandının yarıçapı
         var maxW = Math.min(2 * pr * Math.sin(sl / 2) * 0.92, r * 0.95);
+        // txtA=0 → yazı fazı komple atlanır (ölçüm/yerleşim de yapılmaz).
+        // Çark hızlı dönerken kullanılan ucuz yol; bkz. wRotateTo.
+        if (txtA > 0.004) {
         ctx.textBaseline = "middle";
         ctx.textAlign = "center";
         var lays = _wLayouts(ctx, items, maxW, r);
@@ -15738,7 +15885,7 @@ function drawResultCard(opts) {
           var mid = angle + (j + 0.5) * sl;
           var lay = lays[j];
           ctx.save();
-          ctx.globalAlpha = hi >= 0 && j !== hi ? 0.38 : 1;
+          ctx.globalAlpha = (hi >= 0 && j !== hi ? 0.38 : 1) * txtA;
           ctx.fillStyle = _textOn(COLS[(j % kCol) % COLS.length]);
           _wFont(ctx, lay.size);
           ctx.translate(cx + Math.cos(mid) * pr, cy + Math.sin(mid) * pr);
@@ -15750,6 +15897,7 @@ function drawResultCard(opts) {
           }
           ctx.restore();
         }
+        } // ← txtA > 0
         // — 5) Dış çerçeve (ÇİFT JANT — maketten: kalın koyu halka + ince
         //      beyaz iç halka). Makette 8px #4c1d95 + 2px beyaz; buradaki
         //      koyu ton temaya göre okunuyor (canvas var() anlamaz → gerçek
@@ -16011,6 +16159,7 @@ function drawResultCard(opts) {
         document.body.classList.add("wheel-dragging");
         buildWheelSlices();
         drawW("wcanvas", S.wheelSlices, wAngle, -1, S.wheelPeriod);
+        wTxtReset(wAngle, false); // sürükleme yavaş başlar → yazı görünür kalsın
         var _wcr = document.getElementById("wcanvas").getBoundingClientRect();
         _wCenter = { x: _wcr.left + _wcr.width / 2, y: _wcr.top + _wcr.height / 2 };
         dragging = true;
@@ -16072,6 +16221,7 @@ function drawResultCard(opts) {
           hideHint();
           launch(Math.abs(v), v < 0 ? -1 : 1); // ← fırlattığın YÖNDE dönsün
         } else {
+          wTxtRestore(); // hızlı savurup fırlatmadan bıraktı → yazılar geri gelsin
           showHint();
         }
       }
@@ -16084,6 +16234,7 @@ function drawResultCard(opts) {
           hideHint();
           launch(Math.abs(vel) || 0, vel < 0 ? -1 : 1); // ← fırlattığın YÖNDE dönsün
         } else {
+          wTxtRestore(); // hızlı savurup fırlatmadan bıraktı → yazılar geri gelsin
           showHint();
         }
       }
@@ -16109,12 +16260,18 @@ function drawResultCard(opts) {
 
           wRotateTo(wAngle);
           if (Math.abs(v) > 0.002) requestAnimationFrame(fr);
+          else wTxtRestore(); // durdu → yazılar kesin tam görünsün
           // Durdu, oyun başlamadı
         })(t0);
       }
 
       function launch(sp, dir) {
-        if (spinning || window._adPending || window._wheelResultPending) return;
+        if (spinning || window._adPending || window._wheelResultPending) {
+          // Fırlatma reddedildi (reklam/sonuç bekliyor): sürüklerken gizlenmiş
+          // yazılar ekranda gizli kalmasın.
+          if (!spinning) wTxtRestore();
+          return;
+        }
         dir = dir < 0 ? -1 : 1; // sürükleme yönü: -1 = sola (CCW), +1 = sağa (CW)
         spinning = true;
         document.body.classList.add("wheel-spinning");
@@ -16142,6 +16299,9 @@ function drawResultCard(opts) {
         }
         var n = (S.wheelSlices || S.wheel).length,
           base = wAngle;
+        // Yazı yönetimini fırlatma için sıfırla: ilk karede "çok hızlı" kabul
+        // edilip yazısız TEK tam çizim yapılır, sonra yavaşlarken geri gelir.
+        wTxtReset(base, true);
 
         // Max hız sınırla (önceki 4800 yerine 2400 — daha yavaş)
         var initSpeed = Math.min(Math.max(sp, 0.012), 0.06);
@@ -17595,7 +17755,9 @@ function drawResultCard(opts) {
             else if (errCode === "PLUGIN_MISSING")
               appendMsg(
                 "merci",
-                "Konum için uygulamanın güncel sürümü gerekli 📲 Play Store'dan güncelleyince yakınını önerebilirim!",
+                // ⚠️ Mağaza adı YAZMA: iOS'ta "Play Store" demek yanlış (ayrıca
+                // Apple 3.1.1 hassasiyeti). Nötr "mağaza" her platformda doğru.
+                "Konum için uygulamanın güncel sürümü gerekli 📲 Mağazadan güncelleyince yakınını önerebilirim!",
                 false,
               );
             else if (errCode === "DENIED")
@@ -20401,14 +20563,14 @@ function drawResultCard(opts) {
           document.getElementById("room-title-display").textContent || ""
         ).replace(" — Oda açık", "");
         var msg =
-          "🗳️ Karar Mercii'nde " +
+          "🗳️ Karar Mercii'de " +
           (name ? '"' + name + '" ' : "") +
           "oylamasına davetlisin!\n\n" +
           "🔑 Oda kodu: " +
           shareCode +
           "\n\nBağlantıya dokun, hemen oy ver 👇\n" +
           link +
-          "\n\n🐙 Grubunuzun resmi karar hakemi\n📲 Uygulamayı indir:\nhttps://play.google.com/store/apps/details?id=app.kararmercii.com";
+          "\n\n🐙 Grubunuzun resmi karar hakemi\n📲 Uygulamayı indir:\nhttps://kararmercii.com/indir";
         logEv("share_whatsapp");
         // vc32: native'de sistem paylaşım sayfası (guard'lı) — WebView'da navigator.share yok
         var _sh = _capPlug("Share");
@@ -20446,8 +20608,15 @@ function drawResultCard(opts) {
       // indirme kartı göster.
       // ⚠️ REGRESYON GÜVENCESİ: _capNative() true ise fonksiyon HEMEN döner →
       // uygulama içinde (Android/iOS native) hiçbir görsel/davranış değişikliği YOK.
-      var KM_PLAY_URL =
-        "https://play.google.com/store/apps/details?id=app.kararmercii.com";
+      // ⚠️ 18 AĞU — ARTIK PLAY LİNKİ DEĞİL, AKILLI İNDİRME LİNKİ.
+      // Eskiden buraya (ve paylaşım metinlerine) sabit Play Store adresi
+      // gömülüydü → bir iPhone kullanıcısı uygulamayı arkadaşına paylaştığında
+      // ANDROID linki gönderiyordu; karşı taraf iPhone'daysa indiremiyordu.
+      // Büyüme tamamen organik paylaşıma dayalı olduğu için bu sessiz bir kayıptı.
+      // /indir sunucuda User-Agent'a bakıp doğru mağazaya 302'liyor
+      // (masaüstünde iki seçeneği birden gösteriyor).
+      // Değişken adı KM_PLAY_URL olarak KORUNDU — birden çok yerde referanslı.
+      var KM_PLAY_URL = "https://kararmercii.com/indir";
 
       // iOS tarayıcı: App Store sürümü henüz yayında değil → Play linki göstermek
       // anlamsız. Yayına çıkınca burası App Store linkiyle güncellenecek.
@@ -20474,7 +20643,12 @@ function drawResultCard(opts) {
       // variant: "voted" (oy iletildi) | "winner" (kazanan açıklandı)
       function _kmInstallCta(anchorEl, variant) {
         if (_capNative()) return; // uygulama içinde ASLA gösterme
-        if (_kmIsIOSWeb()) return;
+        // ⚠️ 18 AĞU — `if (_kmIsIOSWeb()) return;` KALDIRILDI.
+        // O satır, App Store sürümü henüz yayında olmadığı için iPhone/iPad
+        // tarayıcı kullanıcılarına indirme kartını HİÇ göstermiyordu. Uygulama
+        // 17 Ağu'da App Store'da yayına girdi ve KM_PLAY_URL artık /indir
+        // (platforma göre doğru mağazaya yönlendiriyor) → iOS'ta gizlemek
+        // artık düpedüz kaçırılmış indirme demek.
         if (!anchorEl || !anchorEl.parentNode) return;
         var id = "km-install-cta-" + variant;
         if (document.getElementById(id)) return; // çift ekleme koruması
@@ -21643,7 +21817,10 @@ function drawResultCard(opts) {
         { e: "💪", t: "Hangi spor?", s: ["sabah", "ikindi"], o: ["Koşu", "Yüzme", "Bisiklet", "Yoga", "Ağırlık", "Futbol"] },
         { e: "🎵", t: "Ne dinlesek?", s: "her", o: ["Pop", "Rock", "Rap", "Türkü", "Jazz", "Arabesk"] },
         { e: "🌍", t: "Bugün nereye?", s: ["sabah", "ogle", "ikindi"], o: ["Deniz", "Dağ", "Şehir turu", "Park", "Kamp", "Müze"] },
-        { e: "🎮", t: "Ne oynasak?", s: ["aksam", "gece"], o: ["FIFA", "Minecraft", "Kutu oyunu", "Mobil oyun", "Satranç"] },
+        // ⚠️ Marka adı YAZMA: "FIFA"/"Minecraft" gibi tescilli adlar üçüncü taraf
+        // markasıdır (Apple/Google IP kuralları) ve eskiyor da — FIFA 2023'te
+        // "EA SPORTS FC" oldu. Öneriler jenerik tutulur.
+        { e: "🎮", t: "Ne oynasak?", s: ["aksam", "gece"], o: ["Futbol oyunu", "Kutu oyunu", "Mobil oyun", "Satranç", "Kart oyunu"] },
         { e: "📚", t: "Ne okusak?", s: ["ikindi", "gece"], o: ["Roman", "Polisiye", "Bilim kurgu", "Kişisel gelişim", "Şiir"] },
         { e: "🐾", t: "Hangi evcil hayvan?", s: "her", o: ["Kedi", "Köpek", "Kuş", "Balık", "Hamster", "Tavşan"] },
         { e: "🍕", t: "Hangi pizza?", s: ["aksam", "gece"], o: ["Margarita", "Sucuklu", "Karışık", "Ton balıklı", "Mantarlı"] },
@@ -23327,7 +23504,7 @@ function drawResultCard(opts) {
       renderCats();
       renderAIChips();
       renderOb1();
-      // ⚠️ "Karar Mercii'ne Hoş Geldin!" ekranı — poz "think" DEĞİL (2 Ağu).
+      // ⚠️ "Karar Mercii'ye Hoş Geldin!" ekranı — poz "think" DEĞİL (2 Ağu).
       // Düşünceli/çene-tutan poz karşılama ekranına uymuyordu (kullanıcı bildirdi).
       // "celebrate" = kollar havada + açık gülümseme + 🎉 → "hoş geldin, buyur".
       // Bir önceki ekran (ob1) zaten "wave" kullanıyor; aynı pozu tekrarlamamak
@@ -24371,7 +24548,7 @@ function drawResultCard(opts) {
           class="info-modal-body"
           style="text-align: center; margin-bottom: 0"
         >
-          Karar Mercii'ni beğeniyor musun? Görüşlerin bizim için çok
+          Karar Mercii'yi beğeniyor musun? Görüşlerin bizim için çok
           değerli!
         </div>
         <div class="star-row" id="star-row">
@@ -24386,17 +24563,17 @@ function drawResultCard(opts) {
             <p>Seni daha mutlu etmek için ne yapabiliriz? 🐙 (isteğe bağlı)</p>
             <textarea
               id="rate-feedback-txt"
-              placeholder="Görüşlerinizi yazın..."
+              placeholder="Görüşlerini yaz..."
             ></textarea>
             <button class="rate-send-btn" id="rate-send-btn">Gönder</button>
           </div>
         </div>
         <div id="rate-store-wrap" style="display: none">
           <div class="rate-thanks">
-            Harika! Uygulamamızı mağazada da puanlarsanız çok mutlu oluruz 🐙
+            Harika! Uygulamayı mağazada da puanlarsan çok mutlu oluruz 🐙
           </div>
           <a
-            href="https://play.google.com/store/apps/details?id=app.kararmercii.com"
+            href="https://kararmercii.com/indir"
             target="_blank"
             onclick="openPlayStore();return false;"
             style="
@@ -24826,7 +25003,7 @@ function drawResultCard(opts) {
         <div class="auth-logo m-idle" id="modal-auth-merci"></div>
         <div class="auth-title">Merci'ye Danışmak İçin</div>
         <div class="auth-sub">
-          Google ile giriş yap, Merci ile karar ver! 🐙
+          Giriş yap, Merci ile karar ver! 🐙
         </div>
         <div class="auth-perks">
           <div class="auth-perk">
@@ -24984,7 +25161,12 @@ function drawResultCard(opts) {
         </button>
         <!-- ⚠️ Mağaza adı SABİT YAZILMAZ: iOS'ta "Google Play" yazması Apple'ın
              başka platforma atıf reddini (3.1.1) tetikler. openProModal doldurur. -->
-        <div class="pro-trust" id="pro-trust-line">🔒 Google Play güvencesi · İstediğin an iptal</div>
+        <!-- ⚠️ VARSAYILAN METİNDE MAĞAZA ADI YAZMAZ. Eskiden burada sabit
+             "🔒 Google Play güvencesi" duruyordu; JS modal açılışında platforma
+             göre düzeltiyor ama JS bir sebeple geç/hiç çalışmazsa iOS'ta
+             "Google Play" görünürdü = Apple 3.1.1 (başka mağaza/ödeme yöntemi)
+             ret sebebi. Varsayılan artık nötr, JS yalnız DOĞRU adı EKLİYOR. -->
+        <div class="pro-trust" id="pro-trust-line">🔒 İstediğin an iptal</div>
         <div class="pro-legal">
           Abonelik otomatik yenilenir. Dönemin bitiminden 24 saat öncesine kadar
           iptal etmezsen aynı ücretle uzar; iptali istediğin an mağaza hesabının
