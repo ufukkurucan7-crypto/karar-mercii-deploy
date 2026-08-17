@@ -480,12 +480,11 @@ h1{
     <span class="pill"><i class="dot"></i>App Store ve Google Play'de</span>
     <h1>Karar Mercii</h1>
     <p class="tag">Kararı Merci'ye bırak, tartışma bitsin.</p>
-    <p class="desc">Nereye gidilecek, ne yenecek, hesabı kim ödeyecek? Seçenekleri yaz; çarkı döndür, oylama aç, çekiliş yap ya da Merci'ye sor. Telefonu masanın ortasına koy, herkes aynı ekrandan katılsın.</p>
+    <p class="desc">Nereye gidilecek, ne yenecek, hesabı kim ödeyecek? Seçenekleri yaz; çarkı döndür, oylama aç, çekiliş yap ya da Merci'ye sor.</p>
 
     <div class="chips">
       <span class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 3v18M3 12h18M5.6 5.6l12.8 12.8M18.4 5.6L5.6 18.4"/></svg>Çark</span>
       <span class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 20V11M12 20V4M19 20v-6"/></svg>Oylama</span>
-      <span class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="9" r="3"/><circle cx="17" cy="10" r="2.4"/><path d="M3 19c0-2.8 2.2-4.6 5-4.6s5 1.8 5 4.6M15 19c0-2.2 1.4-3.6 3.2-3.6S21 16.9 21 19"/></svg>Masa modu</span>
       <span class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9.5V7a1 1 0 0 1 1-1h16a1 1 0 0 1 1 1v2.5a2.5 2.5 0 0 0 0 5V17a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1v-2.5a2.5 2.5 0 0 0 0-5Z"/><path d="M14 6v12" stroke-dasharray="2 3"/></svg>Çekiliş</span>
       <span class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.5 13.9 9 19.5 11 13.9 13 12 18.5 10.1 13 4.5 11 10.1 9Z"/><path d="M18.5 3.5v3M20 5h-3"/></svg>Merci AI</span>
     </div>
