@@ -10475,6 +10475,19 @@
         } catch (e) {}
         return null;
       }
+      // Sunucuya "hangi platformdayız" bilgisi. /merci ve /options ücretsiz
+      // kotayı 18 Ağu'dan beri YALNIZ native uygulamada veriyor: tarayıcıda
+      // AdMob çalışmıyor ve AdSense onayı da yok → web'de gelir sıfır, maliyet
+      // devam ediyordu. PRO kullanıcı tarayıcıda da kullanmaya devam eder.
+      function _kmPlt() {
+        try {
+          return window.Capacitor && window.Capacitor.getPlatform
+            ? window.Capacitor.getPlatform()
+            : "web";
+        } catch (e) {
+          return "web";
+        }
+      }
       function _capNative() {
         try {
           return !!(
@@ -18114,6 +18127,8 @@ function drawResultCard(opts) {
                 messages: aiMessages,
                 groupCount: S.count,
                 history: S.history.slice(0, 15),
+                // Ücretsiz kota yalnız native uygulamada (bkz. _kmPlt yorumu)
+                platform: _kmPlt(),
                 // Konum: Merci ekranına girince onaylı alınan şehir/semt (varsa) →
                 // Merci şehir sormaz. Yoksa null → NEED_LOCATION işareti devreye girer.
                 location: localStorage.getItem("kmUserLocation") || null,
@@ -18442,7 +18457,7 @@ function drawResultCard(opts) {
                 "Content-Type": "application/json",
                 Authorization: "Bearer " + token,
               },
-              body: JSON.stringify({ theme: theme, count: 6 }),
+              body: JSON.stringify({ theme: theme, count: 6, platform: _kmPlt() }),
             }),
           )
           .then((r) => r.json().then((data) => ({ status: r.status, data })))
@@ -21707,7 +21722,7 @@ function drawResultCard(opts) {
                 "Content-Type": "application/json",
                 Authorization: "Bearer " + token,
               },
-              body: JSON.stringify({ theme: theme, count: 6 }),
+              body: JSON.stringify({ theme: theme, count: 6, platform: _kmPlt() }),
             }),
           )
           .then((r) => r.json().then((data) => ({ status: r.status, data })))
