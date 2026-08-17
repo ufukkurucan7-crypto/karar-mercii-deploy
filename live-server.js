@@ -276,6 +276,64 @@ app.get("/sw.js", (req, res) => {
   res.send(SW_SOURCE);
 });
 
+// ── /indir — TEK AKILLI İNDİRME LİNKİ (18 AĞU) ────────────────────────────
+// SORUN: iki mağazada birden yayındayız ama paylaşım mecraları TEK link alıyor.
+// Instagram hikâyesinde link etiketi bir tane, profil bio'su bir tane. App Store
+// linki koyarsak Android kullanıcısı hiçbir yere gidemiyor, tersi de aynı —
+// yani her paylaşımda kitlenin yarısını kaybediyorduk.
+//
+// ÇÖZÜM: kararmercii.com/indir → User-Agent'a bakıp doğru mağazaya 302.
+// Masaüstünden açan iki seçeneği birden görür.
+//
+// NEDEN AYRI DOSYA DEĞİL DE ROUTE: km-deploy.sh yalnız index + server çeker;
+// public/ altına dosya koymak ayrı bir curl adımı ister (sw.js ile aynı gerekçe).
+//
+// ⚠️ ÖNBELLEK: yanıt User-Agent'a göre DEĞİŞİYOR. Araya giren bir önbellek
+// iPhone yanıtını Android kullanıcısına servis ederse link sessizce yanlış
+// mağazaya götürür. Bu yüzden no-store + Vary zorunlu.
+const APPSTORE_URL = "https://apps.apple.com/tr/app/id6797318526";
+const PLAY_URL =
+  "https://play.google.com/store/apps/details?id=app.kararmercii.com";
+
+const INDIR_HTML = `<!doctype html><html lang="tr"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Karar Mercii'yi indir</title>
+<meta name="description" content="Karar Mercii — çark, oylama, çekiliş ve Merci AI. App Store ve Google Play'de.">
+<style>
+html,body{margin:0;min-height:100%;font-family:system-ui,-apple-system,"Segoe UI",sans-serif}
+body{background:linear-gradient(160deg,#6d28d9,#4c1d95);color:#fff;display:flex;
+align-items:center;justify-content:center;text-align:center;padding:24px;box-sizing:border-box}
+.b{max-width:360px;width:100%}
+.e{font-size:64px;margin-bottom:10px;line-height:1}
+h1{font-size:24px;margin:0 0 8px;font-weight:800;letter-spacing:-.4px}
+p{font-size:15px;line-height:1.55;opacity:.85;margin:0 0 26px}
+a.s{display:block;background:#fff;color:#4c1d95;text-decoration:none;padding:15px 20px;
+border-radius:16px;font-size:16px;font-weight:800;margin-bottom:12px}
+a.s span{display:block;font-size:12px;font-weight:600;opacity:.6;margin-top:2px}
+.f{font-size:12px;opacity:.6;margin-top:22px}
+.f a{color:#fff;opacity:.85}
+</style></head><body><div class="b">
+<div class="e">🐙</div>
+<h1>Karar Mercii</h1>
+<p>Kararı Merci'ye bırak, tartışma bitsin. Çark, oylama, çekiliş ve yapay zekâ asistanı.</p>
+<a class="s" href="${APPSTORE_URL}">App Store'dan İndir<span>iPhone ve iPad</span></a>
+<a class="s" href="${PLAY_URL}">Google Play'den İndir<span>Android</span></a>
+<div class="f"><a href="/">Tarayıcıda dene &rarr;</a></div>
+</div></body></html>`;
+
+app.get(["/indir", "/download"], (req, res) => {
+  const ua = String(req.headers["user-agent"] || "");
+  res.set("Cache-Control", "no-store");
+  res.set("Vary", "User-Agent");
+  // Android kontrolü ÖNCE: bazı Android tarayıcı UA'ları uyumluluk için
+  // "like Mac OS X" ya da "iPhone" ifadeleri taşıyabiliyor.
+  if (/Android/i.test(ua)) return res.redirect(302, PLAY_URL);
+  if (/iPhone|iPad|iPod/i.test(ua)) return res.redirect(302, APPSTORE_URL);
+  // Masaüstü ve tanınmayan istemciler (ayrıca iPadOS — kendini Macintosh
+  // gösterdiği için sunucudan ayırt edilemez): iki seçeneği birden göster.
+  res.type("html").send(INDIR_HTML);
+});
+
 app.use(express.static(path.join(__dirname, "public")));
 
 // ── ANTHROPIC İSTEMCİSİ + TIMEOUT ──
