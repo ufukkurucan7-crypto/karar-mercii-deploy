@@ -8788,13 +8788,298 @@
         --ac-bd: #dfe2e7;
         --ac-shadow: 55, 65, 81;
       }
+
+      /* ══════════════════════════════════════════════════════════════════════
+         KARANLIK MOD — TOKEN KATMANI  (18 Ağu, "dark mode'da beyaz lekeler")
+         ══════════════════════════════════════════════════════════════════════
+         🔴 KÖK NEDEN: bu dosyada 298 tane `html.dark .bileşen { … }` kuralı
+         vardı ama token'ların KENDİSİ karanlık için hiç yeniden tanımlanmamıştı.
+         --ac-bg/-bg2/-bg3/-bd açık tonlu (#f0eeff, #e0d7ff…) ve HER YERDE yüzey
+         + çerçeve olarak kullanılıyor → dark'ta ekranın ortasında beyaz kutu,
+         beyaz çerçeve, beyaz ✕ düğmesi olarak kalıyorlardı (kullanıcı bildirimi:
+         "oda oluştur / odaya katıl / seçenek çerçeveleri / yıldız iptal çarpısı").
+
+         ⚠️ ÇİFT YÖNLÜ ÇEVİRME ZORUNLU. Yüzeyi koyulaştırmak TEK BAŞINA yetmez:
+         bu yüzeylerin üstündeki yazılar var(--ac) / var(--ac-d) / var(--ac-dd)
+         (koyu mor) idi → koyu zemine düşünce OKUNMAZ olurdu. Bu yüzden karanlıkta
+         accent RAMPI TERS ÇEVRİLİR: -d/-d2/-dd artık AÇIK tonlardır (yazı rolü),
+         -bg/-bg2/-bg3/-bd KOYU tonlardır (yüzey rolü).
+
+         ⚠️ -d/-d2/-dd birkaç yerde DERİN GRADYAN UCU olarak da kullanılıyordu
+         (.pro-hero, .rcard, .km-stage, .wspin-btn…). Ters çevrilince o paneller
+         soluklaşırdı → onlar için karanlığa özel --ac-deep / --ac-deep2 token'ı
+         eklendi ve ilgili paneller aşağıdaki "DERİN PANEL ONARIMI" bloğunda
+         yalnız dark'ta bu token'lara bağlandı.
+
+         ⚠️ SIRALAMA/ÖZGÜLLÜK: `html.dark` (0,1,1) ile `html[data-theme="x"]`
+         (0,1,1) EŞİT özgüllükte. html.dark bu blokta SONRA geldiği için mor
+         (varsayılan) doğru çalışır; diğer 4 tema için `html[data-theme="x"].dark`
+         (0,2,1) blokları AYRI AYRI yazılmıştır — biri silinirse o tema karanlıkta
+         mor'a döner. Yeni accent teması eklersen dark bloğunu da ekle.
+         ⚠️ Canvas (çark, Chart.js) var() anlamaz; oralarda gerçek hex kullanılır
+         ve JS getComputedStyle ile bu token'ları okur → değerler HEX kalmalı. */
+      html.dark {
+        /* — semantik katman — */
+        --bg: #100c1c;
+        --surface: #1e1733;
+        --surface-2: #241c3c;
+        --text: #ece8f7;
+        --text-soft: #c9bdf0;
+        --border: #2d2347;
+        --brand-soft: #221a38;
+        --brand-border: #9b87d9;
+        /* — accent: yazı rolündeki tonlar AÇILIR — */
+        --ac: #8b5cf6;
+        --ac-d: #9575f5;
+        --ac-d2: #a78bfa;
+        --ac-dd: #c4b5fd;
+        --ac-ll: #9b87d9;
+        /* — accent: yüzey/çerçeve rolündeki tonlar KOYULAŞIR — */
+        --ac-bg: #221a38;
+        --ac-bg2: #191330;
+        --ac-bg3: #2b2148;
+        --ac-bd: #362a58;
+        --ac-lll: #3d3163;
+        /* — derin panel gradyanları için (yalnız dark'ta kullanılır) — */
+        --ac-deep: #2c1a5e;
+        --ac-deep2: #45259b;
+      }
+      html[data-theme="mavi"].dark {
+        --bg: #080e1a;
+        --surface: #131e33;
+        --surface-2: #17263f;
+        --text: #e8eef7;
+        --text-soft: #bcd3f0;
+        --border: #22314b;
+        --brand-soft: #14203a;
+        --brand-border: #7ea6e0;
+        --ac: #3b82f6;
+        --ac-d: #5b9bf8;
+        --ac-d2: #7db3fb;
+        --ac-dd: #b3d4fe;
+        --ac-ll: #7ea6e0;
+        --ac-bg: #14203a;
+        --ac-bg2: #101a30;
+        --ac-bg3: #1b2c4d;
+        --ac-bd: #24395e;
+        --ac-lll: #2b4166;
+        --ac-deep: #10285e;
+        --ac-deep2: #1a459b;
+      }
+      html[data-theme="yesil"].dark {
+        --bg: #06110f;
+        --surface: #10241f;
+        --surface-2: #143029;
+        --text: #e6f7f3;
+        --text-soft: #b6e6db;
+        --border: #1c3a33;
+        --brand-soft: #10241f;
+        --brand-border: #5fbcae;
+        --ac: #0d9488;
+        --ac-d: #17a89a;
+        --ac-d2: #2cc3b2;
+        --ac-dd: #7ee0d2;
+        --ac-ll: #5fbcae;
+        --ac-bg: #10241f;
+        --ac-bg2: #0c1c19;
+        --ac-bg3: #163029;
+        --ac-bd: #1e4038;
+        --ac-lll: #24493f;
+        --ac-deep: #073b37;
+        --ac-deep2: #0b5a52;
+      }
+      html[data-theme="pembe"].dark {
+        --bg: #150a10;
+        --surface: #2b1524;
+        --surface-2: #351a2b;
+        --text: #fbeaf2;
+        --text-soft: #f0bfd6;
+        --border: #432134;
+        --brand-soft: #2b1524;
+        --brand-border: #e39ec0;
+        --ac: #ec4899;
+        --ac-d: #ee5a9c;
+        --ac-d2: #f27cb2;
+        --ac-dd: #fbb6d5;
+        --ac-ll: #e39ec0;
+        --ac-bg: #2b1524;
+        --ac-bg2: #23111d;
+        --ac-bg3: #3a1c2f;
+        --ac-bd: #4a2439;
+        --ac-lll: #53293f;
+        --ac-deep: #64123a;
+        --ac-deep2: #9c1c56;
+      }
+      html[data-theme="mono"].dark {
+        --bg: #0b0e13;
+        --surface: #1b1f26;
+        --surface-2: #232830;
+        --text: #eef1f5;
+        --text-soft: #c3cad4;
+        --border: #2b313a;
+        --brand-soft: #1b1f26;
+        --brand-border: #8b94a3;
+        --ac: #7b8493;
+        --ac-d: #9aa3b0;
+        --ac-d2: #b0b8c4;
+        --ac-dd: #d5dae1;
+        --ac-ll: #8b94a3;
+        --ac-bg: #1b1f26;
+        --ac-bg2: #161a20;
+        --ac-bg3: #232830;
+        --ac-bd: #2e343d;
+        --ac-lll: #363c46;
+        --ac-deep: #232a34;
+        --ac-deep2: #39424f;
+      }
+      /* Açık temada da tanımlı olsun (dark'a özel kural yanlışlıkla aydınlıkta
+         çalışırsa renksiz kalmasın) — değerleri o temanın koyu uçlarıdır. */
+      :root {
+        --ac-deep: #4c1d95;
+        --ac-deep2: #6d28d9;
+      }
+      html[data-theme="mavi"] { --ac-deep: #1e3a8a; --ac-deep2: #1e40af; }
+      html[data-theme="yesil"] { --ac-deep: #134e4a; --ac-deep2: #115e59; }
+      html[data-theme="pembe"] { --ac-deep: #831843; --ac-deep2: #9d174d; }
+      html[data-theme="mono"] { --ac-deep: #0b1220; --ac-deep2: #111827; }
+
+      /* ══════════════════════════════════════════════════════════════════════
+         DERİN PANEL ONARIMI — yalnız karanlık (18 Ağu)
+         ══════════════════════════════════════════════════════════════════════
+         Yukarıdaki token katmanı karanlıkta -d/-d2/-dd'yi AÇIK tona çevirir
+         (yazı rolü). Ama bu üç token birkaç yerde GRADYANIN DERİN UCU olarak da
+         kullanılıyordu → o paneller (hub hero, Merci kartı, oda kurulum sahnesi,
+         kazanan kartı, çevir düğmesi, birincil butonlar) soluk lavantaya dönüp
+         üstündeki beyaz yazı okunmaz hale geliyordu. KARE ALINIP GÖRÜLDÜ.
+         Burada o paneller karanlığa özel --ac-deep / --ac-deep2 uçlarına bağlanır;
+         canlı uç (--ac / --ac-l) korunur → panel yine accent renginde ama derin.
+         ⚠️ Bu blok <style>'ın EN SONUNDA durmalı: eşit özgüllükteki eski
+         `html.dark .tab.on` / `html.dark .btn` / `html.dark .km-mcard.km-merci`
+         kurallarını SIRA ile eziyor. Yukarı taşırsan sessizce etkisiz kalır.
+         ⚠️ Aydınlık temaya hiç dokunmaz (hepsi html.dark kapsamında). */
+
+      /* — 1) Açılış + PRO kahraman — */
+      html.dark .splash {
+        background: linear-gradient(160deg, var(--ac-deep), var(--ac-deep2) 55%, var(--ac-deep2));
+      }
+      html.dark .pro-hero {
+        background: linear-gradient(155deg, var(--ac-deep) 0%, var(--ac-deep2) 55%, var(--ac) 100%);
+      }
+      /* — 2) Ana ekran hub kahramanı + mod kartları — */
+      html.dark .km-hero {
+        background:
+          radial-gradient(120% 90% at 88% 8%, rgba(255, 255, 255, 0.14), transparent 55%),
+          radial-gradient(90% 70% at 10% 95%, rgba(251, 113, 133, 0.18), transparent 60%),
+          linear-gradient(155deg, var(--ac) -25%, var(--ac-deep2) 38%, var(--ac-deep) 100%);
+      }
+      html.dark .km-mcard {
+        background:
+          radial-gradient(120% 120% at 88% 6%, rgba(255, 255, 255, 0.12), transparent 58%),
+          linear-gradient(155deg, var(--ac-deep), var(--ac-deep2) 60%, var(--ac));
+      }
+      html.dark .km-mcard.km-merci {
+        background:
+          radial-gradient(120% 120% at 88% 6%, rgba(251, 191, 36, 0.26), transparent 58%),
+          linear-gradient(155deg, var(--ac-deep), var(--ac-deep2) 60%, var(--ac));
+      }
+      html.dark .km-mbadge {
+        background: linear-gradient(160deg, var(--ac), var(--ac-deep2));
+      }
+      /* — 3) Oda kurulumu / oylama sahnesi (maket kartları) — */
+      html.dark #online-setup .km-stage,
+      html.dark .km-vstage {
+        background:
+          radial-gradient(120% 90% at 88% 6%, rgba(255, 255, 255, 0.14), transparent 55%),
+          linear-gradient(155deg, var(--ac-deep2), var(--ac-deep) 62%, var(--ac-deep2));
+      }
+      html.dark #online-setup .km-go,
+      html.dark .km-vgo {
+        background: linear-gradient(160deg, var(--ac-l) 0%, var(--ac) 45%, var(--ac-deep2) 100%);
+      }
+      html.dark #online-setup .km-ok,
+      html.dark #online-setup .km-add,
+      html.dark .km-vhint i,
+      html.dark .oitem.rated .km-vcnum {
+        background: linear-gradient(160deg, var(--ac-l), var(--ac-deep2));
+      }
+      html.dark #online-setup .km-pill.on {
+        background: linear-gradient(160deg, var(--ac-l), var(--ac-deep2)) !important;
+        border-color: var(--ac-deep2) !important;
+      }
+      /* — 4) Çark: göbek düğmesi + iğne noktası — */
+      html.dark .wspin-btn {
+        background: linear-gradient(145deg, var(--ac), var(--ac-deep2));
+      }
+      html.dark .wspin-btn:active {
+        background: var(--ac-deep2);
+      }
+      html.dark .wdot {
+        border-color: var(--ac-deep);
+      }
+      /* — 5) Sonuç / paylaşım / çekiliş kartları — */
+      html.dark .rcard,
+      html.dark .share-box.live-stage {
+        background: linear-gradient(155deg, var(--ac-deep), var(--ac-deep2) 58%, var(--ac));
+      }
+      html.dark .rg-card {
+        background: linear-gradient(160deg, var(--ac-deep2), var(--ac-deep) 75%);
+      }
+      /* — 6) Birincil butonlar / sekme / rozetler — */
+      html.dark .btn {
+        background: linear-gradient(145deg, var(--ac), var(--ac-deep2));
+      }
+      html.dark .btn:hover {
+        background: var(--ac-deep2);
+      }
+      html.dark .tab.on {
+        background: linear-gradient(145deg, var(--ac), var(--ac-deep2));
+        border-color: var(--ac-deep2);
+      }
+      html.dark .timer-bar,
+      html.dark .onl-sel-btn:active,
+      html.dark .hist-mini-btn:hover {
+        background: var(--ac-deep2);
+        border-color: var(--ac-deep2);
+      }
+      html.dark .ctx-chip {
+        background: linear-gradient(135deg, var(--ac-deep), var(--ac-deep2));
+      }
+      html.dark .chat-bubble.chat-bubble-u {
+        background: linear-gradient(135deg, var(--ac-deep2), var(--ac));
+      }
+      /* — 7) Merci sekmesi kahraman şeridi (beyaz başlık + var(--ac-ll) alt yazı
+             taşıyor → zemin derin kalmalı) — */
+      html.dark .merci-ai-hero {
+        background: linear-gradient(145deg, var(--ac-deep) 0%, var(--ac-deep2) 55%, var(--ac) 100%);
+      }
+      /* — 8) Yıldızlar: BOŞ yıldızın rengi sabit açık gri/lila idi (#d4d4d4,
+             #dcd4f5) → koyu zeminde parlak beyaz noktalar gibi duruyordu.
+             Dolu yıldız (.lit/.on) altın kalır, DEĞİŞMEZ. */
+      html.dark .star-btn {
+        color: var(--ac-lll);
+      }
+      html.dark .star-btn.lit {
+        color: #f59e0b;
+      }
+      html.dark .star {
+        color: var(--ac-lll);
+      }
+      html.dark .star.on {
+        color: #f5a623;
+      }
     </style>
     <!-- FAVICON: gerçek Merci maskotu (baş+gözler kadrajı, orijinal path'ler) — mor zemin -->
     <link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns=%27http://www.w3.org/2000/svg%27%20viewBox=%270%200%2032%2032%27%3E%3Cdefs%3E%3CradialGradient%20id=%27fhd%27%20cx=%2742%25%27%20cy=%2732%25%27%20r=%2762%25%27%3E%3Cstop%20offset=%270%25%27%20stop-color=%27%23AFA9EC%27/%3E%3Cstop%20offset=%2760%25%27%20stop-color=%27%237F77DD%27/%3E%3Cstop%20offset=%27100%25%27%20stop-color=%27%23534AB7%27/%3E%3C/radialGradient%3E%3CradialGradient%20id=%27fbl%27%20cx=%2750%25%27%20cy=%2735%25%27%20r=%2760%25%27%3E%3Cstop%20offset=%270%25%27%20stop-color=%27%23EEEDFE%27/%3E%3Cstop%20offset=%27100%25%27%20stop-color=%27%23CECBF6%27/%3E%3C/radialGradient%3E%3CradialGradient%20id=%27fey%27%20cx=%2738%25%27%20cy=%2735%25%27%20r=%2755%25%27%3E%3Cstop%20offset=%270%25%27%20stop-color=%27%233C3489%27/%3E%3Cstop%20offset=%27100%25%27%20stop-color=%27%2326215C%27/%3E%3C/radialGradient%3E%3C/defs%3E%3Crect%20width=%2732%27%20height=%2732%27%20rx=%277%27%20fill=%27%234c1d95%27/%3E%3Csvg%20x=%271%27%20y=%271%27%20width=%2730%27%20height=%2730%27%20viewBox=%27124%20124%20432%20432%27%3E%3Cellipse%20cx=%27340%27%20cy=%27530%27%20rx=%27135%27%20ry=%2720%27%20fill=%27%2326215C%27%20fill-opacity=%27.12%27/%3E%3Cpath%20d=%27M255%20360Q205%20380%20185%20425Q170%20460%20188%20495Q198%20512%20215%20505Q222%20488%20210%20468Q205%20440%20225%20415Q245%20392%20262%20378Z%27%20fill=%27%237F77DD%27/%3E%3Cpath%20d=%27M295%20375Q270%20410%20262%20450Q256%20485%20272%20512Q284%20527%20298%20516Q294%20496%20290%20472Q292%20442%20305%20410Q314%20388%20318%20378Z%27%20fill=%27%237F77DD%27/%3E%3Cpath%20d=%27M385%20375Q410%20410%20418%20450Q424%20485%20408%20512Q396%20527%20382%20516Q386%20496%20390%20472Q388%20442%20375%20410Q366%20388%20362%20378Z%27%20fill=%27%237F77DD%27/%3E%3Cpath%20d=%27M425%20360Q475%20380%20495%20425Q510%20460%20492%20495Q482%20512%20465%20505Q458%20488%20470%20468Q475%20440%20455%20415Q435%20392%20418%20378Z%27%20fill=%27%237F77DD%27/%3E%3Cpath%20d=%27M250%20300Q190%20270%20165%20215Q150%20180%20175%20165Q200%20175%20205%20205Q215%20240%20255%20275Q272%20290%20268%20305Z%27%20fill=%27%237F77DD%27%20stroke=%27%23534AB7%27%20stroke-width=%271.5%27/%3E%3Ccircle%20cx=%27172%27%20cy=%27172%27%20r=%2726%27%20fill=%27%23AFA9EC%27%20stroke=%27%23534AB7%27%20stroke-width=%272%27/%3E%3Cpath%20d=%27M430%20300Q490%20270%20515%20215Q530%20180%20505%20165Q480%20175%20475%20205Q465%20240%20425%20275Q408%20290%20412%20305Z%27%20fill=%27%237F77DD%27%20stroke=%27%23534AB7%27%20stroke-width=%271.5%27/%3E%3Ccircle%20cx=%27508%27%20cy=%27172%27%20r=%2726%27%20fill=%27%23AFA9EC%27%20stroke=%27%23534AB7%27%20stroke-width=%272%27/%3E%3Cellipse%20cx=%27340%27%20cy=%27265%27%20rx=%27130%27%20ry=%27135%27%20fill=%27url(%23fhd)%27/%3E%3Cellipse%20cx=%27340%27%20cy=%27300%27%20rx=%2778%27%20ry=%2780%27%20fill=%27url(%23fbl)%27%20fill-opacity=%27.6%27/%3E%3Cellipse%20cx=%27295%27%20cy=%27200%27%20rx=%2732%27%20ry=%2722%27%20fill=%27%23EEEDFE%27%20fill-opacity=%27.3%27/%3E%3Cpath%20d=%27M278%20380Q260%20420%20255%20460Q252%20495%20268%20518Q280%20532%20292%20521Q288%20500%20286%20478Q292%20448%20304%20415Q312%20392%20305%20380Z%27%20fill=%27%23534AB7%27/%3E%3Cpath%20d=%27M340%20392Q332%20432%20332%20470Q332%20505%20348%20525Q360%20537%20370%20525Q364%20503%20360%20480Q360%20448%20360%20415Q360%20392%20350%20382Z%27%20fill=%27%23534AB7%27/%3E%3Cpath%20d=%27M402%20380Q420%20420%20425%20460Q428%20495%20412%20518Q400%20532%20388%20521Q392%20500%20394%20478Q388%20448%20376%20415Q368%20392%20375%20380Z%27%20fill=%27%23534AB7%27/%3E%3Cellipse%20cx=%27302%27%20cy=%27255%27%20rx=%2734%27%20ry=%2738%27%20fill=%27%23fff%27/%3E%3Cellipse%20cx=%27378%27%20cy=%27255%27%20rx=%2734%27%20ry=%2738%27%20fill=%27%23fff%27/%3E%3Ccircle%20cx=%27308%27%20cy=%27262%27%20r=%2720%27%20fill=%27url(%23fey)%27/%3E%3Ccircle%20cx=%27372%27%20cy=%27262%27%20r=%2720%27%20fill=%27url(%23fey)%27/%3E%3Ccircle%20cx=%27301%27%20cy=%27253%27%20r=%277%27%20fill=%27%23fff%27/%3E%3Ccircle%20cx=%27365%27%20cy=%27253%27%20r=%277%27%20fill=%27%23fff%27/%3E%3Cpath%20d=%27M318%20310Q340%20330%20362%20310%27%20fill=%27none%27%20stroke=%27%2326215C%27%20stroke-width=%2710%27%20stroke-linecap=%27round%27/%3E%3Cellipse%20cx=%27278%27%20cy=%27292%27%20rx=%2716%27%20ry=%279%27%20fill=%27%23D4537E%27%20fill-opacity=%27.22%27/%3E%3Cellipse%20cx=%27402%27%20cy=%27292%27%20rx=%2716%27%20ry=%279%27%20fill=%27%23D4537E%27%20fill-opacity=%27.22%27/%3E%3C/svg%3E%3C/svg%3E" />
     <script>
       // Dark mode'u boya ÖNCESİ uygula (açılışta beyaz flash olmasın)
       try {
-        if (localStorage.getItem("kmTheme") === "dark")
+        var _kt = localStorage.getItem("kmTheme");
+        if (
+          _kt === "dark" ||
+          (!_kt &&
+            window.matchMedia &&
+            window.matchMedia("(prefers-color-scheme: dark)").matches)
+        )
           document.documentElement.classList.add("dark");
         // Accent tema (PRO) — boya öncesi uygula
         var _ac = localStorage.getItem("kmAccent");
@@ -13542,11 +13827,14 @@ function drawResultCard(opts) {
             interstitialReal: "ca-app-pub-2604503622179334/9140927760",
           },
           // iOS gerçek reklam birimleri (AdMob iOS uygulaması ~6641288324)
-          // NOT: iOS'ta ayrı interstitial birimi oluşturulmadı → null → geçiş reklamı iOS'ta atlanır.
+          // 18 Ağu: iOS geçiş reklamı birimi ("Karar Sonucu") oluşturuldu → artık
+          // null değil. showInterstitial zaten !interstitialId() ile sessizce
+          // atlıyordu; kimlik gelince mevcut beş tetikleme noktası kendiliğinden
+          // devreye girer. ⚠️ Yeni tetikleme noktası EKLEME, sıklık mantığı aynı.
           ios: {
             rewardedReal: "ca-app-pub-2604503622179334/6837297662",
             bannerReal: "ca-app-pub-2604503622179334/1748054292",
-            interstitialReal: null,
+            interstitialReal: "ca-app-pub-2604503622179334/4937157517",
           },
           rewardedTest: "ca-app-pub-3940256099942544/5224354917",
           bannerTest: "ca-app-pub-3940256099942544/6300978111",
@@ -13725,6 +14013,12 @@ function drawResultCard(opts) {
             // Boyut event'i bu AdMob sürümünde gelmeyebilir → varsayılan rezerv 60→75px
             // (adaptive banner çoğu telefonda ~50-60dp; 75 güvenli, buton banner arkasında kalmasın).
             document.documentElement.style.setProperty("--ad-bottom", "75px");
+            // ⭐ 18 Ağu: İLK rezerv de tur açıkken gelebiliyor (ilk açılış =
+            // tur + banner yarışı). Değeri DEĞİL, yalnız açık kaplamaların
+            // konumunu tazele.
+            try {
+              kmAdGapChanged();
+            } catch (e) {}
           }
           // ⚠️ 18 AĞU — REKLAM GELMEZSE BOŞLUK KALIYORDU
           // Yukarıdaki 75px, reklam YÜKLENSİN YÜKLENMESİN anında rezerve ediliyor.
@@ -13747,7 +14041,18 @@ function drawResultCard(opts) {
               // yarışı) → rezervi geri yazıp alt çubuğun altında beyaz boşluk
               // bırakıyorlardı. PRO iken rezerv daima 0.
               if (isPremium) v = "0px";
+              // ⭐ 18 Ağu: rezerv GERÇEKTEN değiştiyse açık tur/ipucu balonuna
+              // haber ver — yoksa banner sonradan gelince balon onun ARKASINDA
+              // kalıyor (iPhone 11). Değer aynıysa hiçbir şey yapma.
+              var _once =
+                document.documentElement.style.getPropertyValue("--ad-bottom") ||
+                "0px";
               document.documentElement.style.setProperty("--ad-bottom", v);
+              if (_once !== v) {
+                try {
+                  kmAdGapChanged();
+                } catch (e) {}
+              }
             };
             try {
               // Bu AdMob sürümünde addListener Promise DEĞİL, doğrudan handle döner.
@@ -14796,6 +15101,49 @@ function drawResultCard(opts) {
       // ⚠️ 2. parametre (customSteps) verilirse motor UZUN turun adımları yerine
       //    o diziyi oynatır → 3 adımlık kısa açılış turu (startQuickTour) aynı
       //    balon/spotlight/scroll-kilidi motorunu kullanır, kod ikizlenmez.
+      /* ⭐ 18 AĞU — REKLAM REZERVİ (--ad-bottom) DEĞİŞİNCE AÇIK KAPLAMALARI TAZELE
+         SORUN: "nasıl kullanılır" turunun balonu ve mod ipucu baloncuğu, alt
+         sınırlarını `window.innerHeight - --ad-bottom` ile ÇİZİM ANINDA bir kez
+         hesaplıyor. AdMob banner'ı asenkron geliyor (bannerAdSizeChanged →
+         rezerv 0'dan 75px'e çıkıyor) ve o ana kadar çizilmiş balonu kimse
+         yeniden konumlandırmıyordu → kısa ekranda (iPhone 11, 375×812) balonun
+         altı ve "İleri/Atla" düğmeleri bannerın ARKASINDA kalıyor, kullanıcı
+         ilk açılışta turda sıkışıyordu. CSS değişkeni değişmesi resize/scroll
+         olayı ÜRETMEZ → dinleyiciyle yakalanamaz, haber VERİLMESİ gerekir.
+         ⚠️ Bu fonksiyon --ad-bottom'ı YAZMAZ, sadece açık kaplamalara "yerini
+         yeniden ölç" der. Yazan tek yerler KM_AD içindedir, onlara dokunulmadı.
+         ⚠️ Kaplama açık değilse kancalar null → hiçbir iş yapılmaz (PRO'da tur
+         zaten bannersız çizilir, gereksiz yeniden çizim olmaz). */
+      var _kmAdGapTimer = null;
+      function kmAdGapChanged() {
+        if (_kmAdGapTimer) return; // arka arkaya sinyal → tek yeniden çizim
+        _kmAdGapTimer = setTimeout(function () {
+          _kmAdGapTimer = null;
+          try {
+            if (typeof window.__kmTourRelayout === "function")
+              window.__kmTourRelayout();
+          } catch (e) {}
+          try {
+            if (typeof window.__kmHintRelayout === "function")
+              window.__kmHintRelayout();
+          } catch (e) {}
+        }, 60);
+      }
+      window.kmAdGapChanged = kmAdGapChanged;
+      /* Ekran döndürme / pencere boyutu da aynı hesabı bozar (draw bir kez ölçer).
+         ⚠️ DEBOUNCE ŞART: resize mobilde kaydırma/klavye ile onlarca kez atar. */
+      (function () {
+        var _rt = null;
+        var _yeniden = function () {
+          if (_rt) clearTimeout(_rt);
+          _rt = setTimeout(function () {
+            _rt = null;
+            kmAdGapChanged();
+          }, 180);
+        };
+        window.addEventListener("resize", _yeniden);
+        window.addEventListener("orientationchange", _yeniden);
+      })();
       function startInteractiveTour(force, customSteps) {
         // Sadece ANA EKRAN (sekmeler görünür) durumunda çalış — login/onboarding'de DEĞİL.
         var firstTab = document.querySelector('.tab[data-tab="wheel"]');
@@ -15211,6 +15559,7 @@ function drawResultCard(opts) {
             window.scrollTo(0, _tourScrollY);
           } catch (e) {}
           if (root.parentNode) root.parentNode.removeChild(root);
+          window.__kmTourRelayout = null; // kanca kapandı (bkz. render üstü not)
         }
         // ← Geri: bir önceki ATLANMAMIŞ adıma dön (open/settle tekrar çalışır)
         function goBack() {
@@ -15366,6 +15715,21 @@ function drawResultCard(opts) {
             }
           });
         }
+        // ⭐ 18 AĞU — BANNER TURUN BALONUNUN ÜSTÜNE BİNİYORDU (iPhone 11)
+        // draw() alt sınırı `innerHeight - --ad-bottom` ile BİR KEZ, çizim anında
+        // hesaplıyor. AdMob banner'ı ASENKRON geliyor (bannerAdSizeChanged →
+        // --ad-bottom: 0 → 75px) ve o ana kadar çizilmiş balon YERİNDE KALIYORDU:
+        // kısa ekranda balonun alt kenarı + "İleri/Atla" düğmeleri bannerın
+        // arkasına düşüyor, kullanıcı turda sıkışıyordu (uzun ekranda görünmez).
+        // Çözüm: tur AÇIKKEN dışarıya yeniden-yerleştirme kancası bırak; rezerv
+        // gerçekten değişince (bkz. KM_AD._setAd → kmAdGapChanged) mevcut adım
+        // AYNI adım numarasıyla yeniden çizilir. Tur kapalıyken kanca null'dır.
+        window.__kmTourRelayout = function () {
+          try {
+            if (!root || !root.parentNode) return; // tur kapandı → hiçbir şey yapma
+            draw(steps[i]);
+          } catch (e) {}
+        };
         function render() {
           var s = steps[i];
           // Giriş durumuna göre atlanacak adım (ör. misafirde Merci çip/input)
@@ -15509,6 +15873,7 @@ function drawResultCard(opts) {
           if (_kmHintOff) _kmHintOff();
         } catch (e) {}
         _kmHintOff = null;
+        window.__kmHintRelayout = null; // baloncuk kapandı → kanca boşalt
         try {
           if (_kmHintEl && _kmHintEl.parentNode)
             _kmHintEl.parentNode.removeChild(_kmHintEl);
@@ -15623,6 +15988,11 @@ function drawResultCard(opts) {
         }
         place();
         requestAnimationFrame(place); // yazı tipi/SVG yerleşince yeniden ölç
+        // ⭐ 18 Ağu: place() de --ad-bottom'ı BİR KEZ okuyor. Banner sonradan
+        // gelirse (asenkron) baloncuk bannerın arkasında kalabiliyordu; scroll/
+        // resize dinleyicileri CSS değişkeni değişince TETİKLENMEZ → dışarıya
+        // kanca bırak (bkz. kmAdGapChanged).
+        window.__kmHintRelayout = place;
         var onScroll = function () {
           place();
         };
@@ -16135,8 +16505,13 @@ function drawResultCard(opts) {
             (document.documentElement.getAttribute("data-theme") || "d") +
             (document.documentElement.classList.contains("dark") ? "|k" : "");
           if (_kmRimCache.key === key) return _kmRimCache.val;
+          // ⚠️ CANVAS var() ANLAMAZ → token'ın GERÇEK hex'i okunur.
+          // 18 Ağu: karanlıkta --ac-dd artık AÇIK bir ton (yazı rolü). Çark
+          // jantı onu okursa koyu ekranda soluk lavanta bir halka çiziyordu →
+          // karanlıkta derin uç token'ı (--ac-deep) okunur.
+          var _rimDark = document.documentElement.classList.contains("dark");
           var v = getComputedStyle(document.documentElement)
-            .getPropertyValue("--ac-dd")
+            .getPropertyValue(_rimDark ? "--ac-deep" : "--ac-dd")
             .trim();
           if (!/^#[0-9a-fA-F]{3,8}$/.test(v)) v = "#4c1d95";
           _kmRimCache.key = key;
@@ -16437,14 +16812,16 @@ function drawResultCard(opts) {
           r = W / 2 - 5; // dolu çarkla AYNI yarıçap → boş↔dolu geçişte zıplamaz
         ctx.clearRect(0, 0, W, W);
         var emptyLabels = ["?", "?", "?", "?", "?", "?"];
-        var emptyColors = [
-          "#a78bfa",
-          "#c4b5fd",
-          "#7c3aed",
-          "#ddd6fe",
-          "#8b5cf6",
-          "#ede9fe",
-        ];
+        // ⚠️ CANVAS var() ANLAMAZ → burada GERÇEK hex olmak ZORUNDA (token yazma).
+        // 18 Ağu: açık palet (#ede9fe/#ddd6fe) koyu temada ekranın ortasında
+        // BEYAZ bir disk gibi duruyordu (kullanıcı: "dark mode'da beyaz yerler").
+        // Karanlıkta aynı mor rampanın DERİN ucu kullanılır; dilim ayraçları ve
+        // iç jant da kısılır (beyaz çizgiler koyu diskte parlıyordu).
+        var _emptyDark = document.documentElement.classList.contains("dark");
+        var emptyColors = _emptyDark
+          ? ["#6d4dd6", "#4c2f9e", "#8b5cf6", "#3a2278", "#7c3aed", "#2c1a5e"]
+          : ["#a78bfa", "#c4b5fd", "#7c3aed", "#ddd6fe", "#8b5cf6", "#ede9fe"];
+        var _emptySep = _emptyDark ? "rgba(255,255,255,0.16)" : "#fff";
         var n = emptyLabels.length,
           sl = (Math.PI * 2) / n;
         for (var i = 0; i < n; i++) {
@@ -16456,7 +16833,7 @@ function drawResultCard(opts) {
           ctx.closePath();
           ctx.fillStyle = emptyColors[i];
           ctx.fill();
-          ctx.strokeStyle = "#fff";
+          ctx.strokeStyle = _emptySep;
           ctx.lineWidth = 2.5;
           ctx.stroke();
           ctx.translate(cx, cy);
@@ -16476,7 +16853,7 @@ function drawResultCard(opts) {
         ctx.stroke();
         ctx.beginPath();
         ctx.arc(cx, cy, r - 6, 0, Math.PI * 2);
-        ctx.strokeStyle = "rgba(255,255,255,.85)";
+        ctx.strokeStyle = _emptyDark ? "rgba(255,255,255,.22)" : "rgba(255,255,255,.85)";
         ctx.lineWidth = 2;
         ctx.stroke();
         // Merkez göbek (üstünde DOM'daki #wheel-center-merci duruyor)
@@ -22893,15 +23270,19 @@ function drawResultCard(opts) {
           var v = (_cs.getPropertyValue(n) || "").trim();
           return v || fb;
         };
+        // ⚠️ 18 Ağu: --ac-bg3 / --ac-lll karanlıkta artık YÜZEY tonudur (koyu).
+        // Palette'te bırakılırsa o iki çubuk koyu zeminde kaybolur → karanlıkta
+        // yerlerine görünür accent tonları konur.
+        var _dkPal = document.documentElement.classList.contains("dark");
         var palette = [
           cv("--ac", "#7c3aed"),
           cv("--ac-l2", "#a78bfa"),
           cv("--ac-m", "#8b5cf6"),
           cv("--ac-ll", "#c4b5fd"),
           cv("--ac-d2", "#6d28d9"),
-          cv("--ac-bg3", "#ede9fe"),
+          _dkPal ? cv("--ac-l", "#a855f7") : cv("--ac-bg3", "#ede9fe"),
           cv("--ac-d", "#5b21b6"),
-          cv("--ac-lll", "#ddd6fe"),
+          _dkPal ? cv("--ac-deep2", "#45259b") : cv("--ac-lll", "#ddd6fe"),
         ];
         var colors = values.map((v, i) =>
           v === maxV ? palette[0] : palette[i % palette.length],
