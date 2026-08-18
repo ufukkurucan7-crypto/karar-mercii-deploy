@@ -157,14 +157,14 @@ app.post("/delete-account", rateLimit, async (req, res) => {
   try {
     const header = req.headers.authorization || "";
     const token = header.startsWith("Bearer ") ? header.slice(7) : null;
-    if (!token) return res.status(401).json({ error: "Once giris yap." });
+    if (!token) return res.status(401).json({ error: "Önce giriş yap." });
     const decoded = await getAuth().verifyIdToken(token);
     uid = decoded.uid;
   } catch (e) {
     console.error("DELETE-ACCOUNT AUTH FAIL:", e.message);
     return res
       .status(401)
-      .json({ error: "Oturum dogrulanamadi, tekrar giris yap." });
+      .json({ error: "Oturum doğrulanamadı, tekrar giriş yap." });
   }
 
   // ── 2) VERİ + AUTH SİLME (altyapı hatası ≠ oturum hatası: 503, "giriş yap" DEME) ──
@@ -196,7 +196,7 @@ app.post("/delete-account", rateLimit, async (req, res) => {
     console.error("DELETE-ACCOUNT FAIL:", e.code || "", e.message);
     return res
       .status(503)
-      .json({ error: "Hesap su an silinemedi, birazdan tekrar dene." });
+      .json({ error: "Hesap şu an silinemedi, birazdan tekrar dene." });
   }
 });
 
@@ -226,7 +226,7 @@ app.get("/", (req, res, next) => {
         )
         .replace(
           /(<meta property="og:description" content=")[^"]*(")/,
-          "$1Karar Mercii'nde oylama var — dokun, oyunu ver, kararı birlikte verin.$2",
+          "$1Karar Mercii'de oylama var — dokun, oyunu ver, kararı birlikte verelim.$2",
         );
     }
     // ⚠️ 2 AĞU: burada hiç Cache-Control YOKTU → tarayıcı/WebView sezgisel
@@ -1253,9 +1253,12 @@ Tanımıyorsan normal yorum yap. Espriyi kısa tut, 1 cümle.`
 TARZIN:
 - Kendinden emin, hafif ukala, esprili, sıcak. Net konuş, lafı dolandırma — bir tarafı seç ve nedenini tek cümlede söyle.
 - 1-3 cümle, en fazla 2 emoji. KARARSIZ/geveleyen girişler YASAK. Ya net öneri ver ya TEK kısa soruyla daralt.
-- Doğal günlük Türkçe, her zaman samimi tekil "sen" (grup kararı olsa bile). Aynı mesajda sen↔siz karıştırma.
-- İmla hatasız: "karar vereyim / edeyim / gideyim" (verim/edim/gidim YANLIŞ) · "değil mi", "bir şey" ayrı · "yalnızca".
-- Soru eki AYRI yazılır, kesme almaz, kelimenin SON ünlüsüne uyar: kalın (a/ı/o/u) → mı/mu · ince (e/i/ö/ü) → mi/mü. "Yabancı mı" (mi DEĞİL), "film mi", "gol mü", "Knives Out mu" (yabancı adda Türkçe okunuşun son sesine göre). İSİM eki ise kesmeyle: "Kadıköy'de", "Knives Out'u".${groupCount > 0 ? `\n- Grup ${groupCount > 6 ? "6+" : groupCount} kişilik — buna göre öner.` : ""}
+- Doğal günlük Türkçe, her zaman samimi tekil "sen" (grup kararı olsa bile). Aynı mesajda sen↔siz karıştırma; "gidin / yapın / ister misiniz" gibi çoğul-nezaket çekimi YOK → "git / yap / ister misin".
+- Cevabın TAMAMI Türkçe: İngilizce kelime ya da kalıp kullanma (spot, vibe, chill, option, "top 3" vb.); yalnız özel adlar (film, dizi, marka) ve köşeli parantezli işaretlerin İÇİ (ör. [[NEARBY:bar]]) bu kuralın dışındadır — işaretteki kodu tarif edildiği gibi aynen yaz. Devrik/çeviri kokan cümle kurma, günlük konuşma sırasıyla yaz.
+- İmla hatasız: "karar vereyim / edeyim / gideyim" (verim/edim/gidim YANLIŞ) · "değil mi", "bir şey", "her şey" ayrı · "yalnızca" · yanlız→yalnız, herkez→herkes, süpriz→sürpriz.
+- SORU EKİ: HER ZAMAN ayrı yazılır ve kesme ALMAZ ("geldi mi" ✓ · "geldimi", "geldi-mi", "geldi'mi" ✗). Biçimi kendinden ÖNCEKİ SON ÜNLÜYE göre DÖRDE ayrılır: a/ı → mı · e/i → mi · o/u → mu · ö/ü → mü. Doğru: "Yabancı mı" ("Yabancı mi" YANLIŞ), "film mi", "burger mi", "gol mü", "kokoreç mi", "Knives Out mu" (yabancı adda Türkçe okunuşun son sesi esas: "aut" → mu).
+- ÖZEL ADA GELEN EK kesmeyle bağlanır: "Kadıköy'de", "Netflix'te", "İstanbul'a", "Knives Out'u".
+- MARKA: uygulamanın adı "Karar Mercii", sen "Merci"sin. İkisi de ünlüyle bittiği için ekler -y- kaynaştırmasıyla gelir: "Mercii'ye", "Mercii'yi", "Mercii'de", "Merci'ye sor" ✓ — "Mercii'ne / Mercii'ni / Mercii'nde" YANLIŞ (bunlar "senin Mercii'n" anlamına gelir). Tamlayan hâli ayrıdır, -nin alır: "Merci'nin Notu" ✓.${groupCount > 0 ? `\n- Grup ${groupCount > 6 ? "6+" : groupCount} kişilik — buna göre öner.` : ""}
 
 ÖRNEK — net karar (çoğu soruda BÖYLE yap, seçenek/çark çıkarma):
 K: "bu akşam film mi dizi mi izlesem" → S: "Film. Tek oturuşta biter, yarım kalma derdi olmaz 🎬 Tür söyle, sana birini seçeyim."
@@ -1273,7 +1276,8 @@ ${timeContext}${historyContext}${locationContext}${setLocHint}${resultPrompt}${w
 
 [[SECENEKLER]] İŞARETİ — ölçülü, refleks olarak her cevaba EKLEME. Cevabın EN SONUNA [[SECENEKLER: ad1 | ad2 | ad3]] (2-8 kısa isim, | ile ayrık). SADECE iki durumda: (1) net tek cevabın YOK, 2+ somut kategori sunuyorsun; (2) kullanıcı "sen seç / çevir / oylayalım / karar veremiyorum" dedi. Net tek önerin varsa KOYMA.
 - Yalnız soyut KATEGORİ/tür yazılır (Pizza, Korku filmi, Kafe). GERÇEK MEKAN/ZİNCİR İSMİ ASLA.
-- ⚠️ ÇARKA YÖNLENDİRİRKEN SEÇENEKLERİ YÜKLE: kullanıcı kendi verdiği 2+ somut seçenek arasında kararsızsa ("X mi Y mi", "ikisi arasında kaldım", "seç işte") ve sen de net seçmiyorsan, "çevir bakalım" derken O SEÇENEKLERİ aynı cevaba koy — çark otomatik dolsun, kullanıcı elle girmesin. Kullanıcının söylediği isimleri aynen kullan (ör. [[SECENEKLER: Cebimdeki Yabancı | Knives Out]]). BOŞ çarka "çevir bakalım" ASLA deme.
+- Seçenek adları da Türkçe imlaya tabi: 1-3 kelime, Türkçe, ilk harf büyük gerisi küçük ("Korku filmi"), tekil ve eksiz kök hâlde (kullanıcının verdiği özel adlar hariç — onlar aynen kalır), emoji/noktalama yok. ("pizza yicez", "Movie Night", "Kebaplar" YANLIŞ.)
+- ⚠️ ÇARKA YÖNLENDİRİRKEN SEÇENEKLERİ YÜKLE: kullanıcı kendi verdiği 2+ somut seçenek arasında kararsızsa ("bu mu şu mu", "ikisi arasında kaldım", "seç işte") ve sen de net seçmiyorsan, "çevir bakalım" derken O SEÇENEKLERİ aynı cevaba koy — çark otomatik dolsun, kullanıcı elle girmesin. Kullanıcının söylediği isimleri koru — sadece yazımını/büyük harfini düzelt ("cebimdeki yabancı" → "Cebimdeki Yabancı"), ismi değiştirme veya kısaltma (ör. [[SECENEKLER: Cebimdeki Yabancı | Knives Out]]). BOŞ çarka "çevir bakalım" ASLA deme.
 
 MEKAN CEVABI — [[NEARBY]] koyduğun HER cevapta katı kısıt:
 - SADECE TEK kısa cümle + işaret (ör. "En yakınları çıkarıyorum 👇"). Başka hiçbir şey yok.
@@ -1283,7 +1287,7 @@ MEKAN CEVABI — [[NEARBY]] koyduğun HER cevapta katı kısıt:
 KIRMIZI ÇİZGİLER:
 - UYDURMA YASAK: mekan ismi, telefon, semt/ilçe/cadde adı, mesafe ASLA uydurma. Bir yerin nerede/ne kadar uzakta olduğunu SADECE [[NEARBY]] işaretinin getirdiği gerçek kartlar söyler. "Başka semte git" deme. "Burada yok / kültürü gelişmemiş" gibi kesin olumsuz hüküm verme — mevcudiyeti kartlar belirler.
 - SPESİFİĞE SADIK KAL: "Tavuk döner" → kebap/kokoreç/çiğköfte DEĞİL. "Sushi" → başka mutfak DEĞİL. "Şarap / oturmalı / akşam yemeği" → fast-food, büfe, pizza-zinciri DEĞİL, oturmalı restoran. İstenen türe UYMAYAN yeri o türmüş gibi sunma; alternatifleri kartlar zaten "en yakın seçenekler" olarak getirir. Emin değilsen ÖNERME — dürüst ol.
-- İÇ İŞLEYİŞ GİZLİ: sistem, harita, GPS, API, sunucu, arkaplan, entegrasyon, "mekan kartı çekemiyorum", "yükleyemedim" gibi teknik ifadeler ASLA. Mekan gelmediğinde bahane uydurma; kısa ve neşeli kal ("Hemen tekrar bakıyorum 👇") ve uygun [[NEARBY:tür]] işaretini koy.
+- İÇ İŞLEYİŞ GİZLİ: sistem, harita, GPS, API, sunucu, arkaplan, entegrasyon, "mekan kartı çekemiyorum", "yükleyemedim" gibi teknik ifadeler ASLA. İç terimleri de yazma: araç adı (mekan_ara), işaret adları ([[SECENEKLER]], [[NEARBY]], [[SETLOC]] — bunları yalnız tarif edilen yerde İŞARET olarak kullan, cevap metninde adlarını anma), tür kodları (food/cafe/dessert/bar/activity yerine "yemek/kafe/tatlı/bar/aktivite" de), OSM/etiket/regex/model/prompt/token gibi kelimeler. Kullanıcı bunları hiç görmemeli. Mekan gelmediğinde bahane uydurma; kısa ve neşeli kal ("Hemen tekrar bakıyorum 👇") ve uygun [[NEARBY:tür]] işaretini koy.
 - ALKOL/KUMAR — TEŞVİK YOK: Kumar/bahise yönlendirme KESİNLİKLE yasak. Alkol: mekan önerebilirsin ama İÇME kararını SEN verme/özendirme. "Bira mı rakı mı içeyim", "kaç kadeh atayım" gibi sorularda taraf tutma: "İçkini sana bırakıyorum 🐙 — ama nereye gidelim / ne yiyelim dersen hemen yardımcıyım." Yaşı doğrulayamadığımız için kimseyi alkole/kumara/tütüne teşvik etme; sarhoş olmayı veya aşırı içmeyi ASLA önerme.
 - Yapay AI girişleri yok ("Tabii ki!", "Harika bir soru!", "ben yapay zekayım"). Aynı soruyu iki kez sorma. Konum varsa tekrar şehir/semt/konum isteme.`;
 
@@ -1519,6 +1523,47 @@ KIRMIZI ÇİZGİLER:
 // gerek yok. Geri EKLENMEMELİ; gerekirse güçlü env-token + rateLimit + dev-only ile.
 
 // ── MERCİ SEÇENEK ÜRETİCİSİ (çark/oylama için hızlı + ucuz: Haiku, web_search yok) ──
+// ── ÇARK SEÇENEĞİ NORMALİZASYONU (Türkçe-duyarlı) ───────────────────────────
+// ⚠️ DAVRANIŞ DEĞİŞİKLİĞİ (18 Ağu): etiket imlası artık yalnız prompt'un iyi
+// niyetine bırakılmıyor, burada deterministik olarak garanti altına alınıyor.
+// KAPSAM: buradan SADECE MODELİN ürettiği seçenekler geçer. Kullanıcının elle
+// yazdığı seçenekler istemcide kalır, bu koda hiç uğramaz — onları bozmayız.
+// TÜRKÇE TUZAĞI: düz toUpperCase() "istanbul" → "Istanbul" yapar (doğrusu
+// "İstanbul"), düz toLowerCase() "IZMIR" → "izmir" yapar (doğrusu "ızmır").
+// Bu yüzden her yerde locale'li ("tr") sürüm kullanılıyor.
+const trUp = (s) => String(s).toLocaleUpperCase("tr");
+const trLow = (s) => String(s).toLocaleLowerCase("tr");
+
+// Tekrar (dedup) anahtarı: büyük/küçük harf + boşluk farkını yok say.
+// "Islak kek" ile "ıslak kek" aynı şeydir → tek anahtara düşsün (düz
+// toLowerCase() bunu KAÇIRIR, çünkü "I" → "i" der, "ı" değil).
+function optKey(s) {
+  return trLow(s).replace(/\s+/g, " ").trim();
+}
+
+function normalizeOption(raw) {
+  let s = String(raw == null ? "" : raw)
+    .replace(/\s+/g, " ") // satır sonu + içerideki çoklu boşluk → tek boşluk
+    .trim()
+    .replace(/^["'\-\d.\)\s]+/, "") // baştaki numara/tire/tırnak (eski davranış)
+    .trim()
+    .slice(0, 40) // eski uzunluk sınırı korundu — yeni kısaltma EKLENMEDİ
+    .replace(/["'.,;:!?]+$/, "") // sondaki artık noktalama ("sinema" → sinema)
+    .trim();
+  if (!/\p{L}/u.test(s)) return ""; // hiç harf yok (salt emoji/noktalama) → ele
+  // İlk HARFİ büyüt. Seçenek emoji ya da tırnakla başlayabilir, o yüzden ilk
+  // harfin YERİNİ arıyoruz; s[0] "ilk harf" demek değil.
+  // Sadece o kelimenin TAMAMI küçükse dokun → "iPhone", "eBay", "IMDb" gibi
+  // karışık yazımlar ve "KFC" gibi kısaltmalar olduğu gibi kalır.
+  const i = s.search(/\p{L}/u);
+  const kelime = s.slice(i).split(" ")[0];
+  if (kelime === trLow(kelime)) {
+    const ilk = String.fromCodePoint(s.codePointAt(i)); // yüzey çifti güvenli
+    s = s.slice(0, i) + trUp(ilk) + s.slice(i + ilk.length);
+  }
+  return s;
+}
+
 app.post("/options", rateLimit, authAndQuota, async (req, res) => {
   try {
     const theme = (req.body && req.body.theme ? String(req.body.theme) : "")
@@ -1533,7 +1578,9 @@ app.post("/options", rateLimit, authAndQuota, async (req, res) => {
       "Kurallar: tam olarak " +
       count +
       " seçenek; her biri 1-3 kelime; Türkçe; konuya uygun, çeşitli ve gerçekçi; " +
-      "tekrar yok; emoji yok; başına numara/tire koyma.";
+      "tekrar yok; emoji yok; başına numara/tire koyma. " +
+      "TÜRKÇE İMLA: Türkçe karakterleri eksiksiz kullan (ş, ğ, ı, İ, ö, ü, ç — 'corba/kofte' DEĞİL 'Çorba/Köfte'); " +
+      "ilk harf büyük gerisi küçük ('Korku filmi'); tekil ve eksiz kök hâl ('Kebaplar' DEĞİL 'Kebap'); İngilizce kelime yok.";
     const userMsg = theme
       ? "Konu: " + theme
       : "Konu verilmedi — günlük, eğlenceli bir karar için rastgele ve çeşitli seçenekler üret (ne yenir, nereye gidilir, ne izlenir gibi).";
@@ -1561,15 +1608,10 @@ app.post("/options", rateLimit, authAndQuota, async (req, res) => {
 
     const seen = {};
     opts = (Array.isArray(opts) ? opts : [])
-      .map((x) =>
-        String(x)
-          .trim()
-          .replace(/^["'\-\d.\)\s]+/, "")
-          .slice(0, 40),
-      )
+      .map(normalizeOption)
       .filter((x) => {
         if (!x) return false;
-        const k = x.toLowerCase();
+        const k = optKey(x); // Türkçe-duyarlı tekrar elemesi
         if (seen[k]) return false;
         seen[k] = 1;
         return true;
@@ -2694,6 +2736,7 @@ app.post("/nearby", rateLimit, async (req, res) => {
             "Sen Merci, sevimli bir karar-ahtapotu. Sana kullanıcıya EN YAKIN GERÇEK mekanların listesi (isim + mesafe) verilir. " +
             "KISA (1-2 cümle), samimi, Türkçe ve TUTARLI tekil 'sen' diliyle (asla 'siz') bir öneri yap: birini öne çıkar, GERÇEK mesafeye değin (uzaksa dürüstçe söyle, örn. '~3 km, taksiyle kısa'), oyunbaz ol. " +
             "Mekanlar mahallende değil komşu semtte olabilir — bu normal, listedeki gerçek mesafeyi kullan. Listedeki isimler/mesafeler DIŞINDA hiçbir mekan/semt/mesafe UYDURMA. En fazla 1 emoji. " +
+            "İMLA: Mekan adını listedeki yazımıyla kopyala; ada gelen ek kesmeyle bağlanır (\"Kadıköy'de\", \"Nusr-Et'e\"). Soru eki ayrı yazılır, kesme almaz ve son ünlüye uyar: a/ı → mı, e/i → mi, o/u → mu, ö/ü → mü (\"Burger mi\", \"Yabancı mı\"). İngilizce kelime ve teknik terim (sistem, harita, API, kart çekme) kullanma. " +
             "DÜRÜSTLÜK: Sana yalnız mekan ADI + MESAFE verildi; menü/içki/fiyat bilgisi YOK. Mekan kartlarında da SADECE isim + 'yol tarifi' butonu var — menü/içki listesi/fiyat YAZMAZ. Bu yüzden 'kartlarda yazıyor', 'listesinde görürsün', 'menüde var' DEME ve bir mekânda belirli bir şeyin (rakı, spesifik yemek) bulunduğunu GARANTİ ETME ('kesin vardır' YASAK). Gerekiyorsa 'meyhane/balık lokantası genelde bulundurur, emin olmak istersen mekânı arayabilirsin' gibi temkinli konuş. " +
             // ⚠️ 2 AĞU — ASIL BUG BURADAYDI. Kullanıcının ham isteği ("simit") bu
             // modele HİÇ verilmiyordu; sadece bucket etiketi ("yemek") gidiyordu.
