@@ -3968,6 +3968,26 @@
         gap: 10px;
         scroll-behavior: smooth;
       }
+      /* ═══ 18 AĞU — MERCİ SOHBET ALANI YÜKSEKLİĞİ ══════════════════════
+         Kullanıcı cihazda: "chat ekranı mı küçük". ÖLÇÜLDÜ: kutu sabit
+         340px'ti, 820px görünür yüksekliğe sahip telefonda ekranın ancak
+         %41'i. Artık viewport'a göre ölçekleniyor (820px'te 340 → 377px).
+         ⚠️ Yalnız #chat-messages hedefleniyor. Oda sohbeti
+         (#ro-chat-messages) tam ekran overlay içinde ve kendi kaydırıcısı
+         var — paylaşılan .chat-messages kuralına DOKUNMA. */
+      #chat-messages {
+        max-height: clamp(260px, 46vh, 460px);
+      }
+      /* KLAVYE AÇIKKEN: Keyboard resize:'none' olduğu için WebView küçülmez,
+         dolayısıyla vh DEĞİŞMEZ. Kutuyu JS'in yazdığı --kb-h kadar kendimiz
+         kısıyoruz ki sohbet + buton satırı + giriş çubuğu klavyenin üstüne
+         BİRLİKTE sığsın (190px = buton satırı + giriş + nefes payı, ölçüldü).
+         ⚠️ --kb-h AYRI bir değişkendir; AdMob banner rezervi olan --ad-bottom'a
+         DOKUNMAZ (klavye yolundan --ad-bottom sıfırlanırsa ekran zıplar). */
+      html.kb-open #chat-messages {
+        max-height: calc(100vh - var(--kb-h, 320px) - 190px);
+        min-height: 150px;
+      }
       /* F2 — mesaj balonu giriş cilası (Deploy #15): alttan yaylı kayma */
       @keyframes msgPop {
         0% {
@@ -4192,6 +4212,234 @@
       .send-btn:disabled {
         background: var(--ac-ll);
         cursor: not-allowed;
+      }
+
+      /* ════════════════════════════════════════════════════════════════════
+         MERCİ SOHBETİ — GÖRSEL CİLA (18 Ağu)
+         Kullanıcı: "chat ekranı ve merci kısmı genel olarak daha
+         güzelleştirilebilir mi?"
+         ⚠️ KURAL: bu bloktaki RENK üreten HER kuralın html.dark karşılığı
+         hemen altındaki dark bloğunda yazılıdır. Buraya renkli bir kural
+         eklersen dark karşılığını da yaz — token sistemi dark için yeniden
+         TANIMLANMAMIŞTIR (örn. --ac-bd: #e0d7ff koyu zeminde beyaz çizgidir).
+         ⚠️ Accent'i hardcode YAZMA → var(--ac*) / rgba(var(--ac-shadow),…).
+         ════════════════════════════════════════════════════════════════════ */
+
+      /* (1) SOHBET YÜZEYİ — düz gri kutudan yumuşak bir "konuşma zemini"ne.
+         Eskiden: background #fafafa + 2px var(--ac-bd) çerçeve. Beyaz sayfada
+         gri bir dikdörtgen gibi duruyordu. */
+      .chat-wrap {
+        border-width: 1.5px;
+        border-radius: 18px;
+        background: linear-gradient(180deg, var(--ac-bg2) 0%, #ffffff 55%);
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8),
+          0 4px 18px -10px rgba(var(--ac-shadow), 0.35);
+      }
+      /* (2) Boş sohbet cılız bir şerit gibi görünmesin — her zaman bir
+         "konuşma alanı" hissi versin. max-height clamp'i ile çakışmaz. */
+      /* min-height ölçülerek seçildi: 170px denendi, BOŞ ekranda tek karşılama
+         balonunun altında koca bir boşluk bırakıp giriş çubuğunu sekme
+         çubuğunun ARKASINA itiyordu (kare: shots/chatvis/…-1-BOS-ust.png).
+         110px hem şerit gibi görünmesini engelliyor hem giriş çubuğunu boş
+         ekranda görünür bırakıyor. */
+      #chat-messages {
+        min-height: 110px;
+        padding: 14px 12px;
+        gap: 12px;
+      }
+      /* (3) MERCİ BALONU — çift vurgu (3px sol çizgi + kuyruk + ağır gölge)
+         yerine tek ve sakin bir dil: yumuşak gölge, daha okunur punto. */
+      .chat-bubble {
+        border-left-width: 3px;
+        border-radius: 6px 18px 18px 18px;
+        font-size: 13.5px;
+        box-shadow: 0 4px 14px -6px rgba(var(--ac-shadow), 0.28),
+          0 1px 2px rgba(0, 0, 0, 0.04);
+      }
+      .chat-bubble-u {
+        border-radius: 18px 18px 6px 18px;
+        font-size: 13.5px;
+        box-shadow: 0 6px 16px -6px rgba(var(--ac-shadow), 0.45);
+      }
+      /* (3b) 🔴 BALON KUYRUĞU KALDIRILDI — iki gerçek kusuru vardı (kareler:
+         shots/chatvis/YAKIN-aydinlik.png / YAKIN-karanlik.png):
+         • .chat-bubble::before TÜM balonlara uygulanıyordu, oysa KULLANICI
+           balonunun sınıfı da "chat-bubble chat-bubble-u" → sağdaki mor balonun
+           SOLUNDA, Merci balonu rengiyle (beyaz / #271d3f) ters yöne bakan bir
+           çentik çıkıyordu.
+         • Merci balonunda kuyruk, sol accent şeridin TAM ÜSTÜNE oturup şeridi
+           kesiyordu (çift işaret).
+         Kimlik zaten sol accent şerit + avatar ile kuruluyor; kuyruk fazlaydı. */
+      .chat-bubble::before {
+        display: none;
+      }
+      /* (3c) UZUN MERCİ BALONU AVATARIN YANINDA KALSIN. .msg-merci flex-wrap'lı
+         olduğu için uzun bir balon avatarın ALTINA düşüyordu → kısa cevaplar
+         avatarın yanında, uzun cevaplar altında; hizalama mesajdan mesaja
+         zıplıyordu (kare: shots/chatvis/YAKIN-aydinlik.png, 1. ve 2. balon).
+         ⚠️ min-width:0 TEK BAŞINA YETMEZ: flex satır kırma kararı, daraltmadan
+         ÖNCE "hipotetik ana boyut"a (flex-basis/içerik) bakar. Çözüm balonun
+         hipotetik boyutunu avatar+boşluk kadar kısıtlamak → satıra HEP sığar.
+         (40px = avatar 32 + gap 8.)
+         ⚠️ .msg-feedback zaten flex:0 0 100% → 👍👎 satırı kendi satırında kalır. */
+      .msg-merci > .chat-bubble {
+        max-width: calc(100% - 40px);
+        min-width: 0;
+      }
+      /* Avatarı gizlenen (gruplanmış) mesajda da aynı hizada dursun. */
+      .msg-merci.grouped > .chat-bubble {
+        max-width: calc(100% - 40px);
+      }
+      /* (3d) Mekan kartları ve "Çarka At / Oylamaya At" satırı BALON DEĞİL —
+         .msg-merci'nin 92% balon sınırı onları gereksiz daraltıyordu. JS bu
+         satırlara .msg-card ekliyor (appendPlaceCards / appendDecisionButtons). */
+      /* ⚠️ max-width TEK BAŞINA YETMEZ: .msg-merci align-self:flex-start olduğu
+         için içeriğe göre daralır. width:100% + align-self:stretch şart. */
+      .msg-merci.msg-card {
+        max-width: 100%;
+        width: 100%;
+        align-self: stretch;
+      }
+      /* (4) Ardışık aynı-kişi mesajları birbirine yaklaşsın (konuşma ritmi). */
+      .msg-merci.grouped {
+        margin-top: -5px;
+      }
+      /* (5) MERCİ AVATARI — soluk maskot + soluk çerçeve okunmuyordu.
+         Accent halka + hafif iç zemin: maskot artık ayrışıyor. */
+      .chat-av-merci {
+        background: radial-gradient(
+          circle at 50% 35%,
+          #ffffff 0%,
+          var(--ac-bg) 100%
+        );
+        border: 2px solid var(--ac-lll);
+        box-shadow: 0 2px 8px -2px rgba(var(--ac-shadow), 0.45),
+          inset 0 0 0 1px rgba(255, 255, 255, 0.7);
+      }
+      /* (6) "MERCİ DÜŞÜNÜYOR" — eskiden sohbetin altına yapışık, üstten
+         çizgili tam-genişlik bir şeritti; konuşmanın parçası gibi durmuyordu.
+         Artık sola hizalı, balon biçimli, nefes alan bir gösterge. */
+      .thinking-inline {
+        /* Sol kenar Merci balonlarıyla hizalı: 12px kutu dolgusu + 32px avatar
+           + 8px boşluk = 52px. Böylece "düşünüyor" bir Merci mesajı gibi durur. */
+        margin: 0 12px 12px 52px;
+        padding: 9px 14px;
+        width: fit-content;
+        max-width: 92%;
+        border: 1px solid var(--ac-bd);
+        border-top: 1px solid var(--ac-bd);
+        border-radius: 6px 16px 16px 16px;
+        background: rgba(255, 255, 255, 0.92);
+        box-shadow: 0 4px 14px -6px rgba(var(--ac-shadow), 0.3);
+        animation: msgPop 0.3s cubic-bezier(0.34, 1.5, 0.5, 1);
+      }
+      /* (7) GİRİŞ ÇUBUĞU — gönder düğmesi metin alanıyla aynı yükseklikte
+         hizalanıyor, odakta yumuşak accent halkası beliriyor. */
+      .chat-input-row textarea {
+        border-radius: 14px;
+        border-width: 1.5px;
+        transition: border-color 0.18s, box-shadow 0.18s;
+      }
+      .chat-input-row textarea:focus {
+        box-shadow: 0 0 0 3px rgba(var(--ac-shadow), 0.16);
+      }
+      .send-btn {
+        border-radius: 14px;
+        background: linear-gradient(135deg, var(--ac), var(--ac-l));
+        box-shadow: 0 6px 16px -6px rgba(var(--ac-shadow), 0.65);
+        transition: transform 0.12s, box-shadow 0.18s;
+      }
+      .send-btn:active:not(:disabled) {
+        transform: scale(0.94);
+        box-shadow: 0 3px 9px -5px rgba(var(--ac-shadow), 0.6);
+      }
+      .send-btn:disabled {
+        background: var(--ac-ll);
+        box-shadow: none;
+      }
+      /* (8) MEKAN KARTLARI — sohbet içinde basış hissi + yumuşak yükselti. */
+      .place-card {
+        box-shadow: 0 3px 12px -8px rgba(var(--ac-shadow), 0.5);
+      }
+      .place-dir:active {
+        transform: scale(0.95);
+      }
+      .place-phone {
+        font-size: 11.5px;
+      }
+      /* (9) HERO — sohbet başlayınca küçülsün, ekranı sohbete bıraksın.
+         (JS: updateChipsVisibility → #ai-content.chatting) */
+      .merci-ai-hero {
+        transition: padding 0.25s ease, margin-bottom 0.25s ease;
+      }
+      #ai-content.chatting .merci-ai-hero {
+        padding: 9px 13px;
+        margin-bottom: 10px;
+      }
+      #ai-content.chatting .merci-ai-hero-sub {
+        display: none;
+      }
+      #ai-content.chatting .merci-ai-hero-title {
+        font-size: 18px;
+      }
+      /* ⚠️ Hero'nun YÜKSEKLİĞİNİ maskot belirliyor (setM(...,66) ile 66px SVG),
+         metin değil. Sadece alt satırı gizlemek 82px'i 80px yapıyordu — maskotu
+         da küçültmeden kazanç olmuyor. 66 → 46px ile hero ~82 → ~62px. */
+      #ai-content.chatting .merci-ai-hero-mascot svg {
+        width: 46px;
+        height: auto;
+        transition: width 0.25s ease;
+      }
+      #ai-content.chatting .merci-ai-hero-mascot::before {
+        width: 64px;
+        height: 64px;
+      }
+
+      /* ─── (1)-(9) KARANLIK KARŞILIKLARI ─── */
+      /* 🔴 HATA DÜZELTMESİ: .chat-wrap çerçevesi var(--ac-bd) (#e0d7ff) idi ve
+         bu token dark için YENİDEN TANIMLANMAMIŞ → koyu temada sohbet kutusunun
+         etrafında parlak BEYAZ bir dikdörtgen çiziliyordu (kareler:
+         shots/chatvis/SONRA-karanlik-*). */
+      html.dark .chat-wrap {
+        border-color: #2e2450;
+        background: linear-gradient(180deg, #171129 0%, #100c1c 55%);
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04),
+          0 4px 18px -10px rgba(0, 0, 0, 0.7);
+      }
+      html.dark .chat-av-merci {
+        background: radial-gradient(circle at 50% 35%, #2a2044 0%, #1a1430 100%);
+        border-color: #3b2f68;
+        box-shadow: 0 2px 8px -2px rgba(0, 0, 0, 0.7),
+          inset 0 0 0 1px rgba(255, 255, 255, 0.05);
+      }
+      html.dark .thinking-inline {
+        background: #271d3f;
+        border-color: #3b2f68;
+        border-top-color: #3b2f68;
+        box-shadow: 0 4px 14px -6px rgba(0, 0, 0, 0.7);
+      }
+      html.dark .chat-bubble {
+        box-shadow: 0 4px 14px -6px rgba(0, 0, 0, 0.6);
+      }
+      /* 🔴 KARANLIK MODDA KULLANICI BALONU MERCİ BALONUYLA AYNI RENKTİ.
+         Kullanıcı balonunun sınıfı "chat-bubble chat-bubble-u"; koyu temadaki
+         `html.dark .chat-bubble { background:#271d3f }` kuralı (0,2,1) düz
+         `.chat-bubble-u` gradyanını (0,1,0) ÖZGÜLLÜKLE eziyordu → iki taraf da
+         aynı mor-siyah oluyor, kimin yazdığı yalnız hizadan anlaşılıyordu
+         (kare: shots/chatvis/YAKIN-karanlik.png).
+         ⚠️ SEÇİCİ ÇİFT SINIFLI (.chat-bubble.chat-bubble-u = 0,3,1) OLMAK
+         ZORUNDA: `html.dark .chat-bubble` bu dosyada DAHA AŞAĞIDA (dark bloğu,
+         ~8280) tanımlı; eşit özgüllükte olsaydı sıra gereği yine o kazanırdı. */
+      html.dark .chat-bubble.chat-bubble-u {
+        background: linear-gradient(135deg, var(--ac-d2), var(--ac-l));
+        color: #fff;
+        box-shadow: 0 6px 16px -6px rgba(var(--ac-shadow), 0.55);
+      }
+      html.dark .chat-input-row textarea:focus {
+        box-shadow: 0 0 0 3px rgba(var(--ac-shadow), 0.28);
+      }
+      html.dark .place-card {
+        box-shadow: 0 3px 12px -8px rgba(0, 0, 0, 0.8);
       }
 
       /* Wheel */
@@ -17598,6 +17846,12 @@ function drawResultCard(opts) {
         var lbl = document.getElementById("ai-chips-label");
         if (grid) grid.style.display = has ? "none" : "";
         if (lbl) lbl.style.display = has ? "none" : "";
+        // 18 AĞU — sohbet başlayınca hero küçülsün (alt satırı gizlenir, punto
+        // düşer) → kazanılan ~55px doğrudan sohbet alanına gider. Kullanıcının
+        // "chat ekranı mı küçük" geri bildirimine yapısal cevap.
+        // Görünüm tamamen CSS'te: #ai-content.chatting .merci-ai-hero*
+        var _aic = document.getElementById("ai-content");
+        if (_aic) _aic.classList.toggle("chatting", !!has);
       }
       function openChat(chat) {
         aiMessages = (chat.msgs || []).slice();
@@ -17678,6 +17932,52 @@ function drawResultCard(opts) {
           '</div><div class="chat-bubble">Selam! Neye karar veriyoruz?</div></div>';
         sendAI(q);
       }
+      // ═══ 18 AĞU — SOHBET KAYDIRMA (SAYFAYI DEĞİL KUTUYU OYNAT) ═══════════
+      // 🔴 CİHAZDA BULUNDU: "sadece merci sohbetinde fazla mı yukarı çıkıyor".
+      // ÖLÇÜLDÜ (shots/chat-kb-test.js): sohbete yeni bir şey eklenince
+      // `el.scrollIntoView({block:"start"})` çağrılıyordu. scrollIntoView SADECE
+      // en yakın kaydırıcıyı değil TÜM ata kaydırıcıları — yani SAYFAYI da —
+      // oynatır. Klavye açıkken sayfa dibe fırlıyor (scrollY 432 → 581), giriş
+      // çubuğu klavyeden 40px yukarıdayken 189px'e kaçıyor ve altında koca bir
+      // boşluk kalıyordu.
+      // ✅ Bu yardımcı YALNIZ #chat-messages'ın scrollTop'ını oynatır. Sayfa
+      // ancak sohbet kutusu ekrandan TAMAMEN çıkmışsa (kullanıcı başka yere
+      // kaydırmış) devreye girer — o da block:"nearest" ile en az hareketle.
+      // ⚠️ Yeni bir "sohbete ekle" fonksiyonu yazarsan scrollIntoView değil BUNU
+      // çağır, yoksa zıplama geri gelir.
+      function kmChatScrollTo(el, sonaGit) {
+        var msgs = document.getElementById("chat-messages");
+        if (!msgs) return;
+        try {
+          if (sonaGit || !el) {
+            msgs.scrollTop = msgs.scrollHeight;
+          } else {
+            var mr = msgs.getBoundingClientRect(),
+              dr = el.getBoundingClientRect(),
+              enFazla = msgs.scrollHeight - msgs.clientHeight;
+            msgs.scrollTop = Math.max(
+              0,
+              Math.min(enFazla, msgs.scrollTop + (dr.top - mr.top) - 8),
+            );
+          }
+        } catch (e) {
+          msgs.scrollTop = msgs.scrollHeight;
+        }
+        // Kutu ekranda görünmüyorsa kullanıcı cevabı göremez → yalnız O ZAMAN
+        // sayfayı kıpırdat. Klavye açıkken kutu zaten görünür, bu dal çalışmaz.
+        try {
+          var wr = msgs.getBoundingClientRect(),
+            kb =
+              parseFloat(
+                getComputedStyle(document.documentElement).getPropertyValue(
+                  "--kb-h",
+                ),
+              ) || 0,
+            taban = window.innerHeight - kb;
+          if (wr.bottom < 40 || wr.top > taban - 40)
+            msgs.scrollIntoView({ behavior: "smooth", block: "nearest" });
+        } catch (e) {}
+      }
       function appendMsg(role, text, addFeedback) {
         var msgs = document.getElementById("chat-messages"),
           d = document.createElement("div"),
@@ -17709,10 +18009,12 @@ function drawResultCard(opts) {
           }
         }
         msgs.appendChild(d);
-        // Merci cevabının başını göster - sona değil yeni mesajın tepesine scroll
+        // Merci cevabının BAŞINI göster (uzun cevaplarda sondan değil baştan
+        // okunsun); kullanıcı mesajında sona git. İkisi de kmChatScrollTo ile →
+        // SAYFA KIPIRDAMAZ (bkz. fonksiyonun üstündeki not).
         if (role === "merci") {
           setTimeout(function () {
-            d.scrollIntoView({ behavior: "smooth", block: "start" });
+            kmChatScrollTo(d, false);
           }, 50);
         } else {
           msgs.scrollTop = msgs.scrollHeight;
@@ -17818,7 +18120,7 @@ function drawResultCard(opts) {
         wrap.appendChild(btn);
         msgs.appendChild(wrap);
         setTimeout(function () {
-          wrap.scrollIntoView({ behavior: "smooth", block: "start" });
+          kmChatScrollTo(wrap, false); // ⚠️ scrollIntoView DEĞİL — sayfayı zıplatır
         }, 50);
       }
       // ── KONUM İZNİ (Merci ekranına girince bir kez açıklamalı iste) ──
@@ -18010,16 +18312,24 @@ function drawResultCard(opts) {
         var msgs = document.getElementById("chat-messages");
         if (!msgs || !opts || opts.length < 2) return;
         var wrap = document.createElement("div");
-        wrap.className = "msg-merci";
+        // msg-card: balon değil KART satırı → 92% balon sınırından muaf (CSS)
+        wrap.className = "msg-merci msg-card";
         var box = document.createElement("div");
         box.style.cssText =
           "display:flex;gap:8px;flex-wrap:wrap;margin-top:4px";
         function mk(label, fn) {
           var b = document.createElement("button");
+          // ⚠️ Gölge eskiden rgba(124,58,237,.3) — MOR HARDCODE'DU. PRO temaları
+          // (mavi/yeşil/pembe) seçilince buton mavi ama gölgesi mor kalıyordu.
+          // Accent'e bağlı token: rgba(var(--ac-shadow),…).
+          // min-width 130 → 120: "⭐ Oylamaya At" 412px ekranda iki satıra
+          // kırılıp iki butonun boyu eşitsiz kalıyordu (kare:
+          // shots/chatvis/SONRA-*-4-mekan-kartlari.png).
           b.style.cssText =
-            "flex:1;min-width:130px;display:inline-flex;align-items:center;justify-content:center;gap:6px;" +
-            "background:linear-gradient(135deg,var(--ac),var(--ac-l));color:#fff;border:none;padding:11px 14px;" +
-            "border-radius:14px;font-size:14px;font-weight:800;cursor:pointer;box-shadow:0 4px 12px rgba(124,58,237,.3)";
+            "flex:1;min-width:120px;display:inline-flex;align-items:center;justify-content:center;gap:6px;" +
+            "background:linear-gradient(135deg,var(--ac),var(--ac-l));color:#fff;border:none;padding:11px 12px;" +
+            "border-radius:14px;font-size:13.5px;font-weight:800;cursor:pointer;white-space:nowrap;" +
+            "box-shadow:0 5px 14px -5px rgba(var(--ac-shadow),.55)";
           b.innerHTML = label;
           b.onclick = fn;
           return b;
@@ -18037,14 +18347,15 @@ function drawResultCard(opts) {
         wrap.appendChild(box);
         msgs.appendChild(wrap);
         setTimeout(function () {
-          wrap.scrollIntoView({ behavior: "smooth", block: "start" });
+          kmChatScrollTo(wrap, false); // ⚠️ scrollIntoView DEĞİL — sayfayı zıplatır
         }, 50);
       }
       function appendPlaceCards(places) {
         var msgs = document.getElementById("chat-messages");
         if (!msgs) return;
         var wrap = document.createElement("div");
-        wrap.className = "msg-merci";
+        // msg-card: balon değil KART satırı → 92% balon sınırından muaf (CSS)
+        wrap.className = "msg-merci msg-card";
         var html = '<div class="place-cards">';
         places.slice(0, 8).forEach(function (p) {
           var maps =
@@ -18087,7 +18398,7 @@ function drawResultCard(opts) {
           if (p && p.name) window._shownPlaces.push(p.name);
         });
         setTimeout(function () {
-          wrap.scrollIntoView({ behavior: "smooth", block: "start" });
+          kmChatScrollTo(wrap, false); // ⚠️ scrollIntoView DEĞİL — sayfayı zıplatır
         }, 50);
       }
       async function merciNearby(type, query) {
@@ -23578,32 +23889,66 @@ function drawResultCard(opts) {
           window.Capacitor.Plugins.Keyboard;
         if (_kb) {
           var _kbPad = null;
+          // ⚠️ 18 AĞU — MERCİ SOHBETİ KLAVYE DÜZELTMESİ. İki şey değişti:
+          // 1) ALT BOŞLUK h+90 → h+24. ÖLÇÜLDÜ: h=320'de sayfaya 410px sahte
+          //    boşluk açılıyordu; #scr-main'in zaten 70px sekme rezervi var →
+          //    ~160px fazlalık. Sayfa dibine kaydığında giriş çubuğunun ALTINDA
+          //    o kadar bomboş alan kalıyordu ("fazla yukarı çıkıyor" hissi).
+          // 2) scrollBy (BAĞIL) → scrollTo (MUTLAK). Bağıl kaydırma, WebView'in
+          //    kendi odak-kaydırmasının ÜSTÜNE ekleniyordu → hedef aşılıp sayfa
+          //    dibe yapışıyordu. Mutlak hedefle "klavyenin 14px üstü" garanti.
+          //    Ayrıca 260ms'de bir kez daha uygulanıyor: WebView'in gecikmeli
+          //    odak-kaydırması sonradan bozarsa geri toplansın.
+          // ⚠️ --ad-bottom'a DOKUNULMUYOR (banner rezervi). Klavye sinyali için
+          //    AYRI --kb-h değişkeni + html.kb-open sınıfı kullanılıyor.
+          var _kbYerlestir = function (h) {
+            var el = document.activeElement;
+            if (!el || !el.getBoundingClientRect) return;
+            var r = el.getBoundingClientRect();
+            var limit = window.innerHeight - h - 14;
+            if (r.bottom <= limit) return;
+            var enFazla =
+              document.documentElement.scrollHeight - window.innerHeight;
+            var hedef = Math.max(
+              0,
+              Math.min(enFazla, (window.scrollY || 0) + (r.bottom - limit)),
+            );
+            try {
+              window.scrollTo({ top: hedef, behavior: "smooth" });
+            } catch (e) {
+              window.scrollTo(0, hedef);
+            }
+          };
           _kb.addListener("keyboardWillShow", function (info) {
             var h = (info && info.keyboardHeight) || 300;
+            document.documentElement.style.setProperty("--kb-h", h + "px");
+            document.documentElement.classList.add("kb-open");
             _kbPad = document.getElementById("scr-main");
-            if (_kbPad) _kbPad.style.paddingBottom = h + 90 + "px";
+            if (_kbPad) _kbPad.style.paddingBottom = h + 24 + "px";
+            // Sohbet kutusu kb-open ile kısaldı → son mesaj yine altta kalsın
+            // (İÇ kaydırma; sayfayı oynatmaz).
+            try {
+              var _m = document.getElementById("chat-messages");
+              if (_m) _m.scrollTop = _m.scrollHeight;
+            } catch (e) {}
             setTimeout(function () {
-              var el = document.activeElement;
-              if (!el || !el.getBoundingClientRect) return;
-              var r = el.getBoundingClientRect();
-              var limit = window.innerHeight - h - 16;
-              if (r.bottom > limit) {
-                try {
-                  window.scrollBy({
-                    top: r.bottom - limit + 24,
-                    behavior: "smooth",
-                  });
-                } catch (e) {
-                  window.scrollBy(0, r.bottom - limit + 24);
-                }
-              }
+              _kbYerlestir(h);
             }, 60);
+            setTimeout(function () {
+              _kbYerlestir(h);
+            }, 260);
           });
           _kb.addListener("keyboardWillHide", function () {
+            document.documentElement.classList.remove("kb-open");
+            document.documentElement.style.removeProperty("--kb-h");
             if (_kbPad) {
               _kbPad.style.paddingBottom = "";
               _kbPad = null;
             }
+            try {
+              var _m = document.getElementById("chat-messages");
+              if (_m) _m.scrollTop = _m.scrollHeight;
+            } catch (e) {}
           });
         }
       } catch (e) {}
