@@ -4585,6 +4585,28 @@
       #wcanvas.km-scroll {
         touch-action: auto;
       }
+      /* ═══ KATMAN 2 — DİLİM YAZILARI (18 Ağu) ═══
+         #wcanvas spin/drag karelerinde CSS transform:rotate ile döner (P0-1:
+         repaint yok). Yazılar orada olsaydı onlar da döner, üst yarıda BAŞ
+         AŞAĞI görünürdü. Bu yüzden yazılar AYRI ve ASLA döndürülmeyen bu
+         katmana çizilir; her karede temizlenip güncel açıya göre YATAY
+         yazılır → çark ne hızla dönerse dönsün yazı hep düz, hep okunur,
+         HİÇBİR AN kaybolmaz.
+         ⚠️ pointer-events:none → sürükleme/tap #wcanvas'a gitmeye devam eder.
+         ⚠️ box-shadow YOK → çark gölgesi alt katmanda, iki kez düşmesin.
+         ⚠️ z-index 3 → #wcanvas'ın (auto) ÜSTÜ, .wspot(4)/göbek(6)/
+            ipucu(7)/ibre(8)/spin butonu(9) ALTI. */
+      #wtext {
+        display: block;
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100% !important;
+        height: 100% !important;
+        border-radius: 50%;
+        pointer-events: none;
+        z-index: 3;
+      }
       .spin-hint {
         position: absolute;
         inset: 0;
@@ -9003,6 +9025,9 @@
                 <circle cx="17" cy="12.5" r="4.6" fill="#fff" stroke="#b45309" stroke-width="2"/>
               </svg>
               <canvas id="wcanvas" width="300" height="300"></canvas>
+              <!-- Dilim yazıları — AYRI katman, CSS ile ASLA döndürülmez
+                   (bkz. #wtext CSS + drawWText). -->
+              <canvas id="wtext" width="300" height="300" aria-hidden="true"></canvas>
               <div id="wheel-center-merci"></div>
               <div class="spin-hint" id="spin-hint">
                 <div class="orbit-wrap"><div class="hand">👆</div></div>
@@ -15579,92 +15604,27 @@ function drawResultCard(opts) {
       // GPU-composite; repaint yok). Kazanan matematiği (wfA/avoidEdge/wi)
       // wAngle değişkeni üzerinden çalışır — çizim yönteminden bağımsızdır.
       //
-      // ⚠️ P0-1'in GÖRSEL BEDELİ ve ÇÖZÜMÜ (17 Ağu):
+      // ⚠️ P0-1'in GÖRSEL BEDELİ ve ÇÖZÜMÜ (18 Ağu — İKİ KATMAN):
       // CSS ile canvas'ın TAMAMI döndüğü için drawW'nin YATAY çizdiği dilim
-      // yazıları da dönüyordu → alt yarıdaki yazılar baş aşağı görünüyor,
-      // duruşta (tam çizim) bir anda düzeliyordu. Çözüm: yazıyı açısal HIZA
-      // göre yönet —
-      //   • hızlı (>= _wTxtHide rad/sn): yazısız TEK tam çizim + ucuz CSS
-      //     rotate (yazı zaten okunmuyor; ters dönecek bir şey de kalmıyor)
-      //   • yavaşlarken: her karede YAZILI tam çizim (yatay çizildiği için her
-      //     açıda düz) + opaklık 0→1 yumuşak (smoothstep) rampa
-      // Eşik p'ye (ilerleme oranı) DEĞİL hıza bağlı: spin süresi/hızı değişken.
-      // 6 rad/sn ≈ 1 tur/sn. Tipik spinde yazı duruştan ~2.4-3.7 sn önce
-      // belirmeye başlar, ~1.2-1.9 sn önce TAM okunur olur (kullanıcı isteği:
-      // "durmadan hemen değil, biraz daha önce gözüksün ki adil olsun").
+      // yazıları da dönüyor, çarkın üst yarısında BAŞ AŞAĞI görünüyordu.
+      // Önceki çözüm (hızlıyken yazıyı hiç çizme) KULLANICI TARAFINDAN
+      // REDDEDİLDİ: "yazılar kaybolmasın, güzel gözükmüyor çarkta".
+      // Yürürlükteki çözüm: yazılar #wcanvas'ta DEĞİL, AYRI ve ASLA
+      // döndürülmeyen #wtext katmanında (bkz. drawWText). Dönüş karesinde:
+      //   • #wcanvas → yalnız CSS rotate (repaint yok; P0-1 kazancı AYNEN)
+      //   • #wtext   → clearRect + n×fillText (yerleşim _wLayouts'ta cache'li)
+      // Sonuç: yazı HİÇBİR AN kaybolmaz, her açıda düz ve okunur.
       var _wDrawnAngle = 0;
-      var W_TXT_SHOW = 1.6; // rad/sn — bunun ALTINDA yazı tam opak
-      var _wTxtHide = 6.0; // rad/sn — bunun ÜSTÜNDE yazı hiç çizilmez (cihaza uyarlanır)
-      var _wTxtAlpha = 1, // canvas'ta O AN çizili yazı opaklığı
-        _wSpeed = 0, // yumuşatılmış açısal hız (rad/sn)
-        _wPrevA = 0,
-        _wPrevT = 0,
-        _wDrawCost = 0; // tam çizimin ölçülen maliyeti (ms) — zayıf cihaz uyarlaması
-      /* Spin/drag BAŞLARKEN hız ölçümünü sıfırla.
-         fast=true (fırlatma): "şu an çok hızlı" varsayımıyla başla ki ilk
-         karede yazı çizilmesin. _wTxtAlpha'ya DOKUNULMAZ — canvas'ta gerçekte
-         ne çizili olduğunu drawW tutuyor. */
-      function wTxtReset(angle, fast) {
-        _wPrevA = angle || 0;
-        _wPrevT = performance.now();
-        _wSpeed = fast ? 99 : 0;
-        // Zayıf cihaz: önceki dönüşte ölçülen tam-çizim maliyeti yüksekse
-        // pahalı "her kare çizim" penceresini KISALT (eşiği aşağı çek).
-        // Eşik yalnız BURADA değişir → dönüş ortasında yazı geri kaybolmaz.
-        _wTxtHide = _wDrawCost > 6 ? 3.5 : _wDrawCost > 3.5 ? 4.5 : 6.0;
-      }
       function wRotateTo(angle) {
         var c = document.getElementById("wcanvas");
         if (!c) return;
+        c.style.transform = "rotate(" + (angle - _wDrawnAngle) + "rad)";
         var items =
           S.wheelSlices && S.wheelSlices.length ? S.wheelSlices : S.wheel;
-        if (!items || items.length < 2) {
-          // Boş/tek seçenekli çark: eski davranış (yalnız CSS rotate)
-          c.style.transform = "rotate(" + (angle - _wDrawnAngle) + "rad)";
-          return;
-        }
-        var now = performance.now(),
-          dt = now - _wPrevT;
-        if (dt > 0) {
-          var inst = (Math.abs(angle - _wPrevA) / dt) * 1000;
-          // ~40ms EMA: sürüklemedeki sıçramaları yumuşatır, spin'de lag yaratmaz
-          _wSpeed += (inst - _wSpeed) * Math.min(1, dt / 40);
-          _wPrevA = angle;
-          _wPrevT = now;
-        }
-        var t;
-        if (_wSpeed >= _wTxtHide) t = 0;
-        else if (_wSpeed <= W_TXT_SHOW) t = 1;
-        else t = (_wTxtHide - _wSpeed) / (_wTxtHide - W_TXT_SHOW);
-        t = t * t * (3 - 2 * t); // smoothstep → belirme yumuşak, "pat" yok
-        if (t <= 0.004) {
-          // ── HIZLI FAZ ── yazısız tam çizimi BİR KEZ yap, gerisi ucuz CSS rotate
-          if (_wTxtAlpha > 0.004) {
-            drawW("wcanvas", items, angle, -1, S.wheelPeriod, 0); // _wTxtAlpha=0 orada set edilir
-            return; // drawW transform'u sıfırladı + _wDrawnAngle'ı güncelledi
-          }
-          c.style.transform = "rotate(" + (angle - _wDrawnAngle) + "rad)";
-          return;
-        }
-        // ── YAVAŞ FAZ ── yazılı tam çizim (yazı yatay → her açıda düz okunur)
-        var _c0 = performance.now();
-        drawW("wcanvas", items, angle, -1, S.wheelPeriod, t);
-        var _cost = performance.now() - _c0;
-        _wDrawCost = _wDrawCost ? _wDrawCost + (_cost - _wDrawCost) * 0.25 : _cost;
-      }
-      /* Çark DURDU ama tam çizim yapılmayacak yollar için güvenlik ağı.
-         Örn. hızlıca savurup fırlatma eşiğini geçemeden bırakmak: yazı gizli
-         kalırken çark duruyordu (yazısız çark ekranda kalıyordu). Spin biten
-         yolda finishW zaten tam çizim yapıyor; burada sadece eksik kalanı
-         tamamlıyoruz. */
-      function wTxtRestore() {
-        if (_wTxtAlpha > 0.996) return;
-        var items =
-          S.wheelSlices && S.wheelSlices.length ? S.wheelSlices : S.wheel;
+        // Boş/tek seçenekli çark: yazı katmanı zaten temiz (drawWEmpty siler)
         if (!items || items.length < 2) return;
-        _wTxtAlpha = 1;
-        _wSpeed = 0;
-        drawW("wcanvas", items, wAngle, wheelHi, S.wheelPeriod, 1);
+        // Yazı katmanı DÖNMEZ → her karede güncel açıya göre yeniden yazılır
+        drawWText(items, angle, -1, S.wheelPeriod);
       }
       // Dilim rengine göre okunur etiket rengi (açık zeminde koyu yazı)
       function _textOn(hex) {
@@ -15683,6 +15643,13 @@ function drawResultCard(opts) {
          en küçük puntoya düşüp okunmaz hâle geliyor.
          ⚠️ Emoji fallback korundu (Android WebView'de tofu çıkmasın). */
       var WFONT_LADDER = [13.5, 12.5, 11.5, 10.5, 9.5];
+      /* 18 Ağu — ÜÇ NOKTAYA düşmeden önce denenen ek (küçük) basamaklar.
+         HER ZAMAN merdivenin sonuna eklenir → yukarıdaki 5 basamağın verdiği
+         sonuçlar birebir korunur, yalnız eskiden "Makar…" olan durumlar
+         kazanır. Hesaplanan punto WFONT_MIN_PX altına düşerse eklenmez
+         (küçük çarkta okunmaz yazı üretmeyelim). */
+      var WFONT_EXTRA = [8.8, 8.2];
+      var WFONT_MIN_PX = 9;
       function _wFont(ctx, px) {
         ctx.font =
           "700 " + px + "px Nunito,'Segoe UI Emoji','Noto Color Emoji',sans-serif";
@@ -15694,56 +15661,135 @@ function drawResultCard(opts) {
           t = t.slice(0, -1);
         return t.replace(/[\s'\-]+$/, "") + "…";
       }
-      // Ortaya en yakın boşluktan ikiye böl; tek kelimeyse null
-      function _wSplitTwo(s) {
+      /* Metni İKİ SATIRA böler (tek kelimeyse null).
+         18 Ağu: eskiden ortaya en yakın BOŞLUK seçiliyordu — karakter sayısına
+         göre, gerçek piksel genişliğine göre değil. Artık tüm boşluklar
+         ölçülür ve UZUN SATIRI en dar bırakan bölme seçilir → taşma minimum.
+         force=false: hiçbir bölme sınıra sığmıyorsa null (bir alt punto
+         denensin). force=true: sığmasa da en iyisini verir (son çare, …).
+         ⚠️ Çağırmadan ÖNCE _wFont ile punto ayarlanmış olmalı (measureText). */
+      function _wSplitBest(ctx, s, maxW, force) {
         var words = s.split(" ");
         if (words.length < 2) return null;
-        var best = -1,
-          mid = s.length / 2,
+        var best = null,
+          bestScore = Infinity,
           pos = 0,
-          i;
+          i,
+          a,
+          b,
+          sc;
         for (i = 0; i < words.length - 1; i++) {
           pos += words[i].length + 1;
-          if (best < 0 || Math.abs(pos - mid) < Math.abs(best - mid)) best = pos;
+          a = s.slice(0, pos - 1);
+          b = s.slice(pos);
+          sc = Math.max(ctx.measureText(a).width, ctx.measureText(b).width);
+          if (sc < bestScore) {
+            bestScore = sc;
+            best = [a, b];
+          }
         }
-        return [s.slice(0, best - 1), s.slice(best)];
+        return bestScore <= maxW || force ? best : null;
       }
-      function _wLayoutOne(ctx, s, maxW, sizes) {
-        var i, px, two;
+      /* ══ Yazı bandı geometrisi (18 Ağu — dar dilim kırpması) ══
+         Yazı YATAY çizilir ve #wtext hiç DÖNMEZ → aynı etiket, çark döndükçe
+         dilime göre HER yönelime girer. Bu yüzden genişlik sınırı dilimin
+         yazı bandındaki KİRİŞİ kadardır ve iki satırın "biri içeride biri
+         dışarıda" olduğu varsayılamaz (yarım turda yer değiştirirler).
+         Kazanç, İKİ SATIRLIK bloğu bir tık DIŞA kaydırmaktan gelir: dilim
+         dışa doğru genişlediği için kiriş büyür.
+           • pr  = r*0.62 → TEK SATIR bandı, DEĞİŞMEDİ (mevcut görünüm korunur)
+           • pr2 = r*0.68 → yalnız iki satırlık bloklar; jant (r-6) ve göbek
+             kesilmesin diye clamp'li. */
+      function _wBand(r, sl) {
+        var pr = r * 0.62;
+        return {
+          r: r,
+          pr: pr,
+          s: Math.sin(sl / 2),
+          cap: r * 0.95,
+          // tek satır sınırı: ESKİSİYLE BİREBİR AYNI ifade
+          maxW: Math.min(2 * pr * Math.sin(sl / 2) * 0.92, r * 0.95),
+        };
+      }
+      /* İki satırlık blok için band yarıçapı + genişlik sınırı (punto'ya bağlı).
+         Satırlar bloğun ortasından ±lh/2 kayık olduğu için kiriş bu kaymayı
+         hesaba katarak daraltılır (dilim köşesine taşmasın), sonra dış jantla
+         çakışmayacak şekilde sınırlanır. */
+      function _wTwoBand(g, px) {
+        var lh = px * 1.06,
+          a = g.s * 0.92, // yarıçap → yarı-kiriş katsayısı
+          R = g.r - 9; // yazının aşmaması gereken dış sınır (jant payı)
+        /* Bloğu dışa kaydırmak kirişi büyütür ama jant payını küçültür.
+           İkisinin dengelendiği nokta R/(1+a); ondan öteye gitmenin faydası
+           yok. Üst sınır r*0.68 (tek satır bandından fazla ayrılmasın), alt
+           sınır pr (asla içeri değil). Dilim genişse (az seçenek) denge
+           noktası pr'nin içinde kalır → band eskisi gibi pr'de durur. */
+        var pr2 = Math.min(g.r * 0.68, R / (1 + a));
+        if (!(pr2 > g.pr)) pr2 = g.pr;
+        var h = pr2 * a; // bandın yarı-kirişi
+        var half = Math.min(
+          // satırlar ±lh/2 kayık → kiriş bu kadar daralır (dilim köşesi)
+          Math.sqrt(Math.max(1, h * h - (lh / 2) * (lh / 2))),
+          // yazı yarıçap yönüne geldiğinde jantı kesmesin
+          Math.max(8, R - pr2),
+        );
+        return { pr: pr2, w: Math.min(2 * half, g.cap) };
+      }
+      function _wLayoutOne(ctx, s, g, sizes) {
+        var i, px, two, b;
         for (i = 0; i < sizes.length; i++) {
           px = sizes[i];
           _wFont(ctx, px);
-          if (ctx.measureText(s).width <= maxW) return { size: px, lines: [s] };
-          two = _wSplitTwo(s);
-          if (
-            two &&
-            ctx.measureText(two[0]).width <= maxW &&
-            ctx.measureText(two[1]).width <= maxW
-          )
-            return { size: px, lines: two };
+          // Tek satır: sınır ve konum eskisiyle aynı (regresyon yok)
+          if (ctx.measureText(s).width <= g.maxW)
+            return { size: px, lines: [s], pr: g.pr };
+          // İki satır: kendi (biraz daha dış) bandının kirişine göre
+          b = _wTwoBand(g, px);
+          two = _wSplitBest(ctx, s, b.w, false);
+          if (two) return { size: px, lines: two, pr: b.pr };
         }
+        // Son çare — en küçük puntoda üç nokta ile kısalt
         px = sizes[sizes.length - 1];
         _wFont(ctx, px);
-        two = _wSplitTwo(s);
+        b = _wTwoBand(g, px);
+        two = _wSplitBest(ctx, s, b.w, true);
         if (two)
-          return { size: px, lines: [_wFit(ctx, two[0], maxW), _wFit(ctx, two[1], maxW)] };
-        return { size: px, lines: [_wFit(ctx, s, maxW)] };
+          return {
+            size: px,
+            lines: [_wFit(ctx, two[0], b.w), _wFit(ctx, two[1], b.w)],
+            pr: b.pr,
+          };
+        return { size: px, lines: [_wFit(ctx, s, g.maxW)], pr: g.pr };
       }
       /* Ölçüm pahalı ve drawW dönüş sırasında her karede çağrılıyor →
          dilimler/ölçü değişmedikçe yeniden hesaplanmaz. */
       var _wLayCache = [],
         _wLayKey = "";
-      function _wLayouts(ctx, items, maxW, r) {
-        var key = Math.round(maxW) + "|" + Math.round(r) + "|" + items.join("");
+      function _wLayouts(ctx, items, g) {
+        // ⚠️ Anahtar band geometrisinin TAMAMINI kapsamalı (maxW tek başına
+        // yetmez; iki satır bandı dilim açısına da bağlı → g.s)
+        var key =
+          Math.round(g.maxW) +
+          "|" +
+          Math.round(g.r) +
+          "|" +
+          Math.round(g.s * 1000) +
+          "|" +
+          items.join("");
         if (key === _wLayKey && _wLayCache.length === items.length) return _wLayCache;
         // Çark küçüldükçe punto da küçülsün (262px çark = ölçek 1)
-        var scale = Math.max(0.7, Math.min(1.3, r / 121));
+        var scale = Math.max(0.7, Math.min(1.3, g.r / 121));
         var sizes = WFONT_LADDER.map(function (x) {
           return Math.round(x * scale * 10) / 10;
         });
+        // Son-çare basamakları: yalnız okunur kalıyorsa ve merdivenin SONUNA
+        WFONT_EXTRA.forEach(function (x) {
+          var px = Math.round(x * scale * 10) / 10;
+          if (px >= WFONT_MIN_PX && px < sizes[sizes.length - 1]) sizes.push(px);
+        });
         _wLayKey = key;
         _wLayCache = items.map(function (s) {
-          return _wLayoutOne(ctx, _wlbl(s), maxW, sizes);
+          return _wLayoutOne(ctx, _wlbl(s), g, sizes);
         });
         return _wLayCache;
       }
@@ -15770,13 +15816,65 @@ function drawResultCard(opts) {
           return "#4c1d95";
         }
       }
-      /* txtA = dilim yazılarının opaklığı (0 = yazıyı HİÇ çizme, 1 = tam).
-         Varsayılan 1 → mevcut çağrı noktaları etkilenmez. Yalnız wRotateTo
-         (ana çarkın dönüş kareleri) 0..1 arası değer geçirir; bkz. wRotateTo
-         üstündeki açıklama. */
-      function drawW(cid, items, angle, hi, period, txtA) {
+      /* ══ KATMAN 2 — DİLİM YAZILARI (#wtext) ══
+         Ana çarkın yazılarını çizen TEK yer. Bu canvas CSS ile hiç
+         döndürülmediği için yazılar her karede güncel açıya göre YATAY
+         yazılır → çark hangi hızda dönerse dönsün düz ve okunur kalır.
+         Retina/dpr kurulumu drawW ile BİREBİR aynı olmalı, yoksa yazı
+         katmanı dilim katmanıyla hizalanmaz/bulanık çıkar.
+         Maliyet: clearRect + n×fillText. Pahalı olan yerleşim ölçümü
+         (_wLayouts → measureText) açıya bağlı DEĞİL, orada cache'leniyor. */
+      function drawWText(items, angle, hi, period) {
+        var c = document.getElementById("wtext");
+        if (!c) return;
+        var ctx = c.getContext("2d");
+        // Retina — drawW ile AYNI kurulum (dpr en fazla 2; P0-2)
+        var dpr = Math.min(window.devicePixelRatio || 1, 2);
+        var W = c.clientWidth || c.offsetWidth || 200,
+          H = c.clientHeight || c.offsetHeight || W;
+        if (c.width !== Math.round(W * dpr) || c.height !== Math.round(H * dpr)) {
+          c.width = Math.round(W * dpr);
+          c.height = Math.round(H * dpr);
+        }
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        ctx.clearRect(0, 0, W, H);
+        if (!items || !items.length) return;
+        var cx = W / 2,
+          cy = H / 2,
+          r = cx - 5; // drawW ile AYNI yarıçap (jant hizası)
+        var n = items.length,
+          sl = (Math.PI * 2) / n,
+          kCol = period || n;
+        var wb = _wBand(r, sl); // yazı bandı (tek satır pr / iki satır pr2)
+        ctx.textBaseline = "middle";
+        ctx.textAlign = "center";
+        var lays = _wLayouts(ctx, items, wb);
+        for (var j = 0; j < n; j++) {
+          var mid = angle + (j + 0.5) * sl;
+          var lay = lays[j];
+          ctx.save();
+          // Kazanan belliyken diğerleri sönük (dilim dolgusuyla aynı 0.38)
+          ctx.globalAlpha = hi >= 0 && j !== hi ? 0.38 : 1;
+          ctx.fillStyle = _textOn(COLS[(j % kCol) % COLS.length]);
+          _wFont(ctx, lay.size);
+          // İki satırlık etiket kendi (biraz daha dış) bandında çizilir
+          var pr = lay.pr || wb.pr;
+          ctx.translate(cx + Math.cos(mid) * pr, cy + Math.sin(mid) * pr);
+          if (lay.lines.length === 1) ctx.fillText(lay.lines[0], 0, 0);
+          else {
+            var lh = lay.size * 1.06;
+            ctx.fillText(lay.lines[0], 0, -lh / 2);
+            ctx.fillText(lay.lines[1], 0, lh / 2);
+          }
+          ctx.restore();
+        }
+      }
+      /* ⚠️ İKİ KATMAN: cid === "wcanvas" ise dilim YAZILARI bu canvas'a
+         çizilmez, dönmeyen #wtext katmanına delege edilir (drawWText).
+         Diğer canvas'lar (eşitlik bozma çarkı "mw-canvas" vb.) yazıyı
+         eskisi gibi KENDİ üstüne çizmeye devam eder. */
+      function drawW(cid, items, angle, hi, period) {
         if (hi === undefined) hi = -1;
-        if (txtA === undefined) txtA = 1;
         var c = document.getElementById(cid);
         if (!c) return;
         var ctx = c.getContext("2d");
@@ -15785,10 +15883,6 @@ function drawResultCard(opts) {
         if (cid === "wcanvas") {
           _wDrawnAngle = angle || 0;
           c.style.transform = "";
-          // Yazı opaklığının TEK doğru kaynağı burası: updW/finishW gibi dışarıdan
-          // gelen tam çizimler de defteri güncellesin, yoksa wRotateTo "yazı zaten
-          // gizli" sanıp ucuz CSS yoluna girer ve yazı yeniden ters döner.
-          _wTxtAlpha = txtA;
         }
         // Retina: backing store'u cihaz çözünürlüğüne ölçekle (bulanıklık biter)
         // dpr en fazla 2: dpr=3 cihazda ~990px yerine ~660px backing (P0-2)
@@ -15808,6 +15902,7 @@ function drawResultCard(opts) {
           r = cx - 5;
         ctx.clearRect(0, 0, W, H);
         if (!items.length) {
+          if (cid === "wcanvas") drawWText([], angle, -1, period);
           ctx.fillStyle = "#f3f0ff";
           ctx.beginPath();
           ctx.arc(cx, cy, r, 0, Math.PI * 2);
@@ -15886,31 +15981,32 @@ function drawResultCard(opts) {
            Genişlik dilimin kirişinden hesaplanır; sığmazsa önce punto küçülür,
            sonra iki satıra bölünür, en son üç noktayla kısalır. Harf genişliği
            ASLA sıkıştırılmaz (ctx.scale yok) → font bozuk görünmez. */
-        var pr = r * 0.62; // yazı bandının yarıçapı
-        var maxW = Math.min(2 * pr * Math.sin(sl / 2) * 0.92, r * 0.95);
-        // txtA=0 → yazı fazı komple atlanır (ölçüm/yerleşim de yapılmaz).
-        // Çark hızlı dönerken kullanılan ucuz yol; bkz. wRotateTo.
-        if (txtA > 0.004) {
-        ctx.textBaseline = "middle";
-        ctx.textAlign = "center";
-        var lays = _wLayouts(ctx, items, maxW, r);
-        for (var j = 0; j < n; j++) {
-          var mid = angle + (j + 0.5) * sl;
-          var lay = lays[j];
-          ctx.save();
-          ctx.globalAlpha = (hi >= 0 && j !== hi ? 0.38 : 1) * txtA;
-          ctx.fillStyle = _textOn(COLS[(j % kCol) % COLS.length]);
-          _wFont(ctx, lay.size);
-          ctx.translate(cx + Math.cos(mid) * pr, cy + Math.sin(mid) * pr);
-          if (lay.lines.length === 1) ctx.fillText(lay.lines[0], 0, 0);
-          else {
-            var lh = lay.size * 1.06;
-            ctx.fillText(lay.lines[0], 0, -lh / 2);
-            ctx.fillText(lay.lines[1], 0, lh / 2);
+        if (cid === "wcanvas") {
+          // Ana çark → yazılar DÖNMEYEN #wtext katmanına (bkz. drawWText)
+          drawWText(items, angle, hi, period);
+        } else {
+          var wb = _wBand(r, sl); // yazı bandı (tek satır pr / iki satır pr2)
+          ctx.textBaseline = "middle";
+          ctx.textAlign = "center";
+          var lays = _wLayouts(ctx, items, wb);
+          for (var j = 0; j < n; j++) {
+            var mid = angle + (j + 0.5) * sl;
+            var lay = lays[j];
+            ctx.save();
+            ctx.globalAlpha = hi >= 0 && j !== hi ? 0.38 : 1;
+            ctx.fillStyle = _textOn(COLS[(j % kCol) % COLS.length]);
+            _wFont(ctx, lay.size);
+            var pr = lay.pr || wb.pr;
+            ctx.translate(cx + Math.cos(mid) * pr, cy + Math.sin(mid) * pr);
+            if (lay.lines.length === 1) ctx.fillText(lay.lines[0], 0, 0);
+            else {
+              var lh = lay.size * 1.06;
+              ctx.fillText(lay.lines[0], 0, -lh / 2);
+              ctx.fillText(lay.lines[1], 0, lh / 2);
+            }
+            ctx.restore();
           }
-          ctx.restore();
         }
-        } // ← txtA > 0
         // — 5) Dış çerçeve (ÇİFT JANT — maketten: kalın koyu halka + ince
         //      beyaz iç halka). Makette 8px #4c1d95 + 2px beyaz; buradaki
         //      koyu ton temaya göre okunuyor (canvas var() anlamaz → gerçek
@@ -15991,7 +16087,10 @@ function drawResultCard(opts) {
       function drawWEmpty(id) {
         var cv = document.getElementById(id);
         if (!cv) return;
-        if (id === "wcanvas") cv.classList.add("km-scroll"); // boş çark → kaydırılabilir
+        if (id === "wcanvas") {
+          cv.classList.add("km-scroll"); // boş çark → kaydırılabilir
+          drawWText([], 0, -1, 0); // yazı katmanını da temizle
+        }
         var ctx = cv.getContext("2d");
         // Önceki spinden kalan CSS rotasyonunu da temizle (P0-1)
         cv.style.transform = "";
@@ -16172,7 +16271,6 @@ function drawResultCard(opts) {
         document.body.classList.add("wheel-dragging");
         buildWheelSlices();
         drawW("wcanvas", S.wheelSlices, wAngle, -1, S.wheelPeriod);
-        wTxtReset(wAngle, false); // sürükleme yavaş başlar → yazı görünür kalsın
         var _wcr = document.getElementById("wcanvas").getBoundingClientRect();
         _wCenter = { x: _wcr.left + _wcr.width / 2, y: _wcr.top + _wcr.height / 2 };
         dragging = true;
@@ -16234,7 +16332,6 @@ function drawResultCard(opts) {
           hideHint();
           launch(Math.abs(v), v < 0 ? -1 : 1); // ← fırlattığın YÖNDE dönsün
         } else {
-          wTxtRestore(); // hızlı savurup fırlatmadan bıraktı → yazılar geri gelsin
           showHint();
         }
       }
@@ -16247,7 +16344,6 @@ function drawResultCard(opts) {
           hideHint();
           launch(Math.abs(vel) || 0, vel < 0 ? -1 : 1); // ← fırlattığın YÖNDE dönsün
         } else {
-          wTxtRestore(); // hızlı savurup fırlatmadan bıraktı → yazılar geri gelsin
           showHint();
         }
       }
@@ -16273,18 +16369,12 @@ function drawResultCard(opts) {
 
           wRotateTo(wAngle);
           if (Math.abs(v) > 0.002) requestAnimationFrame(fr);
-          else wTxtRestore(); // durdu → yazılar kesin tam görünsün
           // Durdu, oyun başlamadı
         })(t0);
       }
 
       function launch(sp, dir) {
-        if (spinning || window._adPending || window._wheelResultPending) {
-          // Fırlatma reddedildi (reklam/sonuç bekliyor): sürüklerken gizlenmiş
-          // yazılar ekranda gizli kalmasın.
-          if (!spinning) wTxtRestore();
-          return;
-        }
+        if (spinning || window._adPending || window._wheelResultPending) return;
         dir = dir < 0 ? -1 : 1; // sürükleme yönü: -1 = sola (CCW), +1 = sağa (CW)
         spinning = true;
         document.body.classList.add("wheel-spinning");
@@ -16312,10 +16402,6 @@ function drawResultCard(opts) {
         }
         var n = (S.wheelSlices || S.wheel).length,
           base = wAngle;
-        // Yazı yönetimini fırlatma için sıfırla: ilk karede "çok hızlı" kabul
-        // edilip yazısız TEK tam çizim yapılır, sonra yavaşlarken geri gelir.
-        wTxtReset(base, true);
-
         // Max hız sınırla (önceki 4800 yerine 2400 — daha yavaş)
         var initSpeed = Math.min(Math.max(sp, 0.012), 0.06);
         var extraRad = initSpeed * 2400;
