@@ -1357,18 +1357,31 @@ KIRMIZI ÇİZGİLER:
                   .map((p) => `- ${p.name} | ${p.dist} m`)
                   .join("\n") +
                 (found.broadened
-                  ? "\n\nUYARI: Tam olarak istenen tür bulunamadı; bunlar en yakın " +
-                    "ALTERNATİFLER. Kullanıcıya bunu dürüstçe söyle, istediği şeymiş gibi sunma."
+                  ? "\n\nUYARI: Tam olarak istenen tür çıkmadı; bunlar en yakın " +
+                    "ALTERNATİFLER. İstediği şeymiş gibi SUNMA — \"tam onu göremedim ama " +
+                    "yakında şunlar var\" gibi MEKAN diliyle dürüstçe alternatif ver. " +
+                    "Arama/sistem diliyle (\"aramam sonuç vermedi\") ANLATMA ve " +
+                    "kullanıcıyı dış bir servise/haritaya YÖNLENDİRME."
                   : "") +
                 "\n\nBu listedekiler DIŞINDA mekan/semt/mesafe uydurma. Menü, fiyat, içki " +
                 "bilgisi sende YOK — bir mekânda belirli bir şeyin olduğunu garanti etme."
-              : "Hiç mekan bulunamadı." +
+              : "Bu arama sonuç vermedi. UYARI — BU BİLGİ SANA AİT: kullanıcıya arama " +
+                "yaptığını, sonuç gelmediğini ya da bir şeyi bulamadığını ANLATMA." +
                 (tur < MAX_TOOL_TURN
                   ? " İSTERSEN bir kez daha dene: osm_cuisine/osm_shop/osm_isim " +
-                    "ipuçlarını değiştir ya da tur'u genişlet. Denemek istemiyorsan " +
-                    "kullanıcıya bulamadığını DÜRÜSTÇE söyle."
-                  : " UYDURMA. Kullanıcıya kısaca bulamadığını söyle ve başka bir tür " +
-                    "denemeyi ya da çarkı çevirmeyi öner.");
+                    "ipuçlarını değiştir ya da tur'u genişlet (sinema/bowling/park " +
+                    "istekleri için tur=activity ve arama=\"sinema\" GERÇEK sinemaları getirir)."
+                  : "") +
+                " Sonuç yine gelmezse şu ÜÇ şeyden BİRİNİ yap, dördüncüsü YOK: " +
+                "(1) kullanıcının kendi saydığı seçenekler varsa TARAF TUT, birini seç ve " +
+                "nedenini tek cümlede söyle; (2) taraf tutmuyorsan aynı cevaba " +
+                "[[SECENEKLER: ...]] koyup çarkı ONUN seçenekleriyle doldur; " +
+                "(3) ortada hiç seçenek yoksa TEK kısa soruyla daralt. " +
+                "KESİN YASAK: mekan/mesafe UYDURMA · kendi eksiğini itiraf etme " +
+                "(\"bulamadım / bulamamışım / sonuç gelmedi / gösteremiyorum\") · " +
+                "\"orada yok / civarda hiç yok\" gibi kesin olumsuz hüküm verme · " +
+                "Google, Google Maps, Haritalar, Yandex gibi DIŞ SERVİS adı verme ya da " +
+                "\"aratırsan bulursun\" diye ima etme — kullanıcıyı uygulamadan ÇIKARMA.";
           } catch (e) {
             // Arama patlarsa sohbet ÖLMESİN: modele durumu bildir, kullanıcıya
             // teknik detay sızdırmadan neşeli bir cümle yazsın.
@@ -2267,6 +2280,26 @@ app.post("/nearby", rateLimit, async (req, res) => {
     if (meyhaneIntent && !["food", "cafe", "dessert"].includes(typeKey)) {
       typeKey = "food";
     }
+    // ── SİNEMA NİYETİ (18 AĞU — CANLI BUG: "sinema bulamamışım" + Google Maps) ──
+    // ⚠️ KÖK NEDEN VERİDE DEĞİL SORGUDAYDI. `activity` kovası KARMA
+    // (park + spor + fitness + bowling + oyun salonu + sinema) ve sinemayı
+    // daraltmanın TEK yolu Tier B'deki İSİM süzgeciydi. GERÇEK ÖLÇÜM
+    // (Ümraniye 41.0166,29.1244 / 5 km / canlı Overpass): amenity=cinema → 6
+    // sinema VAR, isimleri "Paribu Cineverse", "Cinemaximum", "Cinematica" —
+    // HİÇBİRİNDE "sinema" kelimesi GEÇMİYOR. Yani /sinema/i süzgeci 0 eşleşme
+    // veriyor, akış `broadened=true` ile tüm kovaya genişliyor ve parklar
+    // sinemalardan kat kat yoğun olduğu için en yakın 12'nin hepsi PARK
+    // oluyordu → model "sinema bulamadım" deyip dış servise kaçıyordu.
+    // ÇÖZÜM: sinema isteğini İSİMLE değil TAG ile daralt.
+    // ⚠️ YENİ TÜR KODU EKLENMEDİ (ör. "cinema"/"sinema"): live-index.html
+    // kendi LOC_TYPES beyaz listesini taşıyor ["food","cafe","dessert","bar",
+    // "activity"] ve TANIMADIĞI türü sessizce "food"a düşürür → sinema isteği
+    // restorana dönerdi. Bu yüzden çözüm `activity` kovasının İÇİNDE.
+    // vizyon: "televizyon" bu kuralı TETİKLEMESİN diye kelime sınırı ŞART.
+    const cinemaIntent =
+      !meyhaneIntent &&
+      /sinema|cinema|vizyon|film izle|filme gid|matine|seans/i.test(query);
+    if (cinemaIntent) typeKey = "activity";
     // "başka öner / beğenmedim" akışı: client daha önce GÖSTERİLEN mekan isimlerini
     // gönderir → aynı yerleri tekrar önermeyelim, farklı/daha uzak olanları getirelim.
     const excludeArr = Array.isArray(req.body && req.body.exclude)
@@ -2311,6 +2344,12 @@ app.post("/nearby", rateLimit, async (req, res) => {
     // Overpass sorgusu (boş dönerse radius'u büyütüp 1 kez daha dene → "bulamadım" azalır)
     // selectors artık TAM-EŞLEŞME selektör DİZİSİ (regex-contains DEĞİL) → her biri ayrı blok.
     let bucketSelectors = OVERPASS_FILTERS[typeKey] || OVERPASS_FILTERS.food;
+    // SİNEMA: karma `activity` kovasını tek TAG'e indir (yukarıdaki bloğa bak).
+    // Selektör dizesi OVERPASS_FILTERS.activity içindekiyle BİREBİR AYNI →
+    // yeni sorgu biçimi icat edilmiyor, mevcut beyaz listenin dışına çıkılmıyor.
+    if (cinemaIntent && typeKey === "activity") {
+      bucketSelectors = ['["amenity"="cinema"]'];
+    }
     // Oturmalı/içkili istekte yemek bucket'ını SADECE restaurant'a daralt (fast_food
     // = büfe/Domino's/dönerci-tezgah → şarap servisi yok, oturmalı değil → ELE).
     if (typeKey === "food" && wantsSitdown) {
@@ -2428,7 +2467,12 @@ app.post("/nearby", rateLimit, async (req, res) => {
     // "midye", "tantuni"...). Model bu etiketleri kendi üretebildiği için artık
     // BİRİNCİL yol bu; tablo yalnızca model ipucu vermezse yedek olarak çalışır.
     let rule = null;
-    if (hintCuisine || hintShop || hintIsim) {
+    // ⚠️ SİNEMADA İPUCU KURALI ÇALIŞMAZ: çalışırsa Tier B devreye girip kovayı
+    // İSİMLE süzer, "Cinemaximum/Cineverse" isimleri tutmaz ve akış parklara
+    // GERİ genişler (düzeltilen bug budur). Sinemada daraltma zaten TAG ile
+    // yapıldı → rule null kalsın, "Bucket varsayılanı" dalı amenity=cinema'yı
+    // yarıçap merdiveniyle (2,5 → 5 → 12 → 25 km) çalıştırsın.
+    if ((hintCuisine || hintShop || hintIsim) && !cinemaIntent) {
       const sels = [];
       if (hintShop) {
         hintShop
