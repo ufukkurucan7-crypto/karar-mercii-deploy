@@ -12350,7 +12350,7 @@ function drawResultCard(opts) {
     ctx.font = "700 30px " + FAM;
     ctx.fillStyle = style === "light" ? "#7c3aed" : "rgba(255,255,255,.82)";
     setLS(3);
-    ctx.fillText("KARARMERCII.COM", W / 2, by + 92);
+    ctx.fillText("KARARMERCII.COM/INDIR", W / 2, by + 92);
     setLS(0);
   }
 
@@ -12488,7 +12488,9 @@ function drawResultCard(opts) {
       // ── Görsel sonuç kartı paylaşımı (viral) ──
       // drawResultCard ile PNG üretip navigator.share({files}) ile paylaşır.
       // Desteklenmiyorsa/hata olursa mevcut metin paylaşımına düşer (fallback).
-      function _shareResultCard(type, win, say, scores, peopleCount, text) {
+      function _shareResultCard(type, win, say, scores, peopleCount, text, caption) {
+        // caption verilmezse eski davranış (tam metin) — geriye dönük güvenli.
+        var cap = caption || text;
         logEv("share_card", { type: type });
         function doText() {
           if (navigator.share) {
@@ -12519,7 +12521,7 @@ function drawResultCard(opts) {
                     })
                     .then(function (res) {
                       // Paylaşım iptali (kullanıcı vazgeçti) fallback DEĞİL → sessiz geç.
-                      return _sh.share({ title: "Karar Mercii — " + win, files: [res.uri], text: text }).catch(function () {});
+                      return _sh.share({ title: "Karar Mercii — " + win, files: [res.uri], text: cap }).catch(function () {});
                     })
                     .catch(function () { doText(); });
                 };
@@ -12542,7 +12544,7 @@ function drawResultCard(opts) {
               if (!blob) { doText(); return; }
               var file = new File([blob], "karar-mercii.png", { type: "image/png" });
               if (navigator.canShare && navigator.canShare({ files: [file] })) {
-                navigator.share({ files: [file], text: text }).catch(function () {});
+                navigator.share({ files: [file], text: cap }).catch(function () {});
               } else { doText(); }
             })
             .catch(function () { doText(); });
@@ -12593,10 +12595,12 @@ function drawResultCard(opts) {
           '"' +
           details +
           "\n\nSen de karar ver 👉 https://kararmercii.com/indir";
+        // Görsel eklendiğinde kullanılacak TEK SATIRLIK alt yazı (bkz. yukarıdaki not).
+        var caption = "Sen de karar ver 👉 https://kararmercii.com/indir";
         // Görsel kart paylaşımı (destekleniyorsa), yoksa metin fallback
         var _cs = type === "wheel" ? null : (_lastVoteScores || {});
         var _cp = type === "wheel" ? 0 : (_lastVotePeopleCount || 0);
-        _shareResultCard(type === "wheel" ? "wheel" : "vote", win, say, _cs, _cp, text);
+        _shareResultCard(type === "wheel" ? "wheel" : "vote", win, say, _cs, _cp, text, caption);
       }
 
       // ── CONFIRM MODAL (premium/auth çıkışı için) ──
