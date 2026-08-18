@@ -1642,7 +1642,7 @@ app.post("/options", rateLimit, authAndQuota, async (req, res) => {
       if (m) opts = JSON.parse(m[0]);
     } catch (e) {}
 
-    const seen = {};
+    const seen = Object.create(null); // prototipsiz: "constructor"/"toString" adlı seçenek sessizce elenmesin
     opts = (Array.isArray(opts) ? opts : [])
       .map(normalizeOption)
       .filter((x) => {
@@ -2644,7 +2644,7 @@ app.post("/nearby", rateLimit, async (req, res) => {
     // rule.label ("suşi/japon"); genişletildiyse ham OSM kategorisi (KIND_TR) kalır.
     const forceKind = rule && !broadened ? rule.label : "";
 
-    const seen = {};
+    const seen = Object.create(null); // prototipsiz: "constructor"/"toString" adlı seçenek sessizce elenmesin
     // Adı "baro / barosu / association / hukuk / avukat" içeren POI'ler = hukuk
     // kurumu (İstanbul Barosu gibi) → bar araması sonucuna KESİN sızmasın.
     const NAME_BLOCKLIST = /(baro(su)?\b|bar association|avukat|hukuk)/i;
