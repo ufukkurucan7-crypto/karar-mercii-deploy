@@ -11294,10 +11294,19 @@
       function recomputePremium() {
         var next = _rcIsPro === true || _fsIsPro === true;
         isPremium = next;
+        // Sonraki SOĞUK AÇILIŞ için PRO ipucunu güncelle (bkz. KM_AD.proHint).
+        // Silme yalnız PRO durumu KESİNLEŞTİĞİNDE: açılıştaki geçici "false"
+        // (Firestore daha okumadı) ipucunu silip boşluğu geri getirmesin.
+        try {
+          if (typeof KM_AD !== "undefined" && KM_AD.setProHint) {
+            if (next) KM_AD.setProHint(true);
+            else if (premiumResolved) KM_AD.setProHint(false);
+          }
+        } catch (e) {}
         if (typeof updateAuthUI === "function") updateAuthUI();
         try {
           if (typeof KM_AD !== "undefined") {
-            if (next && KM_AD.hideBanner) KM_AD.hideBanner();
+            if (next && KM_AD.removeBannerForPro) KM_AD.removeBannerForPro();
             else if (!next && premiumResolved && KM_AD.showBanner)
               KM_AD.showBanner();
           }
@@ -11407,8 +11416,12 @@
               // isPremium belli olduktan SONRA UI güncelle
               updateAuthUI();
               // PRO ise banner'ı gizle (Firestore yolundan gelen premium için de)
-              if (isPremium && typeof KM_AD !== "undefined" && KM_AD.hideBanner)
-                KM_AD.hideBanner();
+              if (
+                isPremium &&
+                typeof KM_AD !== "undefined" &&
+                KM_AD.removeBannerForPro
+              )
+                KM_AD.removeBannerForPro();
               loadHistory();
             })
             .catch(function () {
@@ -11446,6 +11459,13 @@
           _rcDone = true;
           _fsDone = true;
           premiumResolved = true;
+          // PRO ipucunu sil ve banner'ı başlat: açılışta ipucu yüzünden banner
+          // hiç istenmemiş olabilir (bkz. KM_AD.proHint) → burada kesin ücretsiz.
+          try {
+            if (typeof KM_AD !== "undefined" && KM_AD.setProHint)
+              KM_AD.setProHint(false);
+          } catch (e) {}
+          recomputePremium();
           updateAuthUI();
           // PRO durumu KESİN ücretsiz → PRO teması kalmışsa mora dön
           try {
@@ -13412,9 +13432,36 @@ function drawResultCard(opts) {
         },
         bannerCreated: false,
         bannerVisible: true,
+        // ⭐ 18 AĞU — SOĞUK AÇILIŞ TUZAĞI (kullanıcı bildirdi: "PRO'yum, uygulamayı
+        // kapatıp açsam da alt çubuğun altında boşluk var").
+        // KM_AD.init() sayfa yorumlanırken ANINDA çalışıyor; isPremium o an daima
+        // false (Firestore/RevenueCat ~1sn sonra cevap veriyor) → PRO kullanıcıda da
+        // banner isteniyor ve 75px rezerve ediliyordu. Sonra PRO anlaşılıp banner
+        // gizleniyor ama rezerv kalıyordu = kalıcı beyaz boşluk.
+        // Çözüm: son KESİN PRO verdicti localStorage'da tutulur; açılışta PRO ipucu
+        // varsa PRO çözülene kadar banner hiç istenmez (rezerv de oluşmaz).
+        // ⚠️ İpucu YANLIŞ olursa (abonelik bitmiş) kayıp yok: PRO "false" olarak
+        // kesinleşince recomputePremium zaten showBanner() çağırıyor (en fazla ~1sn
+        // gecikme). Çıkış yapılınca ipucu siliniyor.
+        PRO_HINT_KEY: "km_pro_hint",
+        proHint: function () {
+          try {
+            return localStorage.getItem(this.PRO_HINT_KEY) === "1";
+          } catch (e) {
+            return false;
+          }
+        },
+        setProHint: function (on) {
+          try {
+            if (on) localStorage.setItem(this.PRO_HINT_KEY, "1");
+            else localStorage.removeItem(this.PRO_HINT_KEY);
+          } catch (e) {}
+        },
         showBanner: function () {
           if (!this.inApp()) return;
           if (isPremium) return; // PRO: banner asla gösterme
+          // PRO henüz ÇÖZÜLMEDİ ama önceki oturumda PRO'ydu → bekle (yukarıdaki not).
+          if (!premiumResolved && this.proHint()) return;
           var AdMob = this.plugin();
           if (!AdMob) return;
           var self = this;
@@ -13443,6 +13490,11 @@ function drawResultCard(opts) {
           if (!this._bannerListenersAdded && AdMob.addListener) {
             this._bannerListenersAdded = true;
             var _setAd = function (v) {
+              // ⚠️ PRO KORUMASI (18 Ağu): PRO doğrulandığında banner kaldırılıyor
+              // ama bu dinleyiciler eklentiden GEÇ gelebiliyor (sizeChanged/loaded
+              // yarışı) → rezervi geri yazıp alt çubuğun altında beyaz boşluk
+              // bırakıyorlardı. PRO iken rezerv daima 0.
+              if (isPremium) v = "0px";
               document.documentElement.style.setProperty("--ad-bottom", v);
             };
             try {
@@ -13475,8 +13527,9 @@ function drawResultCard(opts) {
             .then(function () {
               self.bannerCreated = true;
               self.bannerVisible = true;
-              // Yarış durumu: banner yüklenirken PRO doğrulandıysa hemen gizle
-              if (isPremium) self.hideBanner();
+              // Yarış durumu: banner yüklenirken PRO doğrulandıysa kalıcı kaldır
+              // (hideBanner rezervi bırakırdı → PRO'da beyaz boşluk).
+              if (isPremium) self.removeBannerForPro();
             })
             .catch(function (e) {
               console.log("Banner hata", e);
@@ -13496,6 +13549,31 @@ function drawResultCard(opts) {
         },
         hideBanner: function () {
           this.setBannerVisible(false);
+        },
+        // ⭐ PRO: banner'ı KALICI kaldır + rezerve edilen yeri (--ad-bottom) geri ver.
+        // 18 AĞU — "PRO alınca alt sekme çubuğunun altında kocaman beyaz boşluk":
+        // .tabs { bottom: var(--ad-bottom) } ve .app { padding-bottom: var(--ad-bottom) }
+        // banner için 75px (ya da sizeChanged'den gelen gerçek yükseklik) rezerve
+        // ediyor. PRO'ya geçişte yalnız AdMob.hideBanner() çağrılıyordu → banner
+        // gidiyor, boşluk kalıyordu.
+        // ⚠️ NEDEN setBannerVisible/hideBanner İÇİNE KOYULMADI: o yol klavye açılınca
+        // (_kbOpen) ve modal/popup açılınca da çağrılıyor — GEÇİCİ gizleme. Orada
+        // rezervi sıfırlarsak her klavye açılıp kapanışında sayfa zıplar (daha kötü
+        // bir hata). Bu yüzden sıfırlama YALNIZCA kalıcı kaldırma yoluna bağlı.
+        removeBannerForPro: function () {
+          // Rezervi her koşulda geri ver (web'de zaten hiç set edilmez, no-op).
+          try {
+            document.documentElement.style.setProperty("--ad-bottom", "0px");
+          } catch (e) {}
+          var AdMob = this.plugin();
+          if (!AdMob) return;
+          this.bannerVisible = false;
+          if (!this.bannerCreated) return;
+          this.bannerCreated = false;
+          // removeBanner: eklenti v8'de var (AdMob.java → BannerExecutor.removeBanner,
+          // ayrıca height:0 ile sizeChanged yayınlar). Yoksa gizlemeye düş.
+          if (AdMob.removeBanner) AdMob.removeBanner().catch(function () {});
+          else if (AdMob.hideBanner) AdMob.hideBanner().catch(function () {});
         },
         // Ekranda açık bir popup/modal var mı?
         modalSelectors:
