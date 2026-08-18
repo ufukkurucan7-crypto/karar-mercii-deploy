@@ -1508,6 +1508,29 @@ KIRMIZI ÇİZGİLER:
       }
     }
 
+    if (!text) {
+      console.error(
+        "BOŞ METİN TEŞHİSİ:",
+        JSON.stringify({
+          stop_reason: response && response.stop_reason,
+          bloklar: (response && response.content
+            ? response.content.map((b) => b.type)
+            : []),
+          metinBlokUzunluk: (response && response.content
+            ? response.content
+                .filter((b) => b.type === "text")
+                .map((b) => (b.text || "").length)
+            : []),
+          toolRan,
+          mekanSayisi: toolPlaces ? toolPlaces.length : null,
+          sonSoru: String(
+            (messages[messages.length - 1] &&
+              messages[messages.length - 1].content) ||
+              "",
+          ).slice(0, 200),
+        }),
+      );
+    }
     res.json({
       text: text || "Bir şeyler ters gitti, tekrar dene!",
       setLocation, // yazıyla verilen konumun koordinatı (varsa) → client günceller
@@ -2543,10 +2566,13 @@ app.post("/nearby", rateLimit, async (req, res) => {
     // mecbur kalınırsa YALNIZ ilk alternatif kullanılır.
     let ttRes = null;
     let ttTerm = ""; // dışarıda: aşağıdaki `matched` ve dürüstlük mesajı kullanıyor
-    if (KM_PLACES === "tomtom" && ["food", "cafe", "dessert"].includes(typeKey)) {
-      const searchTerm = (
-        query || String(hintIsim || "").split("|")[0] || ""
-      ).trim();
+    const ttUygun =
+      ["food", "cafe", "dessert"].includes(typeKey) || cinemaIntent;
+    if (KM_PLACES === "tomtom" && ttUygun) {
+      // Sinemada serbest metin YASAK (bkz. yukarıdaki not) → sabit terim.
+      const searchTerm = cinemaIntent
+        ? "sinema"
+        : (query || String(hintIsim || "").split("|")[0] || "").trim();
       ttTerm = searchTerm;
       ttRes = await tomtomSearch({ lat, lng, query: searchTerm, typeKey });
       if (ttRes) {
