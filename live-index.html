@@ -21245,6 +21245,26 @@ function drawResultCard(opts) {
         }
       }
 
+      // ⭐ 19 AĞU — BERABERLİK YAZARKEN BİTİŞ ZAMANINI DA ŞİMDİYE ÇEK.
+      // Host oylamayı SÜRE DOLMADAN bitirirse (Bitir düğmesi ya da herkes oy
+      // verdi) ve sonuç beraberlikse, oda "tied" olur ama özgün `closesAt` hâlâ
+      // GELECEKTEDİR. Host çarkı çevirmeden çıkarsa sunucudaki kurtarma
+      // (`resolveStuckTiedRooms`, `closesAt <= now - 3dk` sorgular) o oda için
+      // ancak ÖZGÜN SÜRE dolduktan sonra devreye girer — 24 saatlik bir odada
+      // bu SAATLER demektir. Oylama fiilen bittiği için bitiş zamanı ŞİMDİ'dir.
+      // ⚠️ YALNIZ HOST YAZABİLİR: Firestore kuralında süre dolunca kapanışa
+      // (`sureDolduKapanis`) izin verilen alan listesi SABİT ve `closesAt` o
+      // listede YOK → katılımcı bunu yazmaya kalkarsa TÜM güncelleme reddedilir
+      // ve oda hiç kapanmaz. Host'ta sorun yok: `odaSahibi()` alan kısıtlamıyor.
+      // Katılımcının geldiği tek yol zaten deadlineClose'dur; orada `closesAt`
+      // çoktan geçmiştir, yazmaya gerek de yoktur.
+      function _kmTiePatch(patch) {
+        try {
+          if (amHost) patch.closesAt = Date.now();
+        } catch (e) {}
+        return patch;
+      }
+
       // Oyları say + Firestore'a kazanan/beraberlik yaz (closeVoting'den ayrıldı;
       // mantık birebir korundu — stilize onaydan SONRA çağrılır).
       async function _finalizeClose(code, data, silent) {
@@ -21259,7 +21279,7 @@ function drawResultCard(opts) {
             await db
               .collection("rooms")
               .doc(code)
-              .update({ status: "tied", tieItems: data.options });
+              .update(_kmTiePatch({ status: "tied", tieItems: data.options }));
             return;
           }
           // Tally votes only from submitted participants
@@ -21278,15 +21298,19 @@ function drawResultCard(opts) {
           if (winners.length > 1) {
             // Write tied status — ALL listeners will open tiebreaker UI
             tbAnimKey = "";
-            await db.collection("rooms").doc(code).update({
-              status: "tied",
-              tieItems: winners,
-              winner: null,
-              winnerPoints: null,
-              winnerVoters: null,
-              tbSpin: null,
-              tbSeed: null,
-            });
+            await db.collection("rooms")
+              .doc(code)
+              .update(
+                _kmTiePatch({
+                  status: "tied",
+                  tieItems: winners,
+                  winner: null,
+                  winnerPoints: null,
+                  winnerVoters: null,
+                  tbSpin: null,
+                  tbSeed: null,
+                }),
+              );
           } else {
             // Clear winner — write to Firestore, ALL listeners will show result
             await db.collection("rooms").doc(code).update({
