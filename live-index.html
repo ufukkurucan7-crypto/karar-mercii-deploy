@@ -354,6 +354,34 @@
       }
 
       /* Header */
+      /* ⭐ 20 AĞU — UYGULAMA GİBİ DAVRAN: METİN SEÇİMİ KAPALI.
+         🔴 CİHAZ KARESİ (02:48 ve 02:49): ekranda mavi seçim tutamakları ve çarkın
+            üstünü kaplayan mavi seçim bloğu görünüyor. iOS'ta sayfanın herhangi bir
+            yerine uzun basmak metin seçme + büyüteç + "Kopyala" balonunu açıyor;
+            kullanıcı çarkı çevirmek ya da başlığa uzun basmak isterken sayfanın
+            yarısını seçmiş oluyor. Yerli bir uygulamada olmayan, kafa karıştırıcı
+            ve dokunma hedeflerini çalan bir davranış.
+         ➜ Seçim gövde genelinde kapatıldı. BİLEREK AÇIK BIRAKILANLAR:
+            • form alanları — yazmak için zaten şart
+            • Merci sohbet balonları — cevabı kopyalamak isteyen olur
+            Oda kodu, paylaşım linki ve sonuç metni zaten KOPYALA düğmeleriyle
+            alınıyor (navigator.clipboard) → seçime ihtiyaç yok.
+         ⚠️ 19 Ağu'da yalnız .hdr'a konmuştu (uzun basma teşhis tetiği için);
+            sorunun tamamı sayfa genelindeymiş. */
+      body {
+        -webkit-user-select: none;
+        user-select: none;
+        -webkit-touch-callout: none;
+      }
+      input,
+      textarea,
+      [contenteditable="true"],
+      #chat-messages,
+      #chat-messages * {
+        -webkit-user-select: text;
+        user-select: text;
+        -webkit-touch-callout: default;
+      }
       .hdr {
         padding: 14px 16px 10px 22px;
         border-bottom: 2px solid var(--ac-bg);
