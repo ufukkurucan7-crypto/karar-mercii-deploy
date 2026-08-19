@@ -3525,6 +3525,115 @@ app.post("/room/notify", rateLimit, async (req, res) => {
   }
 });
 
+// ── 2b) "HERKES OY VERDİ" KAPANIŞI — HOST OLMADAN ────────────────────────
+// ⭐ 19 AĞU TESPİTİ (kullanıcı sordu: "herkes oy kullanınca da bildirim gelir
+// değil mi?"). GELMİYORDU.
+// Odanın dolu olup herkesin oy vermesi durumunda anında kapanmasını sağlayan
+// `checkAutoClose` (live-index.html) YALNIZ TEK BİR YERDE çağrılıyor:
+// `listenRoomAsHost` dinleyicisinin içinde. Yani **host uygulamayı kapattıysa
+// o kontrolü çalıştıran kimse kalmıyor** → son oy verildiği hâlde oda açık
+// kalıyor, sonuç ancak `closesAt` dolunca (en kötü 24 saat sonra) çıkıyor.
+// Katılımcı bunu client'tan kendi de yapamaz: Firestore kuralı `yalnizKatilimci`
+// yalnız `participants` alanına izin veriyor, `sureDolduKapanis` ise closesAt
+// dolmadan status yazdırmıyor → süre dolmadan katılımcının odayı kapatması
+// KURAL SEVİYESİNDE imkânsız.
+// ⭐ Çözüm: tetiği client çeker, kararı ve yazmayı SUNUCU verir (Admin SDK
+// kuralları bypass eder). /room/notify ile aynı felsefe — sunucu TEK doküman
+// okur, koleksiyon TARAMASI YOK (17 Tem kota dersi).
+// ⚠️ KOŞUL client'taki checkAutoClose ile BİREBİR AYNI olmalı: oda DOLU
+// (katılan >= maxParticipants) VE katılan herkes oy vermiş. Gevşetilirse host
+// varken/yokken farklı davranış olur, kullanıcı tutarsızlık görür.
+// ⚠️ BERABERLİKTE KAZANAN SEÇMEZ: client tie'da "tied" yazıp çarkı açıyor;
+// burada da aynısı yapılır ki odada duran varsa çarkı görsün. Kimse yoksa
+// resolveStuckTiedRooms süre dolduktan sonra devralır.
+// Kararı veren saf fonksiyon — express'ten AYRI tutuldu ki test-tie-sweep.js
+// gerçek kaynağı çekip çalıştırabilsin (uç noktanın içine gömülseydi mock'lanamazdı).
+// Dönen: null → koşul sağlanmadı (oda açık kalır) · {durum, patch} → yazılacak alanlar.
+function odaTamamKapanis(data) {
+  const parts = (data && data.participants) || {};
+  const keys = Object.keys(parts);
+  const submitted = keys.filter(
+    (k) => parts[k] && parts[k].submitted === true,
+  ).length;
+  const maxP = (data && data.maxParticipants) || 0;
+  // ⚠️ client checkAutoClose ile BİREBİR koşul: oda DOLU + katılan herkes oy verdi.
+  if (!(keys.length > 0 && keys.length >= maxP && submitted >= keys.length))
+    return null;
+  const options = Array.isArray(data.options) ? data.options : [];
+  const totalsMap = {};
+  options.forEach((o) => (totalsMap[o] = 0));
+  Object.values(parts).forEach((p) => {
+    if (!p || p.submitted !== true || !p.votes) return;
+    Object.entries(p.votes).forEach(([o, s]) => {
+      totalsMap[o] = (totalsMap[o] || 0) + +(s || 0);
+    });
+  });
+  const sorted = Object.entries(totalsMap).sort((a, b) => b[1] - a[1]);
+  const topScore = sorted.length ? sorted[0][1] : 0;
+  const winners = sorted.filter((x) => x[1] === topScore).map((x) => x[0]);
+  if (winners.length > 1) {
+    // Beraberlik → client ile aynı: "tied" yaz, çarkı odadakiler çevirsin.
+    // Bildirim YOK (kazanan henüz belli değil). Kimse odada değilse
+    // resolveStuckTiedRooms süre dolduktan sonra devralır.
+    return {
+      durum: "beraberlik",
+      patch: {
+        status: "tied",
+        tieItems: winners,
+        winner: null,
+        winnerPoints: null,
+        winnerVoters: null,
+        tbSpin: null,
+        tbSeed: null,
+        closedBy: "server-complete",
+        closedAt: Date.now(),
+      },
+    };
+  }
+  return {
+    durum: "kapandi",
+    patch: {
+      status: "closed",
+      winner: winners[0],
+      winnerPoints: topScore,
+      winnerVoters: submitted,
+      tieItems: [],
+      closedBy: "server-complete",
+      closedAt: Date.now(),
+      // Bildirimi biz göndereceğiz → /room/notify tekrar göndermesin.
+      notifiedAt: Date.now(),
+    },
+  };
+}
+
+app.post("/room/autoclose", rateLimit, async (req, res) => {
+  const uid = await uidFromReq(req);
+  if (!uid) return res.status(401).json({ error: "Oturum doğrulanamadı." });
+  const code = String((req.body && req.body.room) || "").trim();
+  if (!/^[A-Za-z0-9-]{3,12}$/.test(code))
+    return res.status(400).json({ error: "Oda kodu geçersiz." });
+  try {
+    const ref = adminDb.collection("rooms").doc(code);
+    const durum = await adminDb.runTransaction(async (tx) => {
+      const fresh = await tx.get(ref);
+      if (!fresh.exists) return "yok";
+      const data = fresh.data() || {};
+      if (data.status !== "open") return "acik-degil";
+      const karar = odaTamamKapanis(data);
+      if (!karar) return "tamamlanmadi";
+      tx.update(ref, karar.patch);
+      return karar.durum;
+    });
+    if (durum === "yok") return res.status(404).json({ error: "Oda yok." });
+    // Push transaction DIŞINDA (transaction yeniden denenebilir).
+    if (durum === "kapandi") await bildirOdaSonucu(code, "autoclose");
+    res.json({ ok: durum === "kapandi", durum });
+  } catch (e) {
+    console.error("room/autoclose hata:", e.message);
+    res.status(500).json({ error: "Kapatılamadı." });
+  }
+});
+
 // ── 3) ZAMANLANMIŞ / OTOMATİK BİLDİRİMLER ────────────────────────────────
 // Kullanıcı isteği: "bazen akşam ne yiyorsun diye sorarız, cuma günü hafta sonu
 // ne yapıyorsun gibi atarız, ileride sponsorlu push göndeririz."
