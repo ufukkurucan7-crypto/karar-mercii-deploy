@@ -1048,7 +1048,15 @@ setTimeout(odaBakimTuru, 8000); // başlangıçta birikmiş süresi dolmuş odal
 //     6 katı kuyruk riski. 60, 50'lik vaade pay bırakır ama tavanı 5 kat daraltır.
 // ⚠️ KULLANICIYA GÖRÜNEN "50" RAKAMI DEĞİŞMEDİ — mağaza metni, ekran görüntüleri ve
 //    uygulama içi 15 metin AYNEN duruyor. Bu iki sabit hiçbir yerde gösterilmiyor.
-const FREE_DAILY_LIMIT = 8;
+// ⭐ 19 AĞU — 8 → 4. Sebep: reklam bonusu 4'ten 2'ye indi (live-index.html
+// AD_MSG_BONUS). Bu tavan client'takiyle ÇARPIM OLARAK eşleşmek ZORUNDA:
+//     FREE_DAILY_LIMIT = AD_MSG_BONUS × AD_MAX_PER_DAY  →  2 × 2 = 4
+// Eşleşmezse iki yönlü bozulur: tavan DÜŞÜK kalırsa kullanıcı hak ettiği mesajı
+// alamaz ve "reklam izledim ama çalışmıyor" der; YÜKSEK kalırsa client sayacı
+// localStorage'da olduğu için (kurcalanabilir) bedava mesaj sızar.
+// ⚠️ Bu iki dosya birlikte deploy edilmeli — biri gider diğeri kalırsa yukarıdaki
+// iki arızadan biri CANLIDA oluşur.
+const FREE_DAILY_LIMIT = 4;
 const PRO_DAILY_LIMIT = 60;
 
 // ── PRO GEÇERLİLİK ──
@@ -1141,6 +1149,101 @@ setInterval(
 // yap" dedirtti; kullanıcı boşuna çıkış/giriş yaptı, sorun çözülmedi ve teşhis saatler
 // aldı. ARTIK: token hatası = 401 "giriş yap"; altyapı (Firestore) hatası = 503
 // "sonra tekrar dene" — giriş yapmak onu ÇÖZMEZ, o yüzden ÖNERME.
+// ── ⭐ 19 AĞU — GLOBAL GÜNLÜK AI TAVANI (TAVAN DEĞİL, SİGORTA) ─────────────
+// NEDEN VAR: kullanıcı BAŞINA kota vardı (FREE_DAILY_LIMIT / PRO_DAILY_LIMIT) ama
+// TOPLAM harcamayı sınırlayan HİÇBİR ŞEY yoktu. AI maliyeti kullanıcı sayısıyla
+// DOĞRUSAL büyür, reklam geliri aynı hızda gelmez → viral bir sıçrama, bir bot ya
+// da bir döngü hatası faturayı saatler içinde uçurabilirdi. Bu bir "kısıtlama"
+// değil sigorta: normal büyümede HİÇ ateşlenmeyecek kadar yüksek ayarlanır.
+//
+// ⚠️⚠️ PRO KULLANICI BU FRENDEN ETKİLENMEZ. Para vermiş kullanıcıyı bütçe tavanı
+// yüzünden kesmek iade/şikayet sebebidir — hem de hacim riski zaten bedava
+// katmanda (çok kullanıcı × reklamla açılan mesaj). Fren yalnız ücretsiz tarafta.
+//
+// ⚠️ ASIL İŞİ FATURAYI DURDURMAK DEĞİL, SANA ZAMAN KAZANDIRMAK: %50 ve %80'de
+// yöneticiye bildirim gider (`user_<ADMIN_UID>` topic'i, altyapı zaten var).
+// Tavanı yükseltirsin, kullanıcı hiçbir şey görmez. Fren ısırırsa da mesaj KOTA
+// dili değil KAPASİTE dili kullanır: "hakkını kaybettin" hissi vermez.
+//
+// ⚠️ KOTA GÜVENLİĞİ (17 Tem dersi): sayaç HER İSTEKTE Firestore'dan OKUNMAZ — o
+// da ayrı bir kaçak olurdu. Yazma artımlı (`increment`, okuma yapmaz), okuma
+// 60 saniyede BİR → günde ~1440 okuma. Yeniden başlatmada sayaç Firestore'dan
+// geri gelir, sigorta sıfırlanmaz.
+//
+// AYAR: Replit Secrets → `AI_GUNLUK_TAVAN` (deploy gerekmez, restart yeter).
+// Varsayılan 2000 çağrı/gün ≈ mesaj başı ~$0,003 ile günde ~$6 tavan.
+const AI_GUNLUK_TAVAN = Math.max(
+  100,
+  parseInt(process.env.AI_GUNLUK_TAVAN || "2000", 10) || 2000,
+);
+const AI_SAYAC_TTL_MS = 60 * 1000;
+let _aiSayac = { gun: "", adet: 0, okunduAt: 0 };
+let _aiUyari = { gun: "", gonderilen: {} };
+
+function _bugunUTC() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+// Günlük toplam AI çağrısı. Firestore'dan en fazla 60 sn'de bir okur.
+async function aiGunlukAdet() {
+  const gun = _bugunUTC();
+  if (_aiSayac.gun !== gun) _aiSayac = { gun, adet: 0, okunduAt: 0 };
+  if (Date.now() - _aiSayac.okunduAt < AI_SAYAC_TTL_MS) return _aiSayac.adet;
+  try {
+    const snap = await adminDb.collection("apiUsage").doc("ai_" + gun).get();
+    _aiSayac.adet = (snap.exists && snap.data().count) || 0;
+    _aiSayac.okunduAt = Date.now();
+  } catch (e) {
+    // Okuyamadıysak SON BİLİNEN değerle devam et — sigorta yüzünden servis durmasın.
+    _aiSayac.okunduAt = Date.now();
+  }
+  return _aiSayac.adet;
+}
+
+// Çağrıyı say (ateşle-unut). Yerel sayacı da artırır ki 60 sn içinde
+// gelen yüzlerce istek bayat değeri görüp tavanı aşmasın.
+function aiSay() {
+  const gun = _bugunUTC();
+  if (_aiSayac.gun !== gun) _aiSayac = { gun, adet: 0, okunduAt: Date.now() };
+  _aiSayac.adet++;
+  // Yazma ateşle-unut: sayaç yüzünden istek gecikmesin, hata da yutulsun.
+  adminDb
+    .collection("apiUsage")
+    .doc("ai_" + gun)
+    .set(
+      { count: FieldValue.increment(1), date: gun, updatedAt: FieldValue.serverTimestamp() },
+      { merge: true },
+    )
+    .catch(() => {});
+  _aiEsikUyar(gun, _aiSayac.adet);
+}
+
+// %50 / %80 / %100 eşiklerinde yöneticiye BİR KEZ bildirim.
+// ⚠️ TAMAMI try/catch İÇİNDE: bu bir TEŞHİS yardımcısı, istek yolunda çağrılıyor.
+// Burada atılan bir hata Merci'yi komple keserdi — uyarı mekanizması, koruduğu
+// şeyden daha büyük bir arıza olamaz. (`ADMIN_UIDS` bu dosyada DAHA AŞAĞIDA
+// tanımlı; çalışma anında sorun yok ama const'un TDZ'sine güvenmiyoruz.)
+function _aiEsikUyar(gun, adet) {
+  try {
+    if (_aiUyari.gun !== gun) _aiUyari = { gun, gonderilen: {} };
+    const oran = adet / AI_GUNLUK_TAVAN;
+    const esik = oran >= 1 ? 100 : oran >= 0.8 ? 80 : oran >= 0.5 ? 50 : 0;
+    if (!esik || _aiUyari.gonderilen[esik]) return;
+    _aiUyari.gonderilen[esik] = true;
+    console.log(`AI TAVAN UYARISI %${esik} — ${adet}/${AI_GUNLUK_TAVAN}`);
+    const admin =
+      typeof ADMIN_UIDS !== "undefined" && ADMIN_UIDS && ADMIN_UIDS[0];
+    if (!admin) return;
+    sendPush({
+      topic: "user_" + admin,
+      title: esik >= 100 ? "🛑 AI günlük tavan DOLDU" : `⚠️ AI kullanımı %${esik}`,
+      body: `Bugün ${adet}/${AI_GUNLUK_TAVAN} çağrı. ${esik >= 100 ? "Ücretsiz kullanıcılara Merci kapandı." : "Tavanı yükseltmek istersen Secrets → AI_GUNLUK_TAVAN."}`,
+    }).catch(() => {});
+  } catch (e) {
+    console.error("_aiEsikUyar:", e.message);
+  }
+}
+
 async function authAndQuota(req, res, next) {
   // ── 1) KİMLİK (yalnız gerçek token hatası buraya düşer) ──
   let uid;
@@ -1211,6 +1314,25 @@ async function authAndQuota(req, res, next) {
       });
     }
 
+    // ── GLOBAL SİGORTA (yalnız ÜCRETSİZ katman) ──
+    // PRO burada BİLEREK atlanır: ödediği hakkı bütçe tavanı yüzünden kesmek
+    // iade sebebi. Ayrıca hacim riski ücretsiz tarafta.
+    if (!isPro) {
+      const toplam = await aiGunlukAdet();
+      if (toplam >= AI_GUNLUK_TAVAN) {
+        console.log("AI TAVAN DOLU — ucretsiz istek reddedildi:", toplam);
+        // 429: istemci bunu ZATEN paywall'a bağlıyor (live-index.html), yani
+        // kullanıcı "PRO ile devam et" yolunu görür — çıkmaz sokak değil.
+        // ⚠️ Metin KAPASİTE dili: "hakkın doldu" DEME, kullanıcı kendi hakkını
+        // kaybetmiş sanır ve haksız yere şikayet eder. Suç bizde, öyle söyle.
+        return res.status(429).json({
+          error:
+            "Merci şu an çok yoğun 🐙 Birazdan tekrar dene — ya da PRO ile kesintisiz devam et.",
+          limitReached: true,
+        });
+      }
+    }
+
     const limit = isPro ? PRO_DAILY_LIMIT : FREE_DAILY_LIMIT;
 
     const today = new Date().toISOString().slice(0, 10); // UTC günü (YYYY-MM-DD)
@@ -1250,6 +1372,11 @@ async function authAndQuota(req, res, next) {
       .status(429)
       .json({ error: "Günlük Merci hakkın doldu!", limitReached: true });
   }
+
+  // Global sayaç: yalnız GERÇEKTEN modele gidecek istekler sayılır (kimlik, ban,
+  // platform ve kullanıcı kotası engellerini geçenler). PRO da SAYILIR — sayaç
+  // gerçek harcamayı göstermeli; PRO yalnız FRENDEN muaf, ölçümden değil.
+  aiSay();
 
   req.uid = uid;
   next();
