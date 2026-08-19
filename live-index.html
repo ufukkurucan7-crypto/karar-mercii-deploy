@@ -23747,6 +23747,27 @@ function drawResultCard(opts) {
           return;
         }
         kmMode = m;
+        // ⭐ 19 AĞU — OYLAMA SEKMESİNE İLK GİRİŞTE BİLDİRİM ŞERİDİ.
+        // ⚠️ MODAL DEĞİL, ŞERİT — bu ayrım kritik. Modal'daki "Haber Ver"
+        // SİSTEM iznine gider ve o pencere TEK ATIŞLIKTIR: kullanıcı henüz
+        // hiçbir şey yaşamadan "İzin verme" derse requestPermissions bir daha
+        // ASLA pencere açmaz → o kullanıcı kalıcı olarak kaybedilir. Şerit
+        // sistem penceresini kendiliğinden AÇMAZ, yalnız "Aç"a basılırsa açar.
+        // Böylece erken görünürlük kazanılır ama tek kurşun harcanmaz.
+        // ⚠️ Şeridin kendi guard'ları zaten var (izin verilmişse, şerit kapatılmışsa
+        //    ya da izin modalı açıksa çıkmaz) — burada sadece "ilk giriş" damgası.
+        if (m === "vote") {
+          try {
+            if (!localStorage.getItem("kmVoteSeritGosterildi")) {
+              localStorage.setItem("kmVoteSeritGosterildi", "1");
+              setTimeout(function () {
+                try {
+                  _kmPushSeritGoster();
+                } catch (e) {}
+              }, 900);
+            }
+          } catch (e) {}
+        }
         try {
           document.documentElement.classList.add("km-in-mode");
         } catch (e) {}
