@@ -14869,10 +14869,15 @@ function drawResultCard(opts) {
                 }
               } catch (e) {}
             }
-            // İÇERİK FİLTRESİ: yalnız "General" (genel izleyici / aile-dostu) reklamlar.
-            // +18 / olgun / teen içerikli reklamları engeller (Teen/MatureAudience elenir).
-            // Remote JS'te olduğu için AAB rebuild gerektirmez; her ad isteğine uygulanır.
-            await AdMob.initialize({ maxAdContentRating: "General" });
+            // İÇERİK FİLTRESİ — ⭐ 20 AĞU: "General" → "Teen" (kullanıcı kararı).
+            // "General" (G) AdMob'un EN KISITLAYICI derecesidir ve mobil reklam
+            // envanterinin büyük kısmı en az "Teen" (T) etiketlidir — oyun reklamları
+            // dahil. Yani doldurulabilir talebin çoğunu KENDİMİZ kapatıyorduk;
+            // "banner çoğu zaman gelmiyor" şikayetinin en güçlü kod tarafı sebebi buydu.
+            // "Teen" G + PG + T'yi açar, **MatureAudience (+18) yine ENGELLİ** kalır.
+            // ⚠️ Uygulamanın mağaza yaş derecelendirmesiyle uyumlu olmalı; +18 açılmıyor.
+            // Remote JS'te olduğu için AAB/iOS rebuild gerektirmez.
+            await AdMob.initialize({ maxAdContentRating: "Teen" });
             this.ready = true;
             // PRO kullanıcı değilse alt banner'ı göster + popup'larda otomatik gizle
             if (!isPremium) {
@@ -25048,11 +25053,19 @@ function drawResultCard(opts) {
           typeof KM_AD !== "undefined" &&
           KM_AD.showInterstitial
         ) {
-          window._tabSwitches = (window._tabSwitches || 0) + 1;
-          if (window._tabSwitches % 5 === 0)
-            setTimeout(function () {
-              if (!spinning && !cekilisSpinning) KM_AD.showInterstitial();
-            }, 400);
+          /* ⭐ 20 AĞU — SEKME DEĞİŞİMİ REKLAMI KAPATILDI (kullanıcı kararı).
+             SEBEP: AdMob panelinde geçiş reklamı birimine **10 dakikada 2 gösterim**
+             sıklık sınırı konulmuş. Yani elimizde 10 dakikada YALNIZ 2 KURŞUN var.
+             Sekme değişimi bunları harcarsa çark/oylama sonucu geldiğinde gösterecek
+             hak kalmıyor — kullanıcının canlıda gördüğü tablo tam buydu: "2 reklam
+             izledim, sonra 10-15 sekme değişimi + 2 çark, hiç reklam çıkmadı."
+             Sekme değişimi ayrıca EN KÖTÜ yerleşim: kullanıcı bir işin ORTASINDA,
+             doğal bir mola anı değil → hem rahatsız eder hem tıklanma oranı düşük.
+             Sınırlı hak, doğal mola anlarına (sonuç ekranları) ayrıldı.
+             ⚠️ Sıklık sınırı AdMob PANELİNDE — kodda böyle bir kural YOK. Sınırı
+                değiştirirsen buradaki denge de değişir, önce bu notu oku.
+             🔙 Geri açmak istersen: aşağıdaki bloğu yorumdan çıkar. */
+          void window._tabSwitches;
         }
       }
       // ── ANA EKRAN HUB kartları → ilgili moda git ──
