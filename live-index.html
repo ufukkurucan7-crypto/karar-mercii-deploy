@@ -14059,19 +14059,40 @@ function drawResultCard(opts) {
          rezerv o kadar EKSİK kalır → banner sekme çubuğunun üstüne biner, "Çark /
          Oylama / Çekiliş / Merci" etiketleri kesilir.
 
-         ⭐ ÖLÇÜM HİLESİ: env(safe-area-inset-*) auto modunda 0 döndüğü için gerçek
-         değerler JS'ten okunamaz. Bu yüzden AÇILIŞTA BİR KEZ viewport meta'sı geçici
-         olarak viewport-fit=cover yapılıp bir sonda elemandan gerçek inset'ler okunuyor,
-         sonra meta AYNEN geri alınıyor. Splash ekranı (position:fixed; inset:0;
-         z-index:9999) o an her şeyi kapattığı için görsel etkisi yoktur; ayrıca 1.5sn'lik
-         emniyet zamanlayıcısı meta'nın cover'da TAKILI KALMASINI imkânsız kılar.
-         Böylece HATA 2 düzeltmesi TAHMİN değil ÖLÇÜM olur.
+         ⭐ ÖLÇÜM HİLESİ (19 Ağu): env(safe-area-inset-*) auto modunda 0 döndüğü için
+         gerçek değerler JS'ten okunamaz. Bu yüzden açılışta viewport meta'sı geçici
+         olarak viewport-fit=cover yapılıp bir sonda elemandan inset'ler okunuyordu.
+
+         🔴🔴 20 AĞU — **BU HİLE CİHAZDA ÇALIŞMIYOR. ÖLÇÜM KATMANI ÖLÜYDÜ.**
+         Kullanıcının iPhone'undan alınan teşhis karesi (01:50):
+             screen 390x844 · inner 390x797 · kayip 47
+             olcum yapildi: EVET · olculen safeTop: 0 · olculen safeBottom: 0
+         Yani `measured=true` oluyor ama okunan değerler SIFIR. Sebep: WebKit,
+         viewport meta'sına SONRADAN yazılan `viewport-fit` değişimini güvenli alan
+         hesabına yansıtmıyor (ölçek/genişlik değişimlerini alıyor, viewport-fit'i
+         sayfa yüklenirken sabitliyor). İki rAF beklemek de bunu değiştirmiyor.
+         SONUÇ: safeBottom=0 → `bannerExtra()` daima 0 → banner payı HİÇ eklenmiyordu;
+         safeTop=0 → üst telafi payı da hiç uygulanamıyordu. Yani 19 Ağu'da yazılan
+         iki düzeltme de sessizce devre dışıydı — kod doğruydu, girdisi sıfırdı.
+         ⚠️ DERS: "ölçüm yaptım" demek yetmez, ÖLÇÜLEN DEĞERİ de doğrula. `measured`
+            bayrağı ölçümün BAŞARILI olduğunu değil, DENENDİĞİNİ söylüyordu.
+
+         ⭐ YENİ TEMEL — DOLAYLI ama GERÇEK ölçü: `screen.height - innerHeight`.
+         Bu fark, WebKit'in sayfaya fiilen uyguladığı TOPLAM inset'tir ve env()'e
+         hiç ihtiyaç duymaz. Yukarıdaki karede 47 çıktı; 844-797=47 = SADECE üst
+         inset. İkisi de uygulansaydı 47+34=81 olurdu. **Yani alt inset uygulanmıyor**
+         ve banner tam da o 34px'i örtüyor — hipotez cihazda DOĞRULANDI.
+         Alt güvenli alan sabiti güvenle kullanılabilir: home indicator alt inset'i
+         portrede TÜM Face ID iPhone'larda 34pt'dir; model farkı ÜST insette
+         (44/47/48/50/59/62), altta DEĞİL. Eşik seçimi de bu yüzden temiz:
+         en büyük "yalnız üst" değeri 62, en küçük "ikisi de" toplamı 44+34=78 → 70.
 
          ⚠️ Bu blok --ad-bottom'a KENDİ BAŞINA YAZMAZ; yalnız KM_AD._setAd'in ekleyeceği
          payı hesaplar. removeBannerForPro ve bannerAdFailedToLoad yolları korunur. */
       var KM_VP = {
         safeTop: 0,
         safeBottom: 0,
+        acilisKayip: 0, // açılışta ölçülen screen.height - innerHeight (bkz. init)
         measured: false,
         baseVH: 0,
         _measuring: false,
@@ -14120,6 +14141,42 @@ function drawResultCard(opts) {
           }
         },
 
+        /* ── 20 AĞU: GÜVENLİ ALAN DEĞERLERİ (ölçüm öldüğü için türetiliyor) ──
+           iOS portre alt güvenli alanı (home indicator) Face ID iPhone'ların
+           HEPSİNDE 34pt. Ayırt edici: portrede CSS yüksekliği ≥ 812 olan iPhone'lar
+           (iPhone X ve sonrası). Home tuşlu modeller 568/667/736 → alt inset 0.
+           ⚠️ Genişlik üst sınırı (<500) iPad'i DIŞARIDA bırakır: iPad'in alt inset'i
+              20pt ve üst değerleri farklı; elimizde iPad ölçümü YOK, tahminle
+              dokunmuyoruz (bugünkü davranış korunur). */
+        ALT_GUVENLI_IPHONE: 34,
+        UST_TAVAN: 62, // bilinen en büyük iOS üst inset (Dynamic Island + ...)
+        ESIK_IKISI_DE: 70, // >70 kayıp = üst+alt birlikte uygulanmış demektir
+
+        /* Kullanılacak ALT güvenli alan: ölçüm tuttuysa o, tutmadıysa cihaz sınıfı. */
+        altGuvenli: function () {
+          try {
+            if (this.safeBottom > 0) return this.safeBottom;
+            var sh = (window.screen && window.screen.height) || 0;
+            var sw = (window.screen && window.screen.width) || 0;
+            if (sh >= 812 && sw >= 375 && sw < 500) return this.ALT_GUVENLI_IPHONE;
+            return 0;
+          } catch (e) {
+            return 0;
+          }
+        },
+
+        /* Kullanılacak ÜST güvenli alan (telafi payı için).
+           Ölçüm tuttuysa o. Tutmadıysa AÇILIŞTA kaydedilen kayıp kullanılır:
+           uygulama açılırken yerleşim doğrudur ve o an kayıp = uygulanan üst inset
+           (bu cihazda 47). Tavanla sınırlanır ki "ikisi de uygulanmış" bir cihazda
+           (kayıp 81) fazla dolgu verilmesin. */
+        ustGuvenli: function () {
+          if (this.safeTop > 0) return this.safeTop;
+          var k = this.acilisKayip || 0;
+          if (k <= 0) return 0;
+          return Math.min(k, this.UST_TAVAN);
+        },
+
         /* ⭐ 20 AĞU — DÜZELTME: ALT inset AYRI SORULMALI.
            Eski `insetApplied()` yalnız "sh - innerHeight > 8" bakıyordu. iPhone'da ÜST
            güvenli alan (44-59px) tek başına bu eşiği geçiyor → fonksiyon "inset uygulandı"
@@ -14133,18 +14190,22 @@ function drawResultCard(opts) {
            Artık ölçülen safeTop+safeBottom ile karşılaştırıyoruz: kayıp ikisinin
            toplamına ulaşmıyorsa ALT inset uygulanmamıştır → pay eklenir. */
         altInsetUygulandi: function () {
-          if (!this.measured) return true; // ölçüm yoksa asla kötüleştirme
-          if (!this.safeBottom) return true; // alt güvenli alan yok (eski iPhone) → pay gereksiz
+          var alt = this.altGuvenli();
+          if (!alt) return true; // alt güvenli alanı olmayan cihaz → pay gereksiz
           var k = this._kayip();
-          if (k < 0) return true; // bilinmiyor → dokunma
-          return k >= this.safeTop + this.safeBottom - 6;
+          if (k < 0) return true; // ölçemiyoruz → dokunma
+          // Gerçek ölçüm varsa doğrudan karşılaştır (ideal yol).
+          if (this.safeTop > 0 && this.safeBottom > 0)
+            return k >= this.safeTop + this.safeBottom - 6;
+          // Ölçüm yoksa eşik: en büyük "yalnız üst" 62 < 70 < en küçük "ikisi de" 78.
+          return k >= this.ESIK_IKISI_DE;
         },
 
         /* HATA 2 payı: banner alt güvenli alanın ÜSTÜNDE duruyor. Sayfanın dibi
            ekranın dibiyse (alt inset uygulanmamışsa) o alan kadar EKSTRA rezerv gerekir. */
         bannerExtra: function () {
-          if (!this.measured || !this.iosApp()) return 0;
-          return this.altInsetUygulandi() ? 0 : this.safeBottom;
+          if (!this.iosApp()) return 0;
+          return this.altInsetUygulandi() ? 0 : this.altGuvenli();
         },
 
         _oku: function (el) {
@@ -14300,8 +14361,9 @@ function drawResultCard(opts) {
         ustPayiUygula: function (ac) {
           try {
             var d = document.documentElement;
-            if (ac && this.measured && this.safeTop > 0) {
-              d.style.setProperty("--vp-top", this.safeTop + "px");
+            var ust = this.ustGuvenli();
+            if (ac && ust > 0) {
+              d.style.setProperty("--vp-top", ust + "px");
               d.classList.add("km-vp-shift");
             } else {
               d.classList.remove("km-vp-shift");
@@ -14418,6 +14480,9 @@ function drawResultCard(opts) {
             ["olculen safeTop", this.safeTop],
             ["olculen safeBottom", this.safeBottom],
             ["olcum yapildi", this.measured ? "EVET" : "HAYIR"],
+            ["acilis kayip", this.acilisKayip],
+            ["KULLANILAN ust", this.ustGuvenli()],
+            ["KULLANILAN alt", this.altGuvenli()],
             ["bannerExtra", this.bannerExtra()],
             ["--ad-bottom", (document.documentElement.style.getPropertyValue("--ad-bottom") || "(yok)").trim()],
             ["tabs.bottom", r ? Math.round(r.bottom) : "-"],
@@ -14463,6 +14528,15 @@ function drawResultCard(opts) {
           var self = this;
           try {
             this.baseVH = window.innerHeight;
+          } catch (e) {}
+          /* ⭐ 20 AĞU — AÇILIŞ KAYBI: uygulama açılırken yerleşim DOĞRUdur, dolayısıyla
+             o andaki `screen.height - innerHeight` = WebKit'in fiilen uyguladığı inset.
+             Bu, env() ölçümü ölü olduğunda üst telafi payının TEK sağlam kaynağı
+             (kullanıcının cihazında 47 çıkıyor = tam olarak üst güvenli alan).
+             Reklamdan sonra kayıp 0'a düşse bile bu değer korunur. */
+          try {
+            var _k0 = this._kayip();
+            if (_k0 > 8) this.acilisKayip = _k0;
           } catch (e) {}
           // ⭐ 20 AĞU — KENDİNİ İYİLEŞTİRME: görünüm alanı normale dönerse telafi payını
           // kaldır, banner rezervini yeniden hesapla. Tetikleyiciler: yön değişimi,
