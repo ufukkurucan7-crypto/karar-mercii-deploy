@@ -13861,7 +13861,17 @@ function drawResultCard(opts) {
       // Merci'yi kullanmak için ödüllü reklam izlenir, reklam başına AD_MSG_BONUS mesaj.
       // Pro: yüksek sabit kota (sunucuda enforce; UI'da "günde 50 mesaj" olarak sunulur).
       var FREE_MSG_PER_DAY = 0; // ücretsiz günlük hak KALDIRILDI (reklam-kapılı)
-      var AD_MSG_BONUS = 4; // ödüllü reklam başına kazanılan mesaj
+      var AD_MSG_BONUS = 2; // ödüllü reklam başına kazanılan mesaj
+      // ⚠️ 19 AĞU: 4 → 2. Gerekçe kalıcı olsun diye burada:
+      // Bir ödüllü reklam TR eCPM'iyle ~$0,001-0,004 getiriyor; 4 mesajın AI
+      // maliyeti ~$0,01-0,02. Yani her reklam PARA KAYBETTİRİYORDU — reklam
+      // Merci'yi finanse etsin diye konmuştu, tersi çalışıyordu. 2'ye inince
+      // kayıp yarıya iner; başa baş için 1 gerekirdi ama 30 saniyelik reklamın
+      // karşılığı TEK mesaj olması kullanıcıyı küstürür — 2 bilinçli orta yol,
+      // kalan fark PAZARLAMA MALİYETİ sayılıyor (bkz. global harcama tavanı).
+      // ⚠️ Bunu değiştirirsen sunucudaki FREE_DAILY_LIMIT'i de değiştir:
+      //    FREE_DAILY_LIMIT = AD_MSG_BONUS × AD_MAX_PER_DAY olmalı.
+      // ⚠️ Metinler artık bu sabitten türüyor; ekrana elle sayı YAZMA.
       // ⭐ 17 AĞU — GÜNLÜK REKLAM TAVANI. Öncesinde SINIRSIZDI: 15 reklam izleyen
       // 60 mesaj alıyordu, yani PRO'ya vaat edilen 50'den FAZLASINI ücretsiz.
       // PRO'nun değer önerisi matematiksel olarak yoktu. Ayrıca her reklam zarar
@@ -13950,9 +13960,11 @@ function drawResultCard(opts) {
           // (platforma göre doğru mağaza) yapılıyor → ayrım gereksiz, üstelik
           // iOS'ta dönüşüm kaybettiriyordu.
           _pwSub =
-            "Uygulamada kısa bir reklam izleyip +4 mesaj kazanabilirsin — ya da PRO ile günde 50 mesaj, reklamsız konuş.";
+            "Uygulamada kısa bir reklam izleyip +" + AD_MSG_BONUS +
+            " mesaj kazanabilirsin — ya da PRO ile günde 50 mesaj, reklamsız konuş.";
           _pwBtn2 =
-            '<button class="paywall-btn-ad" onclick="_kmPaywallInstall()">📲 Uygulamayı İndir — Reklamla +4 Mesaj</button>';
+            '<button class="paywall-btn-ad" onclick="_kmPaywallInstall()">📲 Uygulamayı İndir — Reklamla +' +
+            AD_MSG_BONUS + " Mesaj</button>";
           _pwCounter = "Ödüllü reklam uygulamada";
         }
         wrap.innerHTML =
@@ -14321,6 +14333,31 @@ function drawResultCard(opts) {
       } catch (e) {}
 
       // ═══════════════ ADMOB (Capacitor uygulaması içinde) ═══════════════
+      // ⭐ 19 AĞU — TAKILI KALAN KLAVYE YERLEŞİMİNİ GERİ AL.
+      // `keyboardWillShow` üç şey yazıyor: html.kb-open sınıfı, --kb-h değişkeni
+      // ve #scr-main'e klavye yüksekliği kadar alt dolgu. Üçünü de yalnız
+      // `keyboardWillHide` geri alıyor — ama o olay ATLANABİLİYOR (aynı sebep
+      // 17 Ağu'da banner için belgelendi: odaklı input display:none ile
+      // gizlenince Android WebView focusout/hide üretmiyor; mod değişimi,
+      // popup kapanması, uygulamanın arka plana alınması bunu tetikliyor).
+      // Atlanınca geriye kalan tablo: sayfa aşağıda kilitli, sohbet kutusu
+      // `100vh - --kb-h - 190px` ile sıkışmış, altında klavye boyunda BOŞLUK.
+      // Klavye kapalıyken bu durum asla doğru olamaz → temizle.
+      // ⚠️ Metin alanı GERÇEKTEN odaklıysa dokunma: o zaman klavye açıktır ve
+      // yerleşim doğrudur. Tek kaynak DOM'daki odak, kaçırılabilen olay değil.
+      function _kmKlavyeYerlesimTemizle() {
+        try {
+          var d = document.documentElement;
+          if (!d.classList.contains("kb-open")) return;
+          if (window.KM_AD && KM_AD._isTextFocused && KM_AD._isTextFocused())
+            return;
+          d.classList.remove("kb-open");
+          d.style.removeProperty("--kb-h");
+          var sm = document.getElementById("scr-main");
+          if (sm) sm.style.paddingBottom = "";
+        } catch (e) {}
+      }
+
       var KM_AD = {
         // Production'a çıkarken bunu false yap. Kapalı test boyunca true kalsın
         // (kendi hesabını banlamamak için Google'ın test reklamları gösterilir).
@@ -14706,6 +14743,18 @@ function drawResultCard(opts) {
           // alanı odaklı DEĞİLSE bayrağı burada temizle → banner geri gelir.
           if (this._kbOpen && !this._isTextFocused()) this._kbOpen = false;
           this.setBannerVisible(!this.anyModalOpen() && !this._kbOpen);
+          // ⭐ 19 AĞU — AYNI ARIZANIN İKİNCİ YÜZÜ: SOHBET YERLEŞİMİ.
+          // Yukarıdaki self-heal 17 Ağu'da YALNIZ banner için yazılmıştı. Ama
+          // `keyboardWillHide` atlandığında geriye üç şey daha takılı kalıyor ve
+          // bunların hiçbirini temizleyen yoktu:
+          //   • html.kb-open   → #chat-messages `100vh - --kb-h - 190px`e sıkışır
+          //   • --kb-h         → o hesabın girdisi, eski klavye yüksekliği
+          //   • #scr-main paddingBottom (klavye yüksekliği + 24) → ALTTA KOCA BOŞLUK
+          // Üçü birden kullanıcının tarif ettiği tabloyu üretiyor: "sohbete
+          // girince çok aşağı kaymış, sadece yazma yeri görünüyor, altında baya
+          // boşluk var, sohbet kutusu da küçük". Klavye kapalıyken bu durum
+          // ASLA doğru olamaz → metin alanı odaklı değilse geri al.
+          _kmKlavyeYerlesimTemizle();
         },
         watchModals: function () {
           if (!window.MutationObserver) return;
@@ -14817,17 +14866,17 @@ function drawResultCard(opts) {
           window._pendingQ = null;
           if (pq) {
             // Reklam öncesi cevapsız kalan soruyu OTOMATİK gönder → cevabı gelsin
-            appendMsg("merci", "Teşekkürler! +4 mesaj 🐙 Sorunu yanıtlıyorum...", false);
+            appendMsg("merci", "Teşekkürler! +" + AD_MSG_BONUS + " mesaj 🐙 Sorunu yanıtlıyorum...", false);
             setTimeout(function () {
               sendAI(pq);
             }, 300);
           } else {
-            appendMsg("merci", "Teşekkürler! +4 mesaj kazandın, devam edelim 🐙");
+            appendMsg("merci", "Teşekkürler! +" + AD_MSG_BONUS + " mesaj kazandın, devam edelim 🐙");
           }
         }
         function fail() {
           if (btn) {
-            btn.textContent = "📺 Reklam İzle (+4 mesaj)";
+            btn.textContent = "📺 Reklam İzle (+" + AD_MSG_BONUS + " mesaj)";
             btn.disabled = false;
           }
           appendMsg(
@@ -14847,7 +14896,7 @@ function drawResultCard(opts) {
         // buraya düşülmez — bu blok konsoldan elle çağırmaya karşı duruyor.
         if (!KM_AD.inApp()) {
           if (btn) {
-            btn.textContent = "📺 Reklam İzle (+4 mesaj)";
+            btn.textContent = "📺 Reklam İzle (+" + AD_MSG_BONUS + " mesaj)";
             btn.disabled = false;
           }
           appendMsg(
@@ -15973,11 +16022,11 @@ function drawResultCard(opts) {
                 var _w = document.getElementById("ai-login-wall");
                 this.sel = _w && _w.offsetParent ? "#ai-login-wall" : ".merci-ai-hero";
                 this.body =
-                  "Merci'ye danışmak için <b>giriş yapman</b> yeterli — <b>kısa bir reklam izle, 4 mesaj</b> kazan (günde 2 reklam)! PRO'da günde 50 mesaj, reklamsız. Girince 'ne yesem, nereye gitsem' diye sorabilir, yakındaki mekan önerisi alabilirsin.";
+                  "Merci'ye danışmak için <b>giriş yapman</b> yeterli — <b>kısa bir reklam izle, " + AD_MSG_BONUS + " mesaj</b> kazan (günde " + AD_MAX_PER_DAY + " reklam)! PRO'da günde 50 mesaj, reklamsız. Girince 'ne yesem, nereye gitsem' diye sorabilir, yakındaki mekan önerisi alabilirsin.";
               } else {
                 this.sel = ".merci-ai-hero";
                 this.body =
-                  "Ne yesek, nereye gitsek, ne izlesek… durumunu anlat, sana en iyi seçenekleri öneririm. <b>Reklam başına 4 mesaj, günde 2 reklam</b> (PRO'da günde 50, reklamsız). Kararsız kalırsan senin için seçerim 🐙";
+                  "Ne yesek, nereye gitsek, ne izlesek… durumunu anlat, sana en iyi seçenekleri öneririm. <b>Reklam başına " + AD_MSG_BONUS + " mesaj, günde " + AD_MAX_PER_DAY + " reklam</b> (PRO'da günde 50, reklamsız). Kararsız kalırsan senin için seçerim 🐙";
               }
             },
           },
@@ -16580,7 +16629,7 @@ function drawResultCard(opts) {
           {
             icon: "🧠",
             title: "Merci'ye Danış!",
-            body: "Ne yesek, nereye gidelim gibi sorularını Merci'ye sor! Yapay zeka asistanımız grubunun geçmişine bakarak öneri yapar. <b>Reklam başına 4 mesaj, günde 2 reklam</b> — günde 50 mesaj için Pro ol! 🐙",
+            body: "Ne yesek, nereye gidelim gibi sorularını Merci'ye sor! Yapay zeka asistanımız grubunun geçmişine bakarak öneri yapar. <b>Reklam başına " + AD_MSG_BONUS + " mesaj, günde " + AD_MAX_PER_DAY + " reklam</b> — günde 50 mesaj için Pro ol! 🐙",
             color: "var(--ac-d2)",
           },
         ];
