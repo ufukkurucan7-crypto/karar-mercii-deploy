@@ -12491,6 +12491,11 @@
               return auth.signInWithCredential(cred);
             };
             var _onOk = function () {
+              // ⭐ 20 AĞU: giriş sayfası da tam ekran native controller — dönüşte
+              // güvenli alan kurtarması gerekir (bkz. signInWithApple notu).
+              try {
+                if (window.KM_VP) window.KM_VP.afterFullscreenAd();
+              } catch (e) {}
               document.getElementById("modal-auth").classList.remove("on");
               if (document.getElementById("scr-ob2").classList.contains("on")) {
                 setCount(0);
@@ -13235,6 +13240,20 @@ function drawResultCard(opts) {
           alert("Apple ile giriş yalnızca iPhone uygulamasında kullanılabilir.");
           return;
         }
+        /* ⭐ 20 AĞU — GİRİŞ SAYFASI DA TAM EKRAN NATIVE CONTROLLER'DIR.
+           Kullanıcı bildirimi: "Apple ile giriş yaptım, bu girişten sonra başlık ve
+           uygulamanın en üst kısmı bildirim çubuğuna çıktı."
+           Apple/Google giriş sayfaları tam ekran sunulup kapanıyor → WebKit'in
+           güvenli alan iç çekmesi tam olarak reklamdaki gibi kayboluyor. Kurtarma
+           reklamlara özel değil, TAM EKRAN SUNUM'a özel. */
+        try {
+          if (window.KM_VP) window.KM_VP.beforeFullscreenAd();
+        } catch (e) {}
+        var _vpGeri = function () {
+          try {
+            if (window.KM_VP) window.KM_VP.afterFullscreenAd();
+          } catch (e) {}
+        };
         FBAuth.signInWithApple()
           .then(function (result) {
             var c = (result && result.credential) || {};
@@ -13246,15 +13265,34 @@ function drawResultCard(opts) {
             return auth.signInWithCredential(cred);
           })
           .then(function () {
+            _vpGeri();
             document.getElementById("modal-auth").classList.remove("on");
             if (document.getElementById("scr-ob2").classList.contains("on")) {
               setCount(0);
             }
           })
           .catch(function (err) {
+            _vpGeri();
             var m =
               (err && ((err.message || "") + " " + (err.code || ""))) || "";
-            if (/cancel|1001|1000|canceled/i.test(m)) return; // kullanıcı iptal etti
+            /* 🔴 20 AĞU — BU FİLTRE GERÇEK HATALARI YUTUYORDU.
+               Kullanıcı: "Apple ile giriş yapa bastım, Face ID aldı ama giriş
+               yapmadı" — ekranda HİÇBİR mesaj çıkmadı. Sebep: eski desen
+               `/cancel|1001|1000|canceled/i` ham metinde arama yapıyordu ve
+               "1000"/"1001" rakam dizisi herhangi bir hata metninde (kod, süre,
+               zaman damgası, iç mesaj) geçebiliyor → gerçek arıza "kullanıcı
+               iptal etti" sayılıp SESSİZCE yutuluyordu. [[ai-hata-mesaji-tuzagi]]
+               ile aynı cins: geniş yakalama teşhisi öldürür.
+               ➜ Artık iptal YALNIZ gerçek iptal kodlarıyla anlaşılıyor: kelime
+                 olarak "cancel(l)ed" ya da hata KODU tam olarak 1000/1001
+                 (ASAuthorizationError.canceled / unknown). */
+            var _kod = String((err && err.code) || "").trim();
+            var _iptal =
+              /\bcancell?ed\b/i.test(m) ||
+              /\bcancel\b/i.test(m) ||
+              _kod === "1001" ||
+              _kod === "1000";
+            if (_iptal) return; // kullanıcı iptal etti
             if (
               navigator.onLine === false ||
               /network|unavailable|timeout|host|connection|offline/i.test(m)
@@ -15835,6 +15873,43 @@ function drawResultCard(opts) {
           navigator.vibrate && navigator.vibrate(fbMs || 15);
         } catch (e) {}
       }
+      /* ⭐ 20 AĞU — HIZLI "TIK" TİTREŞİMİ (çark/küre dilim geçişleri)
+         🔴 KULLANICI BİLDİRİMİ: "çarkı 3 kez üst üste çevirdim, 3.'den sonra normal
+            tık tık dönme sesi uzun uzun alakasız titreşimlere dönüyor."
+         KÖK NEDEN: dilim geçişlerinde `vib(9)` çağrılıyordu → Capacitor Haptics'in
+         `vibrate({duration})` parametresi **iOS'ta YOK SAYILIR**; iOS'ta bu çağrı
+         `AudioServicesPlaySystemSound(kSystemSoundID_Vibrate)`a düşer ve HER SEFERİNDE
+         sabit ~400 ms tam güç titreşim çalar. Bir çark dönüşünde onlarca dilim geçişi
+         var → sistemin titreşim kuyruğu doluyor, titreşimler arka arkaya yığılıp
+         dönüş bittikten sonra da sürüyor. Her dönüşte kuyruk biraz daha birikiyor —
+         "3. çevirişten sonra" demesinin sebebi tam olarak bu.
+         ➜ iOS'ta hızlı tıklar için `impact({style:"LIGHT"})` kullanılıyor: kısa,
+            tam bu iş için tasarlanmış, kuyruk yapmıyor. Android'de eski davranış aynen.
+         ⚠️ 55 ms iç kısıt: casinoTick'in ses kısıtıyla aynı — çok hızlı dönerken
+            titreşim de boğulmasın. */
+      var _vibTickSon = 0;
+      function vibTick(ms) {
+        if (!vibEnabled) return;
+        var now =
+          (window.performance && performance.now && performance.now()) ||
+          Date.now();
+        if (now - _vibTickSon < 55) return;
+        _vibTickSon = now;
+        try {
+          var iosApp =
+            window.Capacitor &&
+            window.Capacitor.getPlatform &&
+            window.Capacitor.getPlatform() === "ios";
+          if (iosApp) {
+            var H = window.Capacitor.Plugins && window.Capacitor.Plugins.Haptics;
+            if (H && H.impact) {
+              H.impact({ style: "LIGHT" });
+              return;
+            }
+          }
+        } catch (e) {}
+        vib(ms || 9);
+      }
       // Kazanan/sonuç anı (konfeti) için başarı haptiği
       function hSuccess() {
         if (!vibEnabled) return;
@@ -18104,7 +18179,7 @@ function drawResultCard(opts) {
             }
             // Spin boyunca (baştan itibaren) tıkır titreşim — ~18/sn ile sınırlı
             if (now - lastVib > 55) {
-              vib(6);
+              vibTick(6);
               lastVib = now;
             }
           }
@@ -18938,7 +19013,7 @@ function drawResultCard(opts) {
           if (idx !== li) {
             li = idx;
             casinoTick();
-            vib(9); // her dilim geçişinde tık titreşimi (çark yavaşladıkça seyrelir)
+            vibTick(9); // her dilim geçişinde tık titreşimi (çark yavaşladıkça seyrelir)
           }
           if (t < 1) requestAnimationFrame(fr);
           else {
@@ -18997,7 +19072,7 @@ function drawResultCard(opts) {
             ctx.textAlign = "center";
             ctx.textBaseline = "middle";
             ctx.fillText("?", 90, 90);
-            if (f % 6 === 0) vib(7); // küre dönerken hafif nabız titreşimi
+            if (f % 6 === 0) vibTick(7); // küre dönerken hafif nabız titreşimi
             requestAnimationFrame(draw);
           } else {
             ctx.fillStyle = "#fff";
