@@ -21057,6 +21057,9 @@ function drawResultCard(opts) {
           .catch(() => {});
         renderHostVoteList();
         snd("ding");
+        // Host da son oyu verip uygulamayı hemen kapatabilir → dinleyicideki
+        // checkAutoClose'a güvenme, sunucuya da sor (idempotent).
+        _kmTryAutoClose(shareCode);
       }
 
       function setHostStar(n, r) {
@@ -21933,6 +21936,8 @@ function drawResultCard(opts) {
           document.getElementById("submit-vote-btn").style.display = "none";
           document.getElementById("waiting-msg").style.display = "";
           snd("ding");
+          // Son oyu ben verdiysem oda host olmadan da kapansın.
+          _kmTryAutoClose(shareCode);
           // Tarayıcıdan gelen misafir: oy verdi, işi bitti → indirme çağrısı.
           _kmInstallCta(document.getElementById("waiting-msg"), "voted");
         } catch (e) {
@@ -22463,6 +22468,35 @@ function drawResultCard(opts) {
         } catch (e) {}
       }
 
+      // ⭐ 19 AĞU — "HERKES OY VERDİ" KAPANIŞI HOST'A BAĞLIYDI.
+      // `checkAutoClose` (oda dolu + herkes oy verdi → anında kapan) YALNIZ
+      // `listenRoomAsHost` içinde çağrılıyor. Host uygulamayı kapattıysa o
+      // kontrolü çalıştıran kimse kalmıyor → son oy verilse bile oda açık
+      // kalıyor, sonuç ancak süre dolunca çıkıyor. Katılımcı bunu kendi
+      // yazamaz: Firestore kuralı süre dolmadan status yazdırmıyor.
+      // ➜ Oy gönderen HERKES sunucuya "oda tamamlandı mı?" diye sorar; karar ve
+      // yazma sunucuda (Admin SDK kuralları bypass eder). Sunucu koşulu
+      // client'takiyle birebir aynı; tamamlanmadıysa tek doküman okuyup döner.
+      // Ateşle-unut: başarısız olursa süre-dolunca kapanış zaten yedek.
+      function _kmTryAutoClose(code) {
+        try {
+          if (!currentUser || !code) return;
+          currentUser
+            .getIdToken()
+            .then(function (t) {
+              return fetch("/room/autoclose", {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  Authorization: "Bearer " + t,
+                },
+                body: JSON.stringify({ room: code }),
+              });
+            })
+            .catch(function () {});
+        } catch (e) {}
+      }
+
       // ⭐ ONARIM KANCASI: sonuç Firestore'a yazılmış ama `notifiedAt` boşsa
       // bildirim hiç gitmemiş demektir (yukarıdaki istek kalıcı olarak düşmüş).
       // Odayı SONRADAN açan HERHANGİ bir kişi tetiği yeniden çeker; sunucudaki
@@ -22953,6 +22987,8 @@ function drawResultCard(opts) {
           document.getElementById("ro-submit-btn").style.display = "none";
           document.getElementById("ro-waiting").style.display = "";
           snd("ding");
+          // Son oyu ben verdiysem oda host olmadan da kapansın.
+          _kmTryAutoClose(roCode);
           // ⭐ ASIL HEDEF: ?room= linkiyle TARAYICIDAN gelen misafir bu akıştan geçer
           // (uygulama içi submitVote() DEĞİL). İndirme çağrısı asıl buraya lazım.
           _kmInstallCta(document.getElementById("ro-waiting"), "voted");
