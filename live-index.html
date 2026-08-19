@@ -14925,6 +14925,8 @@ function drawResultCard(opts) {
            ölçümü 350ms'de bitiyor, tam ekran reklamdan dönüşte geometri değişiyor.
            Ham değer saklandığı için yeniden hesaplamak paya pay EKLEMEZ. */
         _bannerH: null,
+        // Bir kez bile banner yüklendi mi? (tazeleme hatası rezervi bozmasın)
+        _bannerYuklendi: false,
         _applyAdBottom: function () {
           var h = this._bannerH;
           if (h === null || typeof h === "undefined") return;
@@ -15023,12 +15025,25 @@ function drawResultCard(opts) {
                 var h = size && size.height ? size.height : 0;
                 _setAd(h > 0 ? h + "px" : "0px");
               });
-              // Reklam gelmedi → yer tutma, boşluğu geri ver.
+              /* ⭐ 20 AĞU — "BANNER GELDİ, TAB YERİNE OTURDU, BANNER KAYBOLDU"
+                 Kullanıcı bildirimi (cihaz): açılışta banner geldi → sekme çubuğu
+                 yukarı sıçradı → banner kayboldu → çubuk geri düştü.
+                 KÖK NEDEN: `bannerAdFailedToLoad` YALNIZ ilk yüklemede değil,
+                 **her OTOMATİK TAZELEMEDE** de yayınlanıyor. Banner ekranda dururken
+                 gelen bir tazeleme hatası rezervi 0'a çekiyordu → düzen zıplıyor,
+                 ekrandaki reklam görsel olarak kayboluyor/kırpılıyor.
+                 ⚠️ Bu yalnız çirkinlik değil GELİR sorunu: gösterim, reklam ekranda
+                    görünürken sayılır; sürekli gizlenip gösterilen banner'ın
+                    görüntülenebilirliği (viewability) ve doluluk oranı düşer.
+                 ➜ Rezerv artık YALNIZ hiç reklam yüklenmemişken sıfırlanıyor.
+                    Bir kez yüklendiyse tazeleme hataları rezervi BOZMAZ. */
               AdMob.addListener("bannerAdFailedToLoad", function () {
+                if (self._bannerYuklendi) return; // ekranda duran reklamı bozma
                 _setAd("0px");
               });
               // Reklam geldi → rezerv dursun (kesin yükseklik sizeChanged'den gelir).
               AdMob.addListener("bannerAdLoaded", function () {
+                self._bannerYuklendi = true;
                 var cur =
                   document.documentElement.style.getPropertyValue("--ad-bottom");
                 if (!cur || cur === "0px") _setAd("75px");
