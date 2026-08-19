@@ -1184,6 +1184,23 @@ function _bugunUTC() {
   return new Date().toISOString().slice(0, 10);
 }
 
+/* ⭐ 20 AĞU — İSTANBUL GÜNÜ (YYYY-MM-DD).
+   Kullanıcı BAŞINA günlük mesaj kotası bunu kullanır ve live-index.html'deki
+   `kmGunTR()` ile BİREBİR AYNI dizeyi üretmek zorundadır — ikisi ayrışırsa
+   kullanıcı ödüllü reklamı izleyip karşılığını alamaz (bkz. oradaki uzun not).
+   ⚠️ Global AI bütçe sayacı (`_bugunUTC`) BİLEREK UTC'de kaldı: o bir maliyet
+      penceresi, istemciyle eşleşmesi gerekmiyor ve değiştirmek mevcut sayaçları
+      gereksiz yere sıfırlardı. */
+function gunTR() {
+  try {
+    return new Date().toLocaleDateString("en-CA", {
+      timeZone: "Europe/Istanbul",
+    });
+  } catch (e) {
+    return new Date(Date.now() + 3 * 3600000).toISOString().slice(0, 10);
+  }
+}
+
 // Günlük toplam AI çağrısı. Firestore'dan en fazla 60 sn'de bir okur.
 async function aiGunlukAdet() {
   const gun = _bugunUTC();
@@ -1335,7 +1352,14 @@ async function authAndQuota(req, res, next) {
 
     const limit = isPro ? PRO_DAILY_LIMIT : FREE_DAILY_LIMIT;
 
-    const today = new Date().toISOString().slice(0, 10); // UTC günü (YYYY-MM-DD)
+    // ⭐ 20 AĞU — UTC GÜNÜ → İSTANBUL GÜNÜ. Ayrıntılı gerekçe live-index.html
+    // `kmGunTR` notunda: istemci yerel günü, sunucu UTC gününü kullanıyordu →
+    // TR'de her gece 00:00–03:00 arasında istemci yeni güne geçiyor, sunucu hâlâ
+    // dünde kalıyordu. Kullanıcı ödüllü reklamı İZLİYOR ama sunucu "günlük hak
+    // doldu" deyip cevabı reddediyordu (canlıda yaşandı, 20 Ağu 02:40).
+    // ⚠️ İSTEMCİYLE AYNI SABİT SAAT DİLİMİ (Europe/Istanbul) — biri değişirse
+    //    diğeri de değişmeli, yoksa arıza aynen geri gelir.
+    const today = gunTR();
     const usageRef = adminDb.collection("aiUsage").doc(`${uid}_${today}`);
 
     allowed = await adminDb.runTransaction(async (tx) => {
