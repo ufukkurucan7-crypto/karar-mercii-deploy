@@ -22615,6 +22615,10 @@ function drawResultCard(opts) {
       // çıkınca SADECE onlara gider (token koleksiyonu YOK).
       function _kmJoinRoomTopic(code, closesAt) {
         try {
+          // ⚠️ Odasız çağrı (menüden / karar sonrası izin isteği) buraya kodsuz
+          // düşebilir. Guard olmasaydı "oda_" gibi SAHTE bir topic'e abone
+          // olunurdu — sessiz ve teşhisi zor bir çöp abonelik.
+          if (!code) return;
           // Önce KAYDET, sonra abone ol: izin şu an yoksa bile sonradan
           // açıldığında KM_PUSH.refresh() → syncRooms() bu odayı yakalar.
           KM_PUSH.rememberRoom(code, closesAt);
@@ -22622,7 +22626,37 @@ function drawResultCard(opts) {
         } catch (e) {}
       }
 
-      // ── BİLDİRİM İZNİ — İLK ODAYA KATILMA ANINDA ────────────────────────
+      // ⭐ 19 AĞU — KARAR SONRASI İZİN İSTEĞİ (odasız kullanıcıyı kurtarır).
+      // SORUN: izin yalnız oda anlarında isteniyordu. Çarkı çevirip çıkan,
+      // çekiliş yapan, masa oylaması yapan kullanıcıya HİÇ sorulmuyordu →
+      // `tum-kullanicilar` topic'ine hiç abone olmuyor, panelden atılan
+      // kampanyaları ALMIYOR. Uygulamanın en ucuz gelir kaldıracı bu kitleye
+      // hiç ulaşamıyordu.
+      // ⛔ "İLK AÇILIŞTA SOR" YİNE REDDEDİLDİ (16 Ağu kararı geçerli): sistem
+      //    penceresi TEK ATIŞLIK. Uygulamayı henüz tanımayan kullanıcı "izin
+      //    verme" derse requestPermissions bir daha pencere AÇMAZ — o kullanıcı
+      //    KALICI olarak kaybedilir. Erken sormak "hayır" riski değil, GERİ
+      //    DÖNÜLEMEZ "hayır" riskidir.
+      // ⭐ Doğru an: kullanıcı DEĞERİ YAŞADIKTAN sonra, yani ilk kararı bittiğinde.
+      //    Herkes bu ana ulaşır (odaya girmek gerekmez), üstelik soru anlamlıdır.
+      // ⚠️ Kutlama ekranını basmasın diye gecikmeli. Mevcut 3 soru / 3 gün
+      //    kotasına TABİ (_kmPushSorulabilir) — ayrı bir bunaltma kanalı DEĞİL.
+      function _kmKararSonrasiPushSor() {
+        try {
+          if (!KM_PUSH.plug() || KM_PUSH.ok()) return;
+          if (document.getElementById("km-push-modal")) return;
+          if (!_kmPushSorulabilir()) return;
+          setTimeout(function () {
+            try {
+              // Gecikme içinde durum değişmiş olabilir (oda modalı açıldı vb.)
+              if (KM_PUSH.ok() || document.getElementById("km-push-modal")) return;
+              _kmAskPushForRoom(null);
+            } catch (e) {}
+          }, 2600);
+        } catch (e) {}
+      }
+
+      // ── BİLDİRİM İZNİ — ODAYA KATILMA ANINDA (ve karar sonrası) ─────────
       // ⚠️ ZAMANLAMA BİLEREK BURASI: Android 13+ POST_NOTIFICATIONS runtime izni
       // ister ve BAĞLAMSIZ sorulursa çoğunlukla reddedilir. Kullanıcı tam da
       // odaya katılırken "sonuç çıkınca haber verelim mi?" sorusu anlamlı →
@@ -22664,7 +22698,13 @@ function drawResultCard(opts) {
         try {
           // Şerit "Aç"a basıldığında hangi odanın topic'ine abone olacağını
           // bilmesi için son oda kodu saklanır (şerit modaldan sonra çıkabilir).
-          window._kmSonOdaKodu = code;
+          // ⭐ 19 AĞU — ODASIZ ÇAĞRI DA DESTEKLENİYOR (code boş olabilir).
+          // TESPİT (kullanıcı yakaladı): izin YALNIZ oda anlarında isteniyordu →
+          // hiç oda kurmayan/katılmayan kullanıcı HİÇ SORULMUYOR, `tum-kullanicilar`
+          // topic'ine abone olmuyor ve panelden atılan hiçbir kampanyayı ALMIYOR.
+          // Uygulamanın en büyük bedava gelir kaldıracı (zamanlanmış bildirim)
+          // tam da bu kullanıcı kitlesine ulaşamıyordu.
+          if (code) window._kmSonOdaKodu = code;
           if (!KM_PUSH.plug()) return; // web / eski sürüm → sessizce geç
           // ⭐ 19 AĞU: odayı HER DURUMDA kaydet — izin verilmemiş olsa bile.
           // Kullanıcı "şimdi değil" deyip 30 saniye sonra şeritten ya da telefon
@@ -22707,10 +22747,19 @@ function drawResultCard(opts) {
             "box-shadow:0 18px 50px rgba(0,0,0,.35)";
           card.innerHTML =
             '<div style="margin-bottom:10px">' + merciSVGChat(52) + "</div>" +
-            '<div style="font-size:17px;font-weight:900;margin-bottom:8px">Sonuç çıkınca haber vereyim mi? 🔔</div>' +
-            '<div style="font-size:13.5px;line-height:1.5;color:' + subFg + '">' +
-            "Herkes oyunu verip kazanan belli olunca telefonuna bildirim gönderirim — " +
-            "ekranı açık tutmana gerek kalmaz.</div>";
+            // ⚠️ İKİ AYRI GEREKÇE, İKİ AYRI METİN. İzin isterken söylenen sebep
+            // DOĞRU olmalı: oda anında "sonucu haber veririm" derken, odasız
+            // çağrıda aynı cümleyi kurmak yalan olur (ortada oda yok) ve
+            // kullanıcı ilk kampanyada kendini kandırılmış hisseder.
+            (code
+              ? '<div style="font-size:17px;font-weight:900;margin-bottom:8px">Sonuç çıkınca haber vereyim mi? 🔔</div>' +
+                '<div style="font-size:13.5px;line-height:1.5;color:' + subFg + '">' +
+                "Herkes oyunu verip kazanan belli olunca telefonuna bildirim gönderirim — " +
+                "ekranı açık tutmana gerek kalmaz.</div>"
+              : '<div style="font-size:17px;font-weight:900;margin-bottom:8px">Karar anında dürteyim mi? 🔔</div>' +
+                '<div style="font-size:13.5px;line-height:1.5;color:' + subFg + '">' +
+                "Akşam ne yesek, hafta sonu ne yapsak… Sıkıştığın anlarda kısa bir " +
+                "fikir gönderirim. Oylama sonuçlarını da kaçırmazsın.</div>");
           var row = document.createElement("div");
           row.style.cssText =
             "display:flex;flex-direction:column;gap:8px;margin-top:16px";
@@ -23775,6 +23824,11 @@ function drawResultCard(opts) {
 
       // ═══════════════════ HISTORY ═══════════════════
       async function addHist(emoji, item, mode, comment) {
+        // ⭐ Karar TAMAMLANDI = değerin yaşandığı an → bildirim iznini burada sor.
+        // ⚠️ GİRİŞ KONTROLÜNDEN ÖNCE: misafir de bildirim alabilmeli, topic
+        //    aboneliği auth istemiyor. Aşağıdaki `return` yalnız GEÇMİŞ kaydını
+        //    atlar; izin isteği ondan bağımsızdır.
+        _kmKararSonrasiPushSor();
         // Misafir ise geçmiş tutma
         if (!currentUser) return;
 
@@ -25633,6 +25687,53 @@ function drawResultCard(opts) {
             }, 250);
           });
 
+        // ── 🔔 BİLDİRİMLER (19 AĞU) ──
+        // ÖNCESİNDE UYGULAMA İÇİNDEN AÇMANIN HİÇBİR YOLU YOKTU: izin sadece oda
+        // anlarında soruluyordu; "Şimdi değil" diyen ya da hiç oda kurmayan
+        // kullanıcı bir daha bildirim açamıyordu. Şeridin metni "telefon
+        // ayarlarından açabilirsin" diyordu ama uygulama bunu öğrenemiyordu
+        // (bu tur eklenen KM_PUSH.refresh() o kısmı da çözdü).
+        var miPush = document.getElementById("mi-push");
+        if (miPush)
+          miPush.addEventListener("click", function () {
+            closeMenu();
+            setTimeout(function () {
+              try {
+                if (!KM_PUSH.plug()) {
+                  _kmToast("Bildirimler uygulamada çalışıyor 📲");
+                  return;
+                }
+                // Yerel damgaya değil SİSTEME sor — damga bayat olabilir.
+                KM_PUSH.refresh().then(function (acik) {
+                  if (acik) {
+                    _kmToast(
+                      "Bildirimler zaten açık 🔔 Kapatmak için telefon ayarlarını kullan.",
+                    );
+                    return;
+                  }
+                  // ⚠️ Menüden gelen istek 3-soru/3-gün KOTASINA TABİ DEĞİL:
+                  // kullanıcı bunu kendisi istedi, "rahatsız etme" sayacı burada
+                  // anlamsız olurdu ve tam da açmak isteyeni engellerdi.
+                  KM_PUSH.ask().then(function (granted) {
+                    if (granted) {
+                      KM_PUSH.subscribeUser();
+                      KM_PUSH.syncRooms();
+                      _kmToast("Bildirimler açıldı 🔔");
+                      logEv("push_permission_granted");
+                    } else {
+                      // Sistem penceresi kalıcı reddedilmişse ask() pencere
+                      // AÇMAZ ve false döner → tek yol telefon ayarları.
+                      _kmToast(
+                        "Telefon Ayarları > Uygulamalar > Karar Mercii > Bildirimler'den açabilirsin.",
+                      );
+                      logEv("push_permission_denied");
+                    }
+                  });
+                });
+              } catch (e) {}
+            }, 250);
+          });
+
         // ── LOGOUT ──
         var miLogout = document.getElementById("mi-logout");
         if (miLogout)
@@ -25869,6 +25970,9 @@ function drawResultCard(opts) {
         </button>
         <button class="menu-item" id="mi-tutorial">
           <span class="menu-item-icon"><svg class="ic" viewBox="0 0 24 24"><use href="#i-question"/></svg></span> Nasıl Kullanılır
+        </button>
+        <button class="menu-item" id="mi-push">
+          <span class="menu-item-icon" style="font-size:16px">🔔</span> Bildirimler
         </button>
         <button class="menu-item" id="mi-about">
           <span class="menu-item-icon"><svg class="ic" viewBox="0 0 24 24"><use href="#i-info"/></svg></span> Hakkında
