@@ -369,6 +369,21 @@
         /* Scroll gölgesi yumuşakça girip çıksın (GPU-dostu: blur yok, yalnız box-shadow) */
         transition: box-shadow 0.25s ease, border-color 0.25s ease;
       }
+      /* ⭐ 20 AĞU — iOS: TAM EKRAN REKLAM DÖNÜŞÜNDE ÜST GÜVENLİ ALAN KURTARMA PAYI.
+         Kök neden KM_VP bloğunda yazılı: tam ekran native controller kapanınca WebKit'in
+         viewport-fit=auto iç çekmesi geri gelmiyor → sayfanın tepesi fiziksel ekranın
+         tepesine oturuyor, sticky .hdr durum çubuğunun/Dynamic Island'ın ALTINDA kalıyor
+         (kullanıcı ss'i, 19 Ağu 15:21).
+         KM_VP önce WebKit'i yeniden hesaplamaya zorluyor; O TUTMAZSA bu sınıf devreye
+         girer ve başlığın kendi dolgusunu ölçülen güvenli alan kadar büyütür.
+         ⚠️ Neden .app'e değil .hdr'a: .hdr sticky/top:0 — .app'e dolgu versek sayfa
+         kaydırılınca başlık yine durum çubuğunun altına girerdi. Dolgu başlığın KENDİ
+         gövdesinde olduğu için yapıştığı yerde de geçerli.
+         ⚠️ Sınıf YALNIZ ölçüm "inset kayboldu" derken eklenir ve geri gelince KALDIRILIR
+         (KM_VP.ustPayiUygula) → çift boşluk oluşamaz. */
+      html.km-vp-shift .hdr {
+        padding-top: calc(14px + var(--vp-top, 0px));
+      }
       /* 📣 Duyuru bandı (panelden yönetilir). Renkler AÇIK YAZILDI —
          var(--ac-bg) gibi toplu kurallar koyu temada okunmaz hale getiriyor
          (konum modalı dersi). Üç tür: bilgi / uyarı / bakım. */
@@ -10589,6 +10604,7 @@
               </div>
               <!-- Butonlar -->
               <button
+                id="ai-wall-auth-btn"
                 class="ob-google-btn"
                 onclick="openAuthModal()"
                 style="width: 100%; margin-bottom: 10px"
@@ -13274,6 +13290,18 @@ function drawResultCard(opts) {
               if (g && /google/i.test(g.className || ""))
                 g.parentNode.insertBefore(btns[i], g);
             }
+            // ⭐ 20 AĞU — MERCİ GİRİŞ KAPISI iPhone'da "Google ile Giriş Yap" DİYORDU.
+            // O buton aslında giriş YAPMIYOR, giriş MODALINI açıyor (modalda Apple da
+            // var ve iOS'ta en üstte). Ama kullanıcı ekranda yalnız Google markasını
+            // gördüğü için "iOS'ta Apple girişi yok" sanıyordu (19 Ağu cihaz ss'i).
+            // Apple 4.8 açısından da riskli: üçüncü taraf giriş sunulan yerde Apple
+            // en az EŞİT vurguyla görünmeli — tek marka gösteren kapı bunu ihlal eder.
+            // ➜ iOS'ta buton markasızlaştırılıyor: Google logosu ve metni gider,
+            //    yerine nötr "Giriş Yap" gelir. Android/web AYNEN kalır.
+            try {
+              var cta = document.getElementById("ai-wall-auth-btn");
+              if (cta) cta.textContent = "Giriş Yap";
+            } catch (e2) {}
           }
         } catch (e) {}
       });
@@ -14070,11 +14098,46 @@ function drawResultCard(opts) {
           }
         },
 
-        /* HATA 2 payı: banner alt güvenli alanın ÜSTÜNDE duruyor. Sayfa görünüm alanı
-           tam ekransa (WebKit çekmemişse) o alan kadar EKSTRA rezerv gerekir. */
+        /* Görünüm alanının ekrana göre KAYBETTİĞİ toplam yükseklik (CSS px).
+           screen.height güvenli alandan etkilenmez, innerHeight etkilenir. */
+        _kayip: function () {
+          try {
+            var sh = (window.screen && window.screen.height) || 0;
+            if (!sh) return -1;
+            var k = sh - window.innerHeight;
+            // Yatay/çoklu-pencere gibi ölçemediğimiz hâller → "bilinmiyor".
+            if (k < -8) return -1;
+            return k;
+          } catch (e) {
+            return -1;
+          }
+        },
+
+        /* ⭐ 20 AĞU — DÜZELTME: ALT inset AYRI SORULMALI.
+           Eski `insetApplied()` yalnız "sh - innerHeight > 8" bakıyordu. iPhone'da ÜST
+           güvenli alan (44-59px) tek başına bu eşiği geçiyor → fonksiyon "inset uygulandı"
+           diyor ve ALT inset uygulanmamış olsa bile pay EKLEMİYORDU.
+           Tablo (kullanıcı ss'i, 19 Ağu): banner sekme çubuğunun ALT ~34px'ini örtüyor —
+           "Çark / Oylama / Çekiliş / Merci" etiketleri kayboluyor, ikonlar duruyor.
+           Geometri: eklenti banner'ı safeAreaLayoutGuide.bottom'a sabitler (altı ekranın
+           dibinde DEĞİL, home indicator'ın üstünde). Sayfanın dibi ekranın dibiyse
+           banner'ın gerçekte kapladığı bant = yükseklik + altGüvenliAlan; .tabs ise
+           bottom:var(--ad-bottom) = yalnız yükseklik kadar yukarıda → fark kadar biner.
+           Artık ölçülen safeTop+safeBottom ile karşılaştırıyoruz: kayıp ikisinin
+           toplamına ulaşmıyorsa ALT inset uygulanmamıştır → pay eklenir. */
+        altInsetUygulandi: function () {
+          if (!this.measured) return true; // ölçüm yoksa asla kötüleştirme
+          if (!this.safeBottom) return true; // alt güvenli alan yok (eski iPhone) → pay gereksiz
+          var k = this._kayip();
+          if (k < 0) return true; // bilinmiyor → dokunma
+          return k >= this.safeTop + this.safeBottom - 6;
+        },
+
+        /* HATA 2 payı: banner alt güvenli alanın ÜSTÜNDE duruyor. Sayfanın dibi
+           ekranın dibiyse (alt inset uygulanmamışsa) o alan kadar EKSTRA rezerv gerekir. */
         bannerExtra: function () {
           if (!this.measured || !this.iosApp()) return 0;
-          return this.insetApplied() ? 0 : this.safeBottom;
+          return this.altInsetUygulandi() ? 0 : this.safeBottom;
         },
 
         _oku: function (el) {
@@ -14121,6 +14184,20 @@ function drawResultCard(opts) {
               probe.remove();
             } catch (e) {}
             self._measuring = false;
+            // ⭐ 20 AĞU — ölçüm bitti: banner rezervini YENİDEN hesapla.
+            // Eklentinin bannerAdSizeChanged olayı bu ölçümden ÖNCE gelebiliyor
+            // (banner 350ms'den hızlı dolduğunda). O an measured=false olduğu için
+            // bannerExtra() 0 dönüyor ve pay HİÇ eklenmiyordu → banner sekme
+            // etiketlerini örtüyordu. Meta geri alındıktan SONRA bir kare bekleyip
+            // (innerHeight gerçek değerine dönsün) tekrar uygula.
+            try {
+              requestAnimationFrame(function () {
+                try {
+                  if (typeof KM_AD !== "undefined" && KM_AD._applyAdBottom)
+                    KM_AD._applyAdBottom();
+                } catch (e) {}
+              });
+            } catch (e) {}
           };
           // EMNİYET: rAF zinciri herhangi bir sebeple çalışmazsa bile meta ASLA
           // cover modunda takılı kalmasın (takılırsa tüm düzen kayar).
@@ -14170,12 +14247,72 @@ function drawResultCard(opts) {
           } catch (e) {}
         },
 
+        /* ⭐ 20 AĞU — Görünüm alanı reklamdan ÖNCEKİNDEN daha UZUN mu?
+           Uzunsa güvenli alan iç çekmesi kaybolmuş demektir (HATA 1). Ölçü: reklam
+           açılmadan önce kaydedilen baseVH. 8px tolerans = klavye/çubuk gürültüsü.
+           Bu fonksiyon olmadan kurtarmanın işe yarayıp yaramadığı BİLİNEMİYORDU —
+           19 Ağu'da tek atışlık nudge yapılıp sonucuna hiç bakılmıyordu. */
+        vpKayipMi: function () {
+          try {
+            if (!this.baseVH) return false;
+            return window.innerHeight - this.baseVH > 8;
+          } catch (e) {
+            return false;
+          }
+        },
+
+        /* nudgeViewport tutmazsa İKİNCİ KADEME. minimum-scale değişimi
+           ViewportConfiguration'ı tazeler ama GÜVENLİ ALAN davranışına dokunmaz;
+           kaybolan şey tam olarak o davranış. cover→auto geçişi onu yeniden
+           hesaplatır. Tek karelik, 1sn emniyet zamanlayıcılı. */
+        zorlaCover: function () {
+          try {
+            var meta = document.querySelector('meta[name="viewport"]');
+            if (!meta) return;
+            var c = meta.getAttribute("content") || "";
+            if (c.indexOf("viewport-fit") >= 0) return; // zaten cover → bu kaldıraç yok
+            var geri = function () {
+              try {
+                meta.setAttribute("content", c);
+              } catch (e) {}
+            };
+            var emniyet = setTimeout(geri, 1000);
+            meta.setAttribute("content", c + ",viewport-fit=cover");
+            requestAnimationFrame(function () {
+              requestAnimationFrame(function () {
+                clearTimeout(emniyet);
+                geri();
+              });
+            });
+          } catch (e) {}
+        },
+
+        /* SON ÇARE (3. kademe): WebKit hiçbir dürtmeye cevap vermiyorsa başlığın üst
+           dolgusunu ölçülen güvenli alan kadar büyüt → başlık durum çubuğunun altından
+           çıkar. Görsel telafi; WebKit düzelince sınıf KALDIRILIR, çift boşluk olmaz. */
+        ustPayiUygula: function (ac) {
+          try {
+            var d = document.documentElement;
+            if (ac && this.measured && this.safeTop > 0) {
+              d.style.setProperty("--vp-top", this.safeTop + "px");
+              d.classList.add("km-vp-shift");
+            } else {
+              d.classList.remove("km-vp-shift");
+              d.style.removeProperty("--vp-top");
+            }
+          } catch (e) {}
+        },
+
         /* Tam ekran reklam KAPANDIKTAN sonra kurtarma.
-           Adımlar birbirine bağlanmıyor (biri patlarsa kalanlar yine çalışsın). */
+           Adımlar birbirine bağlanmıyor (biri patlarsa kalanlar yine çalışsın).
+           ⭐ 20 AĞU: artık KADEMELİ ve ÖLÇÜME BAĞLI — her turda "düzeldi mi" diye
+           bakılıyor, düzelmediyse bir üst kaldıraca geçiliyor. */
         afterFullscreenAd: function () {
           var self = this;
           var y = this._scrollBefore || 0;
+          var tur = 0;
           var adim = function () {
+            tur++;
             // 1) Klavye bayrağı takılı kaldıysa temizle: reklam sırasında gelen sahte
             //    visualViewport küçülmesi _kbOpen'ı true bırakabiliyor (bkz. ~24520),
             //    dönüşte resize gelmezse banner kalıcı gizli kalırdı.
@@ -14189,9 +14326,21 @@ function drawResultCard(opts) {
                 KM_AD._kbOpen = false;
               }
             } catch (e) {}
-            // 2) WebKit'i viewport'u yeniden hesaplamaya zorla (HATA 1 hedefi).
+            // 2) HATA 1 — KADEMELİ KURTARMA (her turda sonucu ÖLÇÜLÜYOR).
+            //    1. tur: koşulsuz hafif dürtme (bedava, zararsız).
+            //    2. tur: hâlâ kayıksa viewport-fit cover→auto (güvenli alanı
+            //            yeniden hesaplatan tek kaldıraç).
+            //    3. tur: hâlâ kayıksa görsel telafi (başlık üst dolgusu).
+            //    Düzelmişse telafi payı DERHAL geri alınıyor → çift boşluk olmaz.
             try {
-              self.nudgeViewport();
+              if (tur === 1) {
+                self.nudgeViewport();
+              } else if (self.vpKayipMi()) {
+                if (tur === 2) self.zorlaCover();
+                else self.ustPayiUygula(true);
+              } else {
+                self.ustPayiUygula(false);
+              }
             } catch (e) {}
             // 3) Düzeni yeniden hesaplat (çark tuvali + açık tur/ipucu balonları).
             try {
@@ -14204,6 +14353,12 @@ function drawResultCard(opts) {
               if (typeof KM_AD !== "undefined" && KM_AD.refreshBanner)
                 KM_AD.refreshBanner();
             } catch (e) {}
+            // 3b) ⭐ 20 AĞU: banner rezervini de tazele — reklamdan dönüşte güvenli
+            //     alan geometrisi değişmiş olabilir, pay yeniden hesaplanmalı.
+            try {
+              if (typeof KM_AD !== "undefined" && KM_AD._applyAdBottom)
+                KM_AD._applyAdBottom();
+            } catch (e) {}
             // 4) Kaydırma konumunu geri koy — reklam dönüşünde sayfa tepeye/dibe
             //    sıçrayabiliyor; kullanıcı çark sonucunu kaybetmesin.
             try {
@@ -14213,6 +14368,7 @@ function drawResultCard(opts) {
           adim();
           setTimeout(adim, 120);
           setTimeout(adim, 450);
+          setTimeout(adim, 1200);
         },
 
         /* ── CİHAZ TEŞHİS KAPLAMASI ──────────────────────────────────────────
@@ -14245,6 +14401,12 @@ function drawResultCard(opts) {
             ["dpr", window.devicePixelRatio],
             ["screen.h - inner.h", screen.height - window.innerHeight],
             ["insetApplied", this.insetApplied() ? "EVET" : "HAYIR"],
+            ["ALT inset uygulandi", this.altInsetUygulandi() ? "EVET" : "HAYIR"],
+            ["kayip (screen-inner)", this._kayip()],
+            ["baseVH (reklam oncesi)", this.baseVH],
+            ["vp KAYIK mi", this.vpKayipMi() ? "EVET" : "HAYIR"],
+            ["ust telafi payi", document.documentElement.classList.contains("km-vp-shift") ? "ACIK" : "kapali"],
+            ["ham banner h", typeof KM_AD !== "undefined" ? String(KM_AD._bannerH) : "-"],
             ["env SIMDI top/bot", st + " / " + sb],
             ["olculen safeTop", this.safeTop],
             ["olculen safeBottom", this.safeBottom],
@@ -14294,6 +14456,20 @@ function drawResultCard(opts) {
           var self = this;
           try {
             this.baseVH = window.innerHeight;
+          } catch (e) {}
+          // ⭐ 20 AĞU — KENDİNİ İYİLEŞTİRME: görünüm alanı normale dönerse telafi payını
+          // kaldır, banner rezervini yeniden hesapla. Tetikleyiciler: yön değişimi,
+          // uygulamanın öne gelmesi, klavye kapanışı — hepsi resize üretir.
+          try {
+            window.addEventListener("resize", function () {
+              try {
+                if (!self.vpKayipMi()) self.ustPayiUygula(false);
+              } catch (e) {}
+              try {
+                if (typeof KM_AD !== "undefined" && KM_AD._applyAdBottom)
+                  KM_AD._applyAdBottom();
+              } catch (e) {}
+            });
           } catch (e) {}
           // Ölçüm: splash hâlâ ekranı kaplarken (splash 1200ms'de kaldırılıyor).
           if (this.iosApp())
@@ -14557,6 +14733,36 @@ function drawResultCard(opts) {
             else localStorage.removeItem(this.PRO_HINT_KEY);
           } catch (e) {}
         },
+        /* ⭐ 20 AĞU — BANNER REZERVİNİN TEK YAZMA NOKTASI.
+           _bannerH = eklentinin bildirdiği HAM banner yüksekliği (pay hariç).
+             null → eklenti henüz konuşmadı (iyimser 75px rezervi duruyor, DOKUNMA)
+             0    → "reklam yüklenemedi" (rezerv sıfırlanmalı)
+             >0   → gerçek yükseklik
+           --ad-bottom = _bannerH + KM_VP.bannerExtra() (iOS alt güvenli alan payı).
+           Ayrı fonksiyon olmasının sebebi: pay SONRADAN değişebiliyor — güvenli alan
+           ölçümü 350ms'de bitiyor, tam ekran reklamdan dönüşte geometri değişiyor.
+           Ham değer saklandığı için yeniden hesaplamak paya pay EKLEMEZ. */
+        _bannerH: null,
+        _applyAdBottom: function () {
+          var h = this._bannerH;
+          if (h === null || typeof h === "undefined") return;
+          var v = "0px";
+          if (h > 0 && !isPremium) {
+            var ek = 0;
+            try {
+              if (window.KM_VP && window.KM_VP.bannerExtra)
+                ek = window.KM_VP.bannerExtra() || 0;
+            } catch (e) {}
+            v = h + ek + "px";
+          }
+          var once =
+            document.documentElement.style.getPropertyValue("--ad-bottom") || "0px";
+          if (once === v) return;
+          document.documentElement.style.setProperty("--ad-bottom", v);
+          try {
+            kmAdGapChanged();
+          } catch (e) {}
+        },
         showBanner: function () {
           if (!this.inApp()) return;
           if (isPremium) return; // PRO: banner asla gösterme
@@ -14617,20 +14823,15 @@ function drawResultCard(opts) {
               // "çekilmemiş" derse ekliyor (çekilmişse 0 → davranış bugünküyle aynı).
               // ⚠️ "0px" (reklam yüklenemedi) ve PRO yolları BOZULMUYOR: pay yalnızca
               // POZİTİF bir yüksekliğe eklenir.
-              var _vv = v;
-              try {
-                var _hn = parseFloat(v);
-                if (_hn > 0 && window.KM_VP && window.KM_VP.bannerExtra) {
-                  var _ek = window.KM_VP.bannerExtra() || 0;
-                  if (_ek > 0) _vv = _hn + _ek + "px";
-                }
-              } catch (e) {}
-              document.documentElement.style.setProperty("--ad-bottom", _vv);
-              if (_once !== _vv) {
-                try {
-                  kmAdGapChanged();
-                } catch (e) {}
-              }
+              // ⭐ 20 AĞU — HAM YÜKSEKLİK AYRI SAKLANIYOR.
+              // Eski kod payı hesaplayıp SONUCU yazıyordu; ham değer kaybolduğu için
+              // pay sonradan değişirse (ölçüm geç bitti, reklamdan dönüldü) rezerv bir
+              // daha DOĞRULANAMIYORDU — tekrar hesaplasak paya pay eklerdik.
+              // Artık tek kaynak ham yükseklik; --ad-bottom onun türevi.
+              self._bannerH = parseFloat(v) || 0;
+              self._applyAdBottom();
+              // (_once yalnız eski karşılaştırma içindi; artık _applyAdBottom yapıyor)
+              void _once;
             };
             try {
               // Bu AdMob sürümünde addListener Promise DEĞİL, doğrudan handle döner.
@@ -14817,9 +15018,21 @@ function drawResultCard(opts) {
               rewarded = true;
             });
             on("onRewardedVideoAdDismissed", function () {
+              // ⭐ 20 AĞU — ÖDÜLLÜ REKLAMDA KURTARMA HİÇ YOKTU.
+              // 19 Ağu'da KM_VP yalnız INTERSTITIAL'a bağlanmıştı; oysa ödüllü video
+              // da tam ekran bir native view controller olarak sunulur → aynı kökten
+              // aynı iki belirti (başlık durum çubuğunun altına girer + kaydırma ölür).
+              // Kullanıcının en sık gördüğü yol BURASI (Merci → "Reklam İzle").
+              try {
+                if (window.KM_VP) window.KM_VP.afterFullscreenAd();
+              } catch (e) {}
               finish(rewarded);
             });
             on("onRewardedVideoAdFailedToShow", function () {
+              // Gösterim yarıda patlasa bile controller sunulmuş olabilir → kurtar.
+              try {
+                if (window.KM_VP) window.KM_VP.afterFullscreenAd();
+              } catch (e) {}
               finish(false);
             });
             on("onRewardedVideoAdFailedToLoad", function () {
@@ -14830,6 +15043,11 @@ function drawResultCard(opts) {
               isTesting: self.AD_TESTING,
             })
               .then(function () {
+                // 20 Ağu: interstitial ile aynı — açılmadan önce kaydırma konumu +
+                // görünüm alanı yüksekliği kaydedilsin (dönüşte kurtarma ölçüsü).
+                try {
+                  if (window.KM_VP) window.KM_VP.beforeFullscreenAd();
+                } catch (e) {}
                 return AdMob.showRewardVideoAd();
               })
               .catch(function (e) {
