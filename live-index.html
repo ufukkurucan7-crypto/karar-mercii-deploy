@@ -22957,9 +22957,17 @@ function drawResultCard(opts) {
         } catch (e) {}
         return { sayi: sayi, son: son };
       }
-      function _kmPushSorulabilir() {
+      /* ⭐ 20 AĞU — ODA ANI 3 GÜN KURALINDAN MUAF (19 Ağu'da söz verilmişti).
+         TESPİT: yeni "karar sonrası" isteği AYNI kotayı yiyordu → çarkı çevirip
+         "Şimdi değil" diyen kullanıcı 10 dk sonra oda kurduğunda modal yerine
+         yalnız ŞERİT görüyordu. Oysa oda anı elimizdeki EN GÜÇLÜ gerekçe
+         ("sonuç çıkınca haber verelim mi?") ve orada her zaman modal çıkmalı.
+         ⚠️ 3 SORU ÜST SINIRI KALIYOR — muafiyet yalnız ARALIK içindir. Sınırı da
+            kaldırırsak oda kuran kullanıcı her odada modal görür = bunaltma. */
+      function _kmPushSorulabilir(odaAni) {
         var d = _kmPushSoruDurum();
         if (d.sayi >= KM_PUSH_MAX_SORU) return false;
+        if (odaAni) return true;
         if (d.son && Date.now() - d.son < KM_PUSH_ARA_MS) return false;
         return true;
       }
@@ -22986,7 +22994,10 @@ function drawResultCard(opts) {
           // ⚠️ ÇİFTLENME KORUMASI: modal gösterilmeyecekse (kota doldu ya da
           // 3 gün geçmedi) bunun yerine oda ekranında ince şerit gösterilir.
           // İkisi ASLA aynı anda çıkmaz — bkz. _kmPushSeritGoster çağrısı.
-          if (!_kmPushSorulabilir()) {
+          // ⭐ 20 AĞU: `code` VARSA bu gerçek bir oda anıdır → 3 gün aralığından
+          // muaf (bkz. _kmPushSorulabilir notu). code yoksa çağrı "karar sonrası"
+          // yolundan gelmiştir ve normal kotaya tabidir.
+          if (!_kmPushSorulabilir(!!code)) {
             _kmPushSeritGoster();
             return;
           }
@@ -25641,6 +25652,61 @@ function drawResultCard(opts) {
         document.getElementById("splash").classList.add("gone");
         setTimeout(() => document.getElementById("splash").remove(), 500);
       }, 1200);
+
+      /* ⭐ 20 AĞU — İLK AÇILIŞTA BİLDİRİM ŞERİDİ (kullanıcı kararı)
+         İSTEK: "uygulamayı ilk yüklerken bildirim açtıralım, hayır derse daha
+         sonra yine oda kurarken vs soralım."
+
+         ⚠️ ŞERİT — MODAL DEĞİL, SİSTEM PENCERESİ HİÇ DEĞİL. Bu ayrım isteğin
+         KENDİSİNİN çalışabilmesi için şart: sistem izin penceresi TEK ATIŞLIKTIR.
+         Uygulamayı henüz tanımayan kullanıcı orada "İzin verme" derse
+         requestPermissions bir daha ASLA pencere açmaz ve o cihaz KALICI olarak
+         kaybedilir — yani "sonra yine sorarız" imkânsız hale gelir. Şerit sistem
+         penceresini kendiliğinden AÇMAZ; yalnız kullanıcı "Aç"a basarsa açar.
+         Böylece tek kurşun ancak kullanıcı zaten "evet" derken harcanır; şeridi
+         kapatan/görmezden gelen hiçbir şey yakmaz → oda kurarken, ilk karardan
+         sonra ve menüden tekrar sorulabilir.
+
+         ⚠️ Şeridin KENDİ guard'ları zaten var (izin verilmişse, şerit kalıcı
+            kapatıldıysa, izin modalı açıksa çıkmaz). Burada yalnız UYGUN AN
+            bekleniyor: ana ekran açık, onboarding bitmiş, tur oynamıyor, modal yok.
+            İlk açılışta bunlar sırayla olur; uygun an 4 denemede gelmezse ISRAR
+            EDİLMEZ — damga da yazılmaz, bir sonraki açılışta yeniden denenir. */
+      (function () {
+        try {
+          if (localStorage.getItem("kmIlkAcilisSeriti") === "1") return;
+        } catch (e) {}
+        var deneme = 0;
+        var uygunMu = function () {
+          var m = document.getElementById("scr-main");
+          if (!m || !m.classList.contains("on")) return false; // onboarding/giriş açık
+          if (document.getElementById("km-tour")) return false; // "nasıl kullanılır" turu
+          if (document.getElementById("km-push-modal")) return false;
+          if (
+            document.querySelector(
+              ".auth-modal.on, .pro-modal.on, .info-modal.on, .menu-overlay.on"
+            )
+          )
+            return false;
+          return true;
+        };
+        var dene = function () {
+          deneme++;
+          try {
+            // Web / eski sürüm → eklenti yok, sessizce geç. İzin zaten varsa hiç sorma.
+            if (!KM_PUSH.plug() || KM_PUSH.ok()) return;
+            if (uygunMu()) {
+              try {
+                localStorage.setItem("kmIlkAcilisSeriti", "1");
+              } catch (e) {}
+              _kmPushSeritGoster();
+              return;
+            }
+          } catch (e) {}
+          if (deneme < 4) setTimeout(dene, 5000);
+        };
+        setTimeout(dene, 3800);
+      })();
 
       // ── HEADER: scroll'da beliren yumuşak gölge (pasif listener, sadece
       //    class toggle — box-shadow transition CSS'te; blur/filter YOK) ──
