@@ -7095,16 +7095,18 @@
         font-weight: 900;
       }
 
-      /* ── Alt sabit çubuk (yapışkan; AdMob bandının üstünde kalır) ── */
+      /* ── Alt sabit çubuk (yapışkan; AdMob bandının üstünde kalır) ──
+         19 Ağu — .km-vdock ile BİREBİR aynı iki kusur buradaydı (bkz. .km-vdock notu):
+         saydam zemin + maskesiz rezerv şeridi. Maske ortak kuralda (.km-vdock::after).
+         EK OLARAK: bu kuralın html.dark karşılığı HİÇ YOKTU → karanlık modda ekranın
+         dibinde BEYAZ bir çubuk kalıyordu; var(--surface) bunu da kendiliğinden çözer. */
       #online-setup .km-dock {
         position: sticky;
         bottom: var(--ad-bottom, 0px);
         z-index: 5;
         margin-top: 16px;
         padding: 10px 0;
-        background: rgba(255, 255, 255, 0.9);
-        -webkit-backdrop-filter: blur(12px) saturate(1.3);
-        backdrop-filter: blur(12px) saturate(1.3);
+        background: var(--surface);
         border-top: 1px solid var(--ac-bd);
       }
       #online-setup .km-dock-top {
@@ -7477,17 +7479,48 @@
       .km-vlegend span b {
         color: var(--ac-d);
       }
-      /* Alt sabit çubuk — "Oyumu Gönder" */
+      /* Alt sabit çubuk — "Oyumu Gönder"
+         ⚠️ 19 AĞU — MİSAFİR OYLAMA EKRANINDA İKİ AYRI KUSUR (kullanıcı fotoğrafı):
+         1) ZEMİN %90 SAYDAM + blur idi → çubuğun ARKASINDAN geçen seçenek kartı
+            sızıyordu; "Olmaz / Pek değil / Olur / İyi / Bu!" etiket satırı yarım
+            okunuyordu. Artık OPAK var(--surface): açık modda #ffffff (eskisinin opak
+            karşılığı), karanlıkta 5 temanın her birinde o temanın yüzeyi.
+            backdrop-filter KALDIRILDI — opak zeminin arkasında zaten görünmez, sadece
+            GPU maliyetiydi. (Ayrıca backdrop-filter, sabit konumlu alt öğeler için
+            "containing block" yaratıp aşağıdaki ::after maskesini bozardı.)
+         2) REZERV ŞERİDİ MASKESİZDİ. bottom: var(--ad-bottom) çubuğu banner rezervinin
+            üstünde tutuyor. Rezerv (olay gelmezse 75px varsayılan) GERÇEK banner
+            yüksekliğinden büyük olduğunda aradaki ince şerit BOŞ kalıyor ve oradan
+            KAYDIRILAN İÇERİK görünüyordu → kullanıcının "butonun altında ikinci, soluk
+            yıldız etiketi satırı" dediği şey. ::after ile o şerit opak kapatıldı.
+         ⚠️ --ad-bottom'a YAZILMIYOR, yalnız OKUNUYOR (yazma yolları: KM_AD._setAd ve
+            removeBannerForPro — onlara dokunulmadı).
+         ⚠️ Konum/akış geometrisi DEĞİŞMEDİ: bottom ve padding aynı kaldı, maske
+            akış-dışı (position: fixed) → "Ayrıl" butonu aşağı KAYMAZ. */
       .km-vdock {
         position: sticky;
         bottom: var(--ad-bottom, 0px);
         z-index: 5;
         margin-top: 12px;
         padding: 10px 0;
-        background: rgba(255, 255, 255, 0.9);
-        -webkit-backdrop-filter: blur(12px) saturate(1.3);
-        backdrop-filter: blur(12px) saturate(1.3);
+        background: var(--surface);
         border-top: 1px solid var(--ac-bd);
+      }
+      /* Banner rezerv şeridi maskesi — bkz. .km-vdock notu (2).
+         position: fixed → akışa HİÇ dokunmaz, çubuğun yüksekliğini büyütmez.
+         Kapladığı bant zaten .app'in padding-bottom: var(--ad-bottom) rezervidir; orada
+         DURAN içerik olmaz, yalnız KAYAN içerik geçer → örtmek istediğimiz tam olarak o.
+         --ad-bottom yoksa (web/misafir tarayıcı, PRO) yükseklik 0 → hiç görünmez. */
+      .km-vdock::after,
+      #online-setup .km-dock::after {
+        content: "";
+        position: fixed;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        height: var(--ad-bottom, 0px);
+        background: var(--surface);
+        pointer-events: none;
       }
       .km-vdock-top {
         display: flex;
@@ -7577,8 +7610,11 @@
       html.dark .km-vlegend span b {
         color: #ece8f7;
       }
+      /* 19 Ağu: sabit mor rgba(16,12,32,.92) → token. Hem OPAK (arkası sızmıyor)
+         hem de 5 karanlık temanın her birinde o temanın yüzeyini kullanıyor — eskiden
+         mavi/yeşil/gül/gri temada da MOR bir çubuk çıkıyordu. */
       html.dark .km-vdock {
-        background: rgba(16, 12, 32, 0.92);
+        background: var(--surface);
         border-top-color: #33285a;
       }
       html.dark .km-vdock-top .l {
@@ -11525,6 +11561,105 @@
         roomTopic: function (code) {
           return "oda_" + String(code || "").toUpperCase().trim();
         },
+        // ⭐ 19 AĞU — GERÇEK İZNİ SİSTEME SOR (yerel damgaya güvenme).
+        // TESPİT: ok() yalnız localStorage'daki `kmPushOk` damgasına bakıyordu ve
+        // o damga SADECE uygulama içinden requestPermissions "granted" dönerse
+        // yazılıyordu. checkPermissions hiçbir yerde çağrılmıyordu. İki yönlü
+        // sessiz arıza:
+        //  1) Kullanıcı bildirimi TELEFON AYARLARI'ndan açarsa — ki şeridin kendi
+        //     metni tam olarak bunu tarif ediyor: "Ayarlar > Bildirimler'den
+        //     açabilirsin" — uygulama bunu HİÇ öğrenmez, hiçbir topic'e abone
+        //     olmaz, kullanıcı sonsuza kadar bildirim almaz. Kendi önerdiğimiz
+        //     kurtarma yolu çalışmıyordu.
+        //  2) Kullanıcı izni ayarlardan KAPATIRSA damga "1" kalır, ok() true
+        //     döner, modal/şerit bir daha çıkmaz → geri açma yolu kapanır.
+        // Artık açılışta ve uygulama öne gelince gerçek izin okunup damga
+        // senkronlanıyor, kaçırılan abonelikler telafi ediliyor.
+        refresh: async function () {
+          var P = this.plug();
+          if (!P || !P.checkPermissions) return this.ok();
+          var granted = false;
+          try {
+            var r = await P.checkPermissions();
+            granted = !!(r && r.receive === "granted");
+          } catch (e) {
+            return this.ok(); // okuyamadıysak mevcut durumu BOZMA
+          }
+          var oncekiDamga = this.ok();
+          try {
+            if (granted) localStorage.setItem("kmPushOk", "1");
+            else localStorage.removeItem("kmPushOk");
+          } catch (e) {}
+          if (granted && !oncekiDamga) {
+            // Ayarlardan yeni açılmış → kaçırılan TÜM abonelikleri kur.
+            await this.ensureChannel();
+            await this.subscribe(this.TOPIC_ALL);
+            this.subscribeUser();
+          }
+          if (granted) this.syncRooms();
+          return granted;
+        },
+        // ── AKTİF ODA TOPIC'LERİ ─────────────────────────────────────────
+        // ⚠️ FCM abonelikleri TOKEN'a bağlıdır. Uygulama verisi temizlenince,
+        // yeniden kurulunca ya da token yenilenince oda aboneliği DÜŞEBİLİR —
+        // ve bunu fark eden hiçbir yer yoktu: odaya katılma anında bir kez
+        // subscribe ediliyor, bir daha asla tazelenmiyordu. Kullanıcı odadayken
+        // uygulamayı kapatıp açtıysa (senaryonun ta kendisi) abonelik ölmüş
+        // olabilir ve kimse yeniden kurmuyordu.
+        // Aktif oda kodları bitiş zamanıyla saklanır; her açılışta/resume'da
+        // yeniden abone olunur, süresi geçenlerden ÇIKILIR (topic çöpü birikip
+        // aylar önceki odalardan bildirim gelmesin).
+        ROOMS_KEY: "kmPushRooms",
+        MAX_ROOMS: 5,
+        _rooms: function () {
+          try {
+            var a = JSON.parse(localStorage.getItem(this.ROOMS_KEY) || "[]");
+            return Array.isArray(a) ? a : [];
+          } catch (e) {
+            return [];
+          }
+        },
+        _saveRooms: function (a) {
+          try {
+            localStorage.setItem(
+              this.ROOMS_KEY,
+              JSON.stringify(a.slice(-this.MAX_ROOMS)),
+            );
+          } catch (e) {}
+        },
+        // ⚠️ İZİN OLMASA DA KAYDET: kullanıcı "şimdi değil" deyip sonra izni
+        // açarsa (modal/şerit/Ayarlar) refresh() → syncRooms() bu listeden
+        // odayı bulup abone eder. Kayıt izne bağlansaydı o telafi imkânsızdı.
+        rememberRoom: function (code, untilMs) {
+          if (!code) return;
+          code = String(code).toUpperCase().trim();
+          var a = this._rooms().filter(function (r) {
+            return r && r.c !== code;
+          });
+          // Oda süresi tavanı 24 saat (closesAt); pay bırakarak 26 saat.
+          a.push({ c: code, u: untilMs || Date.now() + 26 * 3600000 });
+          this._saveRooms(a);
+        },
+        syncRooms: function () {
+          if (!this.plug() || !this.ok()) return;
+          var now = Date.now(),
+            self = this,
+            kalan = [];
+          this._rooms().forEach(function (r) {
+            if (!r || !r.c) return;
+            // ⏳ Sonuç bildirimi süre dolduktan SONRA gelir (sunucu yedeği 5
+            // dakikada bir bakar) → bitişin hemen ardından topic'ten çıkma,
+            // 1 saat pay bırak. Yoksa bildirimi bekleyen kişi tam da gelmeden
+            // aboneliğinden çıkarılır.
+            if (r.u && now > r.u + 3600000) {
+              self.unsubscribe(self.roomTopic(r.c));
+              return;
+            }
+            self.subscribe(self.roomTopic(r.c));
+            kalan.push(r);
+          });
+          this._saveRooms(kalan);
+        },
         _inited: false,
         init: function () {
           if (this._inited) return;
@@ -11563,7 +11698,17 @@
             //      diye not düşülmüştü, altyapısı artık hazır.
             // ⚠️ Anonim/misafirde UID yok → abone olunmaz, sessizce atlanır.
             this.subscribeUser();
+            // ⭐ 19 AĞU: aktif oda topic'lerini de tazele. Eskiden yalnız genel
+            // + kişisel topic yenileniyordu; ODA topic'i (sonuç bildiriminin
+            // TEK yolu) açılışta hiç kurtarılmıyordu.
+            this.syncRooms();
           }
+          // ⭐ Damgadan bağımsız: gerçek sistem iznini oku. Ayarlardan açılmış
+          // olabilir (o durumda yukarıdaki blok hiç çalışmadı) ya da kapatılmış
+          // olabilir (damga yanlış yere "1" diyor olabilir).
+          try {
+            this.refresh();
+          } catch (e) {}
         },
         // ⚠️ AYRI METOD OLMAK ZORUNDA: init() `_inited` ile korumalı ve auth
         // ÇÖZÜLMEDEN önce çalışıyor → o anda currentUser henüz null. Abonelik
@@ -12048,9 +12193,27 @@
           done();
         }
       }
+      // ── BİLDİRİM DURUMUNU TAZELE (resume) ──────────────────────────────
+      // ⭐ 19 AĞU. Kullanıcı bildirimi telefon Ayarları'ndan açtığında ya da
+      // kapattığında uygulamaya HİÇBİR olay gelmez — tek öğrenme anı geri
+      // dönüştür. PRO tazelemesiyle aynı kanca, ama ondan AYRI tutuldu:
+      // kmRefreshEntitlement misafir/anonim kullanıcıda erken çıkıyor, oysa
+      // bildirim izni misafiri de ilgilendiriyor (oda sonucu misafire de gider).
+      var _kmPushSyncLast = 0;
+      function kmPushResumeSync() {
+        var now = Date.now();
+        if (now - _kmPushSyncLast < 15000) return; // resume art arda tetiklenebilir
+        _kmPushSyncLast = now;
+        try {
+          if (window.KM_PUSH && KM_PUSH.plug()) KM_PUSH.refresh();
+        } catch (e) {}
+      }
       // Web + PWA: sekme/uygulama tekrar görünür oldu
       document.addEventListener("visibilitychange", function () {
-        if (document.visibilityState === "visible") kmRefreshEntitlement();
+        if (document.visibilityState === "visible") {
+          kmRefreshEntitlement();
+          kmPushResumeSync();
+        }
       });
       // Native (Capacitor): App plugin 'resume' — ⚠️ plugin guard'lı (web'de App yok)
       try {
@@ -12063,6 +12226,7 @@
         ) {
           window.Capacitor.Plugins.App.addListener("resume", function () {
             kmRefreshEntitlement();
+            kmPushResumeSync();
           });
         }
       } catch (e) {}
@@ -13812,6 +13976,350 @@ function drawResultCard(opts) {
         document.getElementById("ai-ctx").disabled = false;
       }
 
+      /* ═══════════════ KM_VP — GÖRÜNÜM ALANI (VIEWPORT) MUHAFIZI ═══════════════
+         19 AĞU — iOS'ta iki canlı hata için ÖLÇÜM + KURTARMA katmanı.
+
+         ⭐ ÖNCE MEKANİZMA (kaynaktan doğrulandı, tahmin değil):
+         Capacitor iOS'ta WKWebView, view controller'ın KÖK GÖRÜNÜMÜDÜR
+         (@capacitor/ios → CAPBridgeViewController.loadView: "view = webView") ve TÜM
+         ekranı kaplar; durum çubuğunun / Dynamic Island'ın ALTINA da uzanır.
+         capacitor.config.ts'te ios.contentInset verilmediği için WKWebView'in kaydırma
+         görünümü de inset uygulamaz (varsayılan: ...InsetAdjustmentNever).
+         Peki içerik normalde neden durum çubuğunun altına girmiyor?
+         → Çünkü viewport meta'sında viewport-fit=cover YOK. viewport-fit varsayılanı
+           "auto"dur ve WebKit bu modda SAYFA GÖRÜNÜM ALANINI güvenli alan kadar İÇERİ
+           ÇEKER; karşılığında env(safe-area-inset-*) DAİMA 0 döner (bu dosyada
+           safe-area-inset-top hiç kullanılmıyor olmasının sebebi de bu).
+           Yani üst güvenli alanı CSS değil, WEBKIT'İN KENDİSİ hallediyor.
+
+         🔴 HATA 1 (iPhone): tam ekran (interstitial) reklam bir native view controller
+         olarak sunulup kapanıyor. Tam ekran sunumda iOS, sunan controller'ın görünümünü
+         hiyerarşiden ÇIKARIR → safeAreaInsets sıfırlanır → WebKit sayfayı "güvenli alan
+         yok" geometrisiyle yeniden dizer. Geri dönüşte inset'ler UIKit'e geri gelir ama
+         WebKit'in viewport-fit=auto iç çekmesi her zaman yeniden hesaplanmıyor.
+         Sonuç TEK KÖKTEN iki belirti:
+           • sayfanın tepesi fiziksel ekran tepesine oturur → .hdr (sticky, top:0)
+             durum çubuğunun / Dynamic Island'ın ALTINDA kalır,
+           • görünüm alanı uzadığı için scrollHeight - innerHeight küçülür →
+             "yukarı aşağı çok az gidip geliyor, tam scroll olmuyor".
+
+         🔴 HATA 2 (iPad): AdMob banner'ı eklentide safeAreaLayoutGuide.bottom'a
+         sabitleniyor (@capacitor-community/admob → BannerExecutor.bannerViewDidReceiveAd)
+         — yani banner'ın ALT kenarı ekranın dibinde DEĞİL, alt güvenli alanın (home
+         indicator) üstündedir. Eklenti --ad-bottom için yalnız banner YÜKSEKLİĞİNİ
+         bildirir. WebKit sayfayı içeri çekmişse iki taban çakışır ve rezerv doğrudur;
+         ÇEKMEMİŞSE banner'ın gerçekte kapladığı yer "yükseklik + altGüvenliAlan" olur ve
+         rezerv o kadar EKSİK kalır → banner sekme çubuğunun üstüne biner, "Çark /
+         Oylama / Çekiliş / Merci" etiketleri kesilir.
+
+         ⭐ ÖLÇÜM HİLESİ: env(safe-area-inset-*) auto modunda 0 döndüğü için gerçek
+         değerler JS'ten okunamaz. Bu yüzden AÇILIŞTA BİR KEZ viewport meta'sı geçici
+         olarak viewport-fit=cover yapılıp bir sonda elemandan gerçek inset'ler okunuyor,
+         sonra meta AYNEN geri alınıyor. Splash ekranı (position:fixed; inset:0;
+         z-index:9999) o an her şeyi kapattığı için görsel etkisi yoktur; ayrıca 1.5sn'lik
+         emniyet zamanlayıcısı meta'nın cover'da TAKILI KALMASINI imkânsız kılar.
+         Böylece HATA 2 düzeltmesi TAHMİN değil ÖLÇÜM olur.
+
+         ⚠️ Bu blok --ad-bottom'a KENDİ BAŞINA YAZMAZ; yalnız KM_AD._setAd'in ekleyeceği
+         payı hesaplar. removeBannerForPro ve bannerAdFailedToLoad yolları korunur. */
+      var KM_VP = {
+        safeTop: 0,
+        safeBottom: 0,
+        measured: false,
+        baseVH: 0,
+        _measuring: false,
+        _scrollBefore: 0,
+
+        iosApp: function () {
+          try {
+            return !!(
+              window.Capacitor &&
+              window.Capacitor.isNativePlatform &&
+              window.Capacitor.isNativePlatform() &&
+              window.Capacitor.getPlatform &&
+              window.Capacitor.getPlatform() === "ios"
+            );
+          } catch (e) {
+            return false;
+          }
+        },
+
+        /* WebKit sayfayı güvenli alan kadar içeri çekmiş mi?
+           screen.height CSS px cinsinden TAM ekran yüksekliğidir ve güvenli alandan
+           etkilenmez; innerHeight ise sayfa görünüm alanıdır. Fark > 8 ise çekiyor.
+           Bilinmiyorsa "çekiyor" (=bugünkü davranış) varsayılır → asla kötüleştirmez. */
+        insetApplied: function () {
+          try {
+            var sh = (window.screen && window.screen.height) || 0;
+            if (!sh) return true;
+            return sh - window.innerHeight > 8;
+          } catch (e) {
+            return true;
+          }
+        },
+
+        /* HATA 2 payı: banner alt güvenli alanın ÜSTÜNDE duruyor. Sayfa görünüm alanı
+           tam ekransa (WebKit çekmemişse) o alan kadar EKSTRA rezerv gerekir. */
+        bannerExtra: function () {
+          if (!this.measured || !this.iosApp()) return 0;
+          return this.insetApplied() ? 0 : this.safeBottom;
+        },
+
+        _oku: function (el) {
+          var cs = window.getComputedStyle(el);
+          this.safeTop = parseFloat(cs.paddingTop) || 0;
+          this.safeBottom = parseFloat(cs.paddingBottom) || 0;
+          this.measured = true;
+        },
+
+        _sonda: function () {
+          var p = document.createElement("div");
+          p.setAttribute("aria-hidden", "true");
+          p.style.cssText =
+            "position:fixed;left:0;top:0;width:0;height:0;visibility:hidden;" +
+            "pointer-events:none;box-sizing:content-box;" +
+            "padding-top:env(safe-area-inset-top,0px);" +
+            "padding-bottom:env(safe-area-inset-bottom,0px);";
+          document.documentElement.appendChild(p);
+          return p;
+        },
+
+        /* Gerçek güvenli alanları BİR KEZ ölç (bkz. yukarıdaki ÖLÇÜM HİLESİ). */
+        measure: function () {
+          if (this.measured || this._measuring) return;
+          var meta = document.querySelector('meta[name="viewport"]');
+          if (!meta) return;
+          var self = this;
+          var orig = meta.getAttribute("content") || "";
+          var probe = this._sonda();
+          if (orig.indexOf("viewport-fit") >= 0) {
+            // Zaten cover modundaysa hileye gerek yok, doğrudan oku.
+            try {
+              this._oku(probe);
+            } catch (e) {}
+            probe.remove();
+            return;
+          }
+          this._measuring = true;
+          var geriAl = function () {
+            try {
+              meta.setAttribute("content", orig);
+            } catch (e) {}
+            try {
+              probe.remove();
+            } catch (e) {}
+            self._measuring = false;
+          };
+          // EMNİYET: rAF zinciri herhangi bir sebeple çalışmazsa bile meta ASLA
+          // cover modunda takılı kalmasın (takılırsa tüm düzen kayar).
+          var emniyet = setTimeout(geriAl, 1500);
+          try {
+            meta.setAttribute("content", orig + ",viewport-fit=cover");
+          } catch (e) {
+            clearTimeout(emniyet);
+            geriAl();
+            return;
+          }
+          requestAnimationFrame(function () {
+            requestAnimationFrame(function () {
+              try {
+                self._oku(probe);
+              } catch (e) {}
+              clearTimeout(emniyet);
+              geriAl();
+            });
+          });
+        },
+
+        /* Tam ekran reklam AÇILMADAN hemen önce */
+        beforeFullscreenAd: function () {
+          try {
+            this._scrollBefore =
+              window.scrollY || document.documentElement.scrollTop || 0;
+            this.baseVH = window.innerHeight;
+          } catch (e) {}
+        },
+
+        /* WebKit'i viewport'u yeniden hesaplamaya zorla: meta değişimi
+           ViewportConfiguration'ı tazeler. İki değişiklik aynı karede birleşmesin diye
+           geri alma rAF'ye bırakılıyor. Düzen matematiği YOK → zararsız. */
+        nudgeViewport: function () {
+          try {
+            var meta = document.querySelector('meta[name="viewport"]');
+            if (!meta) return;
+            var c = meta.getAttribute("content") || "";
+            if (c.indexOf("minimum-scale") >= 0) return;
+            meta.setAttribute("content", c + ",minimum-scale=1");
+            requestAnimationFrame(function () {
+              try {
+                meta.setAttribute("content", c);
+              } catch (e) {}
+            });
+          } catch (e) {}
+        },
+
+        /* Tam ekran reklam KAPANDIKTAN sonra kurtarma.
+           Adımlar birbirine bağlanmıyor (biri patlarsa kalanlar yine çalışsın). */
+        afterFullscreenAd: function () {
+          var self = this;
+          var y = this._scrollBefore || 0;
+          var adim = function () {
+            // 1) Klavye bayrağı takılı kaldıysa temizle: reklam sırasında gelen sahte
+            //    visualViewport küçülmesi _kbOpen'ı true bırakabiliyor (bkz. ~24520),
+            //    dönüşte resize gelmezse banner kalıcı gizli kalırdı.
+            try {
+              if (
+                typeof KM_AD !== "undefined" &&
+                KM_AD._kbOpen &&
+                KM_AD._isTextFocused &&
+                !KM_AD._isTextFocused()
+              ) {
+                KM_AD._kbOpen = false;
+              }
+            } catch (e) {}
+            // 2) WebKit'i viewport'u yeniden hesaplamaya zorla (HATA 1 hedefi).
+            try {
+              self.nudgeViewport();
+            } catch (e) {}
+            // 3) Düzeni yeniden hesaplat (çark tuvali + açık tur/ipucu balonları).
+            try {
+              window.dispatchEvent(new Event("resize"));
+            } catch (e) {}
+            try {
+              if (window.kmAdGapChanged) window.kmAdGapChanged();
+            } catch (e) {}
+            try {
+              if (typeof KM_AD !== "undefined" && KM_AD.refreshBanner)
+                KM_AD.refreshBanner();
+            } catch (e) {}
+            // 4) Kaydırma konumunu geri koy — reklam dönüşünde sayfa tepeye/dibe
+            //    sıçrayabiliyor; kullanıcı çark sonucunu kaybetmesin.
+            try {
+              if (y > 0) window.scrollTo(0, y);
+            } catch (e) {}
+          };
+          adim();
+          setTimeout(adim, 120);
+          setTimeout(adim, 450);
+        },
+
+        /* ── CİHAZ TEŞHİS KAPLAMASI ──────────────────────────────────────────
+           Gerçek cihazda konsol yok. Başlığa (.hdr) 2.5 sn içinde 6 kez dokununca açılır.
+           Kullanıcı ekranı fotoğraflayıp gönderdiğinde HATA 1 ve HATA 2'nin hangi
+           modelde olduğu KESİNLEŞİR (insetApplied + safeTop/safeBottom + tabs ölçüsü).
+           Reklamdan ÖNCE ve SONRA birer kare = hipotezin doğrudan kanıtı/çürütmesi. */
+        diag: function () {
+          var eski = document.getElementById("km-vp-diag");
+          if (eski) {
+            eski.remove();
+            return;
+          }
+          var t = document.querySelector(".tabs");
+          var r = t && t.getBoundingClientRect ? t.getBoundingClientRect() : null;
+          var st = 0,
+            sb = 0;
+          try {
+            var p = this._sonda();
+            var c = getComputedStyle(p);
+            st = parseFloat(c.paddingTop) || 0;
+            sb = parseFloat(c.paddingBottom) || 0;
+            p.remove();
+          } catch (e) {}
+          var satirlar = [
+            ["platform", (window.Capacitor && window.Capacitor.getPlatform && window.Capacitor.getPlatform()) || "web"],
+            ["screen", screen.width + " x " + screen.height],
+            ["inner", window.innerWidth + " x " + window.innerHeight],
+            ["visualVP h", window.visualViewport ? Math.round(window.visualViewport.height) : "-"],
+            ["dpr", window.devicePixelRatio],
+            ["screen.h - inner.h", screen.height - window.innerHeight],
+            ["insetApplied", this.insetApplied() ? "EVET" : "HAYIR"],
+            ["env SIMDI top/bot", st + " / " + sb],
+            ["olculen safeTop", this.safeTop],
+            ["olculen safeBottom", this.safeBottom],
+            ["olcum yapildi", this.measured ? "EVET" : "HAYIR"],
+            ["bannerExtra", this.bannerExtra()],
+            ["--ad-bottom", (document.documentElement.style.getPropertyValue("--ad-bottom") || "(yok)").trim()],
+            ["tabs.bottom", r ? Math.round(r.bottom) : "-"],
+            ["innerH - tabs.bottom", r ? Math.round(window.innerHeight - r.bottom) : "-"],
+            ["scrollH", Math.round(document.documentElement.scrollHeight)],
+            ["scrollH - innerH", Math.round(document.documentElement.scrollHeight - window.innerHeight)],
+            ["scrollY", Math.round(window.scrollY || 0)],
+            ["kbOpen", typeof KM_AD !== "undefined" ? String(KM_AD._kbOpen) : "-"],
+          ];
+          var box = document.createElement("div");
+          box.id = "km-vp-diag";
+          box.style.cssText =
+            "position:fixed;inset:0;z-index:999999;background:#0b0718;color:#e9e4ff;" +
+            "font:12px/1.55 ui-monospace,Menlo,Consolas,monospace;padding:52px 14px 24px;" +
+            "overflow:auto;-webkit-overflow-scrolling:touch";
+          var html =
+            '<div style="font-weight:900;font-size:14px;margin-bottom:10px">' +
+            "KM_VP TESHIS &mdash; ekrani fotograflayip gonder</div>";
+          for (var i = 0; i < satirlar.length; i++) {
+            html +=
+              '<div style="display:flex;justify-content:space-between;gap:10px;' +
+              'border-bottom:1px solid #241b3a;padding:4px 0">' +
+              '<span style="color:#a99fc4">' +
+              satirlar[i][0] +
+              "</span><b>" +
+              satirlar[i][1] +
+              "</b></div>";
+          }
+          html +=
+            '<button id="km-vp-diag-x" style="margin-top:16px;width:100%;padding:12px;' +
+            'border:0;border-radius:12px;background:#7c3aed;color:#fff;font-weight:900;' +
+            'font-size:14px">Kapat</button>';
+          box.innerHTML = html;
+          document.body.appendChild(box);
+          var x = document.getElementById("km-vp-diag-x");
+          if (x)
+            x.onclick = function () {
+              box.remove();
+            };
+        },
+
+        init: function () {
+          var self = this;
+          try {
+            this.baseVH = window.innerHeight;
+          } catch (e) {}
+          // Ölçüm: splash hâlâ ekranı kaplarken (splash 1200ms'de kaldırılıyor).
+          if (this.iosApp())
+            setTimeout(function () {
+              try {
+                self.measure();
+              } catch (e) {}
+            }, 350);
+          // Teşhis tetikleyicisi: başlığa 2.5sn içinde 6 dokunuş.
+          var say = 0,
+            ilk = 0;
+          document.addEventListener(
+            "click",
+            function (e) {
+              try {
+                if (!e.target || !e.target.closest) return;
+                if (!e.target.closest(".hdr")) return;
+                var now = Date.now();
+                if (now - ilk > 2500) {
+                  ilk = now;
+                  say = 0;
+                }
+                say++;
+                if (say >= 6) {
+                  say = 0;
+                  self.diag();
+                }
+              } catch (err) {}
+            },
+            true
+          );
+        },
+      };
+      window.KM_VP = KM_VP;
+      try {
+        KM_VP.init();
+      } catch (e) {}
+
       // ═══════════════ ADMOB (Capacitor uygulaması içinde) ═══════════════
       var KM_AD = {
         // Production'a çıkarken bunu false yap. Kapalı test boyunca true kalsın
@@ -13915,6 +14423,16 @@ function drawResultCard(opts) {
               } else if (h) subs.push(h);
             }
             on("interstitialAdDismissed", function () {
+              // ⭐ 19 AĞU — iPhone'da reklamdan dönünce başlık durum çubuğunun ALTINA
+              // giriyor + kaydırma menzili kısalıyordu. Tek kök: WebKit'in
+              // viewport-fit=auto güvenli-alan iç çekmesi, tam ekran native view
+              // controller sunulup kapandıktan sonra geri gelmiyor. Mekanizma ve ölçüm
+              // için bkz. KM_VP bloğu.
+              // ⚠️ Kurtarma finish()'ten ÖNCE: senkron başlasın, söz sonra çözülsün
+              // (finish → cleanup dinleyicileri kaldırıyor).
+              try {
+                if (window.KM_VP) window.KM_VP.afterFullscreenAd();
+              } catch (e) {}
               finish(true);
             });
             on("interstitialAdFailedToShow", function () {
@@ -13928,6 +14446,11 @@ function drawResultCard(opts) {
               isTesting: self.AD_TESTING,
             })
               .then(function () {
+                // 19 Ağu: reklam açılmadan ÖNCE kaydırma konumu + görünüm
+                // alanı yüksekliği kaydediliyor (dönüşte kurtarma için, bkz. KM_VP).
+                try {
+                  if (window.KM_VP) window.KM_VP.beforeFullscreenAd();
+                } catch (e) {}
                 return AdMob.showInterstitial();
               })
               .catch(function (e) {
@@ -14047,8 +14570,26 @@ function drawResultCard(opts) {
               var _once =
                 document.documentElement.style.getPropertyValue("--ad-bottom") ||
                 "0px";
-              document.documentElement.style.setProperty("--ad-bottom", v);
-              if (_once !== v) {
+              // ⭐ 19 AĞU — iPad'de banner alt sekme çubuğunun ÜSTÜNE biniyordu.
+              // Eklenti banner'ı safeAreaLayoutGuide.bottom'a sabitliyor ama --ad-bottom
+              // için yalnız banner YÜKSEKLİĞİNİ bildiriyor. Sayfa görünüm alanı tam
+              // ekransa (WebKit güvenli alanı içeri ÇEKMEMİŞSE) banner'ın gerçekte
+              // kapladığı yer "yükseklik + altGüvenliAlan" olur → rezerv o kadar eksik
+              // kalır ve banner sekmelerin üstüne biner.
+              // Pay TAHMİN DEĞİL: KM_VP açılışta gerçek inset'i ÖLÇÜYOR ve yalnız ölçüm
+              // "çekilmemiş" derse ekliyor (çekilmişse 0 → davranış bugünküyle aynı).
+              // ⚠️ "0px" (reklam yüklenemedi) ve PRO yolları BOZULMUYOR: pay yalnızca
+              // POZİTİF bir yüksekliğe eklenir.
+              var _vv = v;
+              try {
+                var _hn = parseFloat(v);
+                if (_hn > 0 && window.KM_VP && window.KM_VP.bannerExtra) {
+                  var _ek = window.KM_VP.bannerExtra() || 0;
+                  if (_ek > 0) _vv = _hn + _ek + "px";
+                }
+              } catch (e) {}
+              document.documentElement.style.setProperty("--ad-bottom", _vv);
+              if (_once !== _vv) {
                 try {
                   kmAdGapChanged();
                 } catch (e) {}
@@ -20596,6 +21137,7 @@ function drawResultCard(opts) {
             // FAZ 2: canlı oy tablosu (host da kim oyladı/bekliyor görsün)
             renderVoteTable(parts, deviceId, data.hostId);
             if (data.status === "closed" && data.winner) {
+              _kmHealRoomNotify(code, data); // bildirim düşmüşse telafi et
               showOnlineWinner(data);
               // new-round-btn ve reset-online-btn showOnlineWinner içinde yönetiliyor
             } else if (
@@ -21247,10 +21789,12 @@ function drawResultCard(opts) {
           renderParticipant(data.options);
           listenRoomAsParticipant(shareCode);
           setVoteStep(3); // odaya katıldı → adım göstergesi "Oyla"ya geç
-          if (data.timeLimit > 0)
-            startTimer(data.timeLimit * 60, "p-timer-display", () =>
-              submitVote(),
-            );
+          var _pKal = _kmKalanSn(data);
+          // Süresi ZATEN dolmuş odaya katılım: sayaç başlatma (0 sn ile
+          // başlatmak anında boş oy gönderirdi). Kapanışı dinleyicideki
+          // deadlineClose halleder.
+          if (data.timeLimit > 0 && _pKal > 0)
+            startTimer(_pKal, "p-timer-display", () => submitVote());
           snd("ding");
         } catch (e) {
           alert("Bağlantı hatası!");
@@ -21290,6 +21834,7 @@ function drawResultCard(opts) {
               _kmToast("⏹️ Oylama host tarafından sonlandırıldı");
             }
             if (data.status === "closed" && data.winner) {
+              _kmHealRoomNotify(code, data); // bildirim düşmüşse telafi et
               clearTimerInterval();
               document.getElementById("submit-vote-btn").style.display = "none";
               document.getElementById("waiting-msg").style.display = "none";
@@ -21328,10 +21873,9 @@ function drawResultCard(opts) {
               // Yeni tur: eski indirme kartları ekranda asılı kalmasın.
               _kmRemoveInstallCta();
               renderParticipant(data.options);
-              if (data.timeLimit > 0)
-                startTimer(data.timeLimit * 60, "p-timer-display", () =>
-                  submitVote(),
-                );
+              var _pKal2 = _kmKalanSn(data);
+              if (data.timeLimit > 0 && _pKal2 > 0)
+                startTimer(_pKal2, "p-timer-display", () => submitVote());
             }
             // SÜRE-DOLUNCA KAPANIŞ: uygulama-içi "Katıl" ile giren katılımcı açıksa,
             // host offline olsa bile süre dolan odayı onaysız kapat (code = bu odanın kodu).
@@ -21396,6 +21940,23 @@ function drawResultCard(opts) {
         }
       }
 
+      // ⚠️ 19 AĞU — KATILIMCI SAYACI ODAYA GÖRE DEĞİL KENDİNE GÖRE SAYIYORDU.
+      // `data.timeLimit * 60` odanın TOPLAM süresidir; odaya sonradan katılan
+      // kişi sıfırdan tam süre görüyordu (10 dakikalık odaya 8. dakikada giren
+      // "10:00" görüyor). Sonuç: kişi acele etmez, oda altından kapanır — hem
+      // oyunu kaybeder hem sayaç bitince çalışan otomatik gönderim YANLIŞ anda
+      // tetiklenir. Host tarafı rejoin yolunda closesAt'a çevrilmişti (bkz.
+      // "Timer'ı closesAt'tan devam ettir"), KATILIMCI tarafı unutulmuş.
+      // Tek doğru kaynak odanın closesAt'ı; timeLimit yalnız yedek.
+      function _kmKalanSn(data) {
+        try {
+          if (data && data.closesAt) {
+            var s = Math.floor((data.closesAt - Date.now()) / 1000);
+            return s > 0 ? s : 0;
+          }
+        } catch (e) {}
+        return (data && data.timeLimit ? data.timeLimit : 0) * 60;
+      }
       function startTimer(seconds, elId, onEnd) {
         clearTimerInterval();
         var el = document.getElementById(elId);
@@ -21860,9 +22421,28 @@ function drawResultCard(opts) {
       // ── ODA SONUCU BİLDİRİMİNİ TETİKLE (yalnız HOST) ────────────────────
       // Sunucu Firestore'u PERİYODİK TARAMAZ (17 Tem dersi) → tetiği host'un
       // client'ı çeker. Ateşle-unut: bildirim gitmezse oylama akışı etkilenmez.
-      function _kmNotifyRoomResult(code) {
+      // ⚠️ 19 AĞU — TEK ATIŞ + SESSİZ YUTMA DÜZELTİLDİ.
+      // Eskiden bu çağrı `.catch(function(){})` ile bitiyordu: odayı kapatan
+      // cihazın ağı o an koptuysa (asansör, uçak modu, sunucu uykudan kalkıyor)
+      // istek düşüyor, `notifiedAt` hiç yazılmıyor ve BİR DAHA DENEYEN OLMUYORDU
+      // → sonuç Firestore'da duruyor, ama kimseye bildirim GİTMİYOR.
+      // Sunucu yedeği de kurtaramıyor: autoCloseExpiredRooms yalnız
+      // `status=="open"` odalara bakar, bu oda çoktan "closed".
+      // Artık: 2 kez daha dene (artan gecikme). 4xx'te DENEME — 409 "zaten
+      // gönderildi"/"sonuç açıklanmadı" demektir, tekrar denemek anlamsız.
+      function _kmNotifyRoomResult(code, deneme) {
+        deneme = deneme || 0;
         try {
           if (!currentUser || !code) return;
+          var tekrar = function () {
+            if (deneme >= 2) return;
+            setTimeout(
+              function () {
+                _kmNotifyRoomResult(code, deneme + 1);
+              },
+              2500 * (deneme + 1),
+            );
+          };
           currentUser
             .getIdToken()
             .then(function (t) {
@@ -21875,14 +22455,38 @@ function drawResultCard(opts) {
                 body: JSON.stringify({ room: code, kind: "result" }),
               });
             })
-            .catch(function () {});
+            .then(function (r) {
+              // Sunucu hatası/uyandırma gecikmesi → yeniden dene.
+              if (r && !r.ok && r.status >= 500) tekrar();
+            })
+            .catch(tekrar); // ağ hatası
+        } catch (e) {}
+      }
+
+      // ⭐ ONARIM KANCASI: sonuç Firestore'a yazılmış ama `notifiedAt` boşsa
+      // bildirim hiç gitmemiş demektir (yukarıdaki istek kalıcı olarak düşmüş).
+      // Odayı SONRADAN açan HERHANGİ bir kişi tetiği yeniden çeker; sunucudaki
+      // notifiedAt kilidi ikinci bildirimi zaten engellediği için çift bildirim
+      // riski YOK. Snapshot dinleyicisi aynı veriyi tekrar tekrar yolladığı için
+      // oda başına tek deneme yeter (_kmNotifyHealed).
+      var _kmNotifyHealed = {};
+      function _kmHealRoomNotify(code, data) {
+        try {
+          if (!code || !data || data.notifiedAt) return;
+          if (data.status !== "closed" || !data.winner) return;
+          if (_kmNotifyHealed[code]) return;
+          _kmNotifyHealed[code] = 1;
+          _kmNotifyRoomResult(code);
         } catch (e) {}
       }
 
       // Odaya katılan/kuran herkes o odanın topic'ine abone olur → sonuç
       // çıkınca SADECE onlara gider (token koleksiyonu YOK).
-      function _kmJoinRoomTopic(code) {
+      function _kmJoinRoomTopic(code, closesAt) {
         try {
+          // Önce KAYDET, sonra abone ol: izin şu an yoksa bile sonradan
+          // açıldığında KM_PUSH.refresh() → syncRooms() bu odayı yakalar.
+          KM_PUSH.rememberRoom(code, closesAt);
           if (KM_PUSH.ok()) KM_PUSH.subscribe(KM_PUSH.roomTopic(code));
         } catch (e) {}
       }
@@ -21931,10 +22535,13 @@ function drawResultCard(opts) {
           // bilmesi için son oda kodu saklanır (şerit modaldan sonra çıkabilir).
           window._kmSonOdaKodu = code;
           if (!KM_PUSH.plug()) return; // web / eski sürüm → sessizce geç
-          if (KM_PUSH.ok()) {
-            _kmJoinRoomTopic(code);
-            return;
-          }
+          // ⭐ 19 AĞU: odayı HER DURUMDA kaydet — izin verilmemiş olsa bile.
+          // Kullanıcı "şimdi değil" deyip 30 saniye sonra şeritten ya da telefon
+          // ayarlarından izni açarsa, o an içinde bulunduğu odanın topic'ine
+          // abone olması gerekir; eskiden bu bilgi hiçbir yerde durmadığı için
+          // izni sonradan açan kullanıcı O ODANIN sonucunu ALMIYORDU.
+          _kmJoinRoomTopic(code);
+          if (KM_PUSH.ok()) return;
           if (document.getElementById("km-push-modal")) return;
           // ⚠️ ÇİFTLENME KORUMASI: modal gösterilmeyecekse (kota doldu ya da
           // 3 gün geçmedi) bunun yerine oda ekranında ince şerit gösterilir.
@@ -22180,8 +22787,9 @@ function drawResultCard(opts) {
           document.getElementById("ro-vote-step").style.display = "";
           renderRoVoteList(data.options);
           listenRoomOverlay(roCode);
-          if (data.timeLimit > 0)
-            startTimer(data.timeLimit * 60, "ro-timer", () => roSubmitVote());
+          var _roKal = _kmKalanSn(data);
+          if (data.timeLimit > 0 && _roKal > 0)
+            startTimer(_roKal, "ro-timer", () => roSubmitVote());
           snd("ding");
           // ⚠️ Bu, ?room= linkiyle gelen misafirin akışı — uygulama-içi
           // joinRoom'dan AYRI. 29 Tem dersi: oda işi yaparken HER İKİ akışı da
@@ -22370,6 +22978,7 @@ function drawResultCard(opts) {
               wc.textContent =
                 voted + "/" + Object.keys(parts).length + " oy kullanıldı";
             if (data.status === "closed" && data.winner) {
+              _kmHealRoomNotify(code, data); // bildirim düşmüşse telafi et
               clearTimerInterval();
               document.getElementById("tb-modal").classList.remove("on");
               document.getElementById("ro-submit-btn").style.display = "none";
@@ -22436,10 +23045,9 @@ function drawResultCard(opts) {
               // Yeni tur: eski indirme kartları ekranda asılı kalmasın.
               _kmRemoveInstallCta();
               renderRoVoteList(data.options);
-              if (data.timeLimit > 0)
-                startTimer(data.timeLimit * 60, "ro-timer", () =>
-                  roSubmitVote(),
-                );
+              var _roKal2 = _kmKalanSn(data);
+              if (data.timeLimit > 0 && _roKal2 > 0)
+                startTimer(_roKal2, "ro-timer", () => roSubmitVote());
             }
             // SÜRE-DOLUNCA KAPANIŞ: katılımcı açıksa süre dolan odayı onaysız kapat
             // (code === roCode). Host offline olsa bile oda kendi kapanır.
