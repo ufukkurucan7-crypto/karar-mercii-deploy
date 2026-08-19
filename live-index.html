@@ -368,6 +368,13 @@
         z-index: 10;
         /* Scroll gölgesi yumuşakça girip çıksın (GPU-dostu: blur yok, yalnız box-shadow) */
         transition: box-shadow 0.25s ease, border-color 0.25s ease;
+        /* ⭐ 20 AĞU — başlıkta metin seçimi/callout KAPALI.
+           Sebep: KM_VP teşhis paneli başlığa UZUN BASMA ile açılıyor; iOS uzun
+           basmada metin seçme büyüteci + kopyala balonunu devreye sokup dokunuşu
+           iptal ediyordu. Başlıktaki yazının seçilmesine zaten hiç ihtiyaç yok. */
+        -webkit-user-select: none;
+        user-select: none;
+        -webkit-touch-callout: none;
       }
       /* ⭐ 20 AĞU — iOS: TAM EKRAN REKLAM DÖNÜŞÜNDE ÜST GÜVENLİ ALAN KURTARMA PAYI.
          Kök neden KM_VP bloğunda yazılı: tam ekran native controller kapanınca WebKit'in
@@ -14543,7 +14550,14 @@ function drawResultCard(opts) {
             },
             true
           );
-          ["touchend", "touchmove", "touchcancel"].forEach(function (ev) {
+          // ⚠️ 20 AĞU — "touchcancel" BİLEREK LİSTEDE YOK.
+          // iOS, uzun basmada metin seçme/callout gesture recognizer'ı devreye
+          // girince ~500 ms civarında `touchcancel` yayınlar. Onu iptal sebebi
+          // sayarsak 1,2 sn'lik zamanlayıcı HİÇBİR ZAMAN dolmaz — yani uzun basma
+          // tetiği sessizce ölür (ilk yazımda tam bu hataya düştüm).
+          // Yalnız gerçek "vazgeçme" işaretleri iptal eder: parmak kalktı ya da kaydı.
+          // Ayrıca .hdr'da metin seçimi CSS ile kapatıldı (bkz. .hdr kuralı).
+          ["touchend", "touchmove"].forEach(function (ev) {
             document.addEventListener(
               ev,
               function () {
