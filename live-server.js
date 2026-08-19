@@ -3587,6 +3587,18 @@ function odaTamamKapanis(data) {
         tbSeed: null,
         closedBy: "server-complete",
         closedAt: Date.now(),
+        // ⭐⭐ ZORUNLU — YOKSA BERABERLİK SAATLERCE ASILI KALIR.
+        // Bu yol süre DOLMADAN kapatıyor (herkes erken oy verdi), yani odanın
+        // özgün `closesAt`'ı hâlâ GELECEKTE. resolveStuckTiedRooms ise
+        // `closesAt <= now - 3dk` sorguluyor → oda, kimse odada olmasa bile
+        // özgün süre dolana kadar (10 dk'lık odada 8 dk, 24 saatlik odada
+        // SAATLER) beklerdi. "Herkes oy verdi → anında sonuç" vaadi çöpe giderdi.
+        // Oylama fiilen BİTTİ, dolayısıyla bitiş zamanı ŞİMDİ'dir: bunu yazınca
+        // odada duran varsa 3 dk çarkı çevirebilir, kimse yoksa sunucu devralır.
+        // ⚠️ Odanın durumu "tied"; `autoCloseExpiredRooms` (status=="open")
+        // bunu görmez, `deadlineClose` de status!=="open" diye erken çıkar —
+        // closesAt'ı geriye çekmek başka hiçbir yolu tetiklemez.
+        closesAt: Date.now(),
       },
     };
   }
