@@ -14869,7 +14869,24 @@ function drawResultCard(opts) {
                 }
               } catch (e) {}
             }
-            // İÇERİK FİLTRESİ — ⭐ 20 AĞU: "General" → "Teen" (kullanıcı kararı).
+            /* 🚨🚨 20 AĞU 02:45 — "Teen" GERİ ALINDI (canlıda 13 dakika kaldı).
+               OLAY: Teen yayına girdikten hemen sonra kullanıcı geçiş reklamında
+               KİLİTLENDİ — kapatma (×) düğmesi hiç çıkmadı, reklama dokunulmuyor,
+               geri jesti çalışmıyor, uygulamayı kapatıp açınca da aynı. Kullanıcı
+               uygulamayı öldürmek zorunda kaldı.
+               NEDEN GERİ ALINDI: içerik derecesini açmak yeni talep kaynakları
+               (reklam ağları/kreatifler) getirir; kapatma düğmesini gizleyen ya da
+               hiç render etmeyen bozuk kreatif AdMob'da bilinen bir sorundur.
+               ⚠️ Bu KANIT değil, ZAMANSAL KORELASYON — ama takas tek yönlü:
+               doluluk oranı "olsa iyi olur"dur, kullanıcıyı uygulamada KİLİTLEMEK
+               kaldırma + 1 yıldız + mağaza şikayeti demektir. Şüphede kalınca
+               kullanıcıyı koru.
+               ➜ Teen'i geri açmadan ÖNCE: AdMob → Reklam inceleme merkezi'nden
+                 o saatte sunulan kreatifi bul ve engelle; sonra ara basamak olan
+                 "ParentalGuidance" ile dene, doğrudan Teen'e atlama.
+               🔙 Aynı hata "General"da da olursa sebep kreatif DEĞİLDİR →
+                 geçiş reklamını tamamen kapat ve orada ara. */
+            // İÇERİK FİLTRESİ — (20 AĞU denendi, geri alındı: "General" → "Teen")
             // "General" (G) AdMob'un EN KISITLAYICI derecesidir ve mobil reklam
             // envanterinin büyük kısmı en az "Teen" (T) etiketlidir — oyun reklamları
             // dahil. Yani doldurulabilir talebin çoğunu KENDİMİZ kapatıyorduk;
@@ -14877,7 +14894,7 @@ function drawResultCard(opts) {
             // "Teen" G + PG + T'yi açar, **MatureAudience (+18) yine ENGELLİ** kalır.
             // ⚠️ Uygulamanın mağaza yaş derecelendirmesiyle uyumlu olmalı; +18 açılmıyor.
             // Remote JS'te olduğu için AAB/iOS rebuild gerektirmez.
-            await AdMob.initialize({ maxAdContentRating: "Teen" });
+            await AdMob.initialize({ maxAdContentRating: "General" });
             this.ready = true;
             // PRO kullanıcı değilse alt banner'ı göster + popup'larda otomatik gizle
             if (!isPremium) {
