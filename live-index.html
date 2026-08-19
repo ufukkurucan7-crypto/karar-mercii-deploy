@@ -14478,29 +14478,80 @@ function drawResultCard(opts) {
                 self.measure();
               } catch (e) {}
             }, 350);
-          // Teşhis tetikleyicisi: başlığa 2.5sn içinde 6 dokunuş.
+          // ── TEŞHİS TETİKLEYİCİSİ ─────────────────────────────────────────
+          // ⚠️ 20 AĞU — ESKİ TETİK CİHAZDA HİÇ AÇILMADI ("siyah çıkmadı ki").
+          // İki sebep vardı:
+          //  1) YALNIZ "click" dinleniyordu. iOS WebKit, üzerinde işleyicisi/rolü
+          //     olmayan DÜZ bir <div>'e dokunulduğunda click'i belgeye kadar
+          //     taşımayabiliyor (klasik iOS "tıklanabilir olmayan öğe" tuzağı) —
+          //     başlık metni (.km-hdr-tx > .hdr-title) tam olarak öyle bir div.
+          //     Artık "touchend" de dinleniyor; 300 ms'lik yankı koruması, aynı
+          //     dokunuşun hem touchend hem sentetik click ile İKİ kez sayılmasını
+          //     engelliyor.
+          //  2) 6 dokunuş / 2,5 sn fazla sıkıydı → 5 dokunuş / 4 sn.
+          // ⭐ ÇOK DAHA KOLAY İKİNCİ YOL: başlığa 1,2 sn BASILI TUT (sayma yok).
+          // ⚠️ Menü ve geri düğmeleri HARİÇ — yoksa menüyü açmaya çalışan kullanıcı
+          //    teşhis ekranıyla karşılaşır.
           var say = 0,
-            ilk = 0;
+            ilk = 0,
+            sonDokunus = 0,
+            uzunZ = null;
+          var basliktaMi = function (e) {
+            try {
+              var t = e.target;
+              if (!t || !t.closest) return false;
+              if (!t.closest(".hdr")) return false;
+              if (t.closest("button")) return false;
+              return true;
+            } catch (err) {
+              return false;
+            }
+          };
+          var dokun = function (e) {
+            try {
+              if (!basliktaMi(e)) return;
+              var now = Date.now();
+              if (now - sonDokunus < 300) return; // touchend + click yankısı
+              sonDokunus = now;
+              if (now - ilk > 4000) {
+                ilk = now;
+                say = 0;
+              }
+              say++;
+              if (say >= 5) {
+                say = 0;
+                ilk = 0;
+                self.diag();
+              }
+            } catch (err) {}
+          };
+          document.addEventListener("click", dokun, true);
+          document.addEventListener("touchend", dokun, true);
           document.addEventListener(
-            "click",
+            "touchstart",
             function (e) {
               try {
-                if (!e.target || !e.target.closest) return;
-                if (!e.target.closest(".hdr")) return;
-                var now = Date.now();
-                if (now - ilk > 2500) {
-                  ilk = now;
-                  say = 0;
-                }
-                say++;
-                if (say >= 6) {
-                  say = 0;
-                  self.diag();
-                }
+                if (!basliktaMi(e)) return;
+                clearTimeout(uzunZ);
+                uzunZ = setTimeout(function () {
+                  try {
+                    sonDokunus = Date.now(); // uzun basmadan sonra sayaç tetiklenmesin
+                    self.diag();
+                  } catch (err) {}
+                }, 1200);
               } catch (err) {}
             },
             true
           );
+          ["touchend", "touchmove", "touchcancel"].forEach(function (ev) {
+            document.addEventListener(
+              ev,
+              function () {
+                clearTimeout(uzunZ);
+              },
+              true
+            );
+          });
         },
       };
       window.KM_VP = KM_VP;
