@@ -13953,8 +13953,36 @@ function drawResultCard(opts) {
       // FREE_DAILY_LIMIT=8 ile birebir eşleşir (asıl zorlama orada; buradaki
       // sayaç localStorage'da olduğu için tek başına güvenlik değil, UX sınırı).
       var AD_MAX_PER_DAY = 2;
+      /* ⭐ 20 AĞU — GÜN SINIRI SUNUCUYLA AYNI OLMAK ZORUNDA (Europe/Istanbul).
+         🔴 CANLI ARIZA (kullanıcı, 02:40): 2 ödüllü reklam izledi, +4 mesaj hakkı
+            aldı, ama Merci HİÇBİRİNE cevap vermedi; sonunda "bugünkü 2 reklam
+            hakkını kullandın, yarın dene" dedi. Reklamlar izlendi, karşılığı ALINMADI.
+         KÖK NEDEN: istemci `toDateString()` = CİHAZIN YEREL günü, sunucu ise
+         `toISOString().slice(0,10)` = UTC günü kullanıyordu. Türkiye UTC+3 →
+         **her gece 00:00–03:00 arasında istemci yeni güne geçmiş, sunucu HÂLÂ dün.**
+         İstemci "2 taze reklam hakkın var" diyor, kullanıcı reklamı izliyor, sunucu
+         "bugünkü 4 mesaj zaten harcandı" deyip reddediyor. Kullanıcı hem reklamı
+         izlemiş hem hiçbir şey alamamış oluyor — bulunabilecek en kötü takas.
+         ⚠️ "Ne yesek / ne izlesek" uygulamasında gece 00–03 ölü saat DEĞİL, yoğun saat.
+         ➜ İKİ TARAF DA Europe/Istanbul gününü kullanıyor. Sabit saat dilimi seçildi
+            ki cihaz saati/dilimi ne olursa olsun iki taraf AYNI dizeyi üretsin
+            (cihaz yerel gününe güvenilseydi yurt dışındaki kullanıcıda yine kayardı).
+         ⚠️ live-server.js ile BİRLİKTE deploy edilmeli — biri giderse arıza sürer.
+         ℹ️ Biçim değiştiği için ("Wed Aug 20 2026" → "2026-08-20") mevcut kayıtlar
+            bir kereliğine sıfırlanır; kullanıcı lehine, sorun değil. */
+      function kmGunTR() {
+        try {
+          return new Date().toLocaleDateString("en-CA", {
+            timeZone: "Europe/Istanbul",
+          });
+        } catch (e) {
+          // Intl saat dilimi desteklenmiyorsa UTC+3'ü elle uygula (sunucu yedeğiyle aynı).
+          return new Date(Date.now() + 3 * 3600000).toISOString().slice(0, 10);
+        }
+      }
+      window.kmGunTR = kmGunTR;
       function getTopicUsage() {
-        var today = new Date().toDateString();
+        var today = kmGunTR();
         var usage = JSON.parse(localStorage.getItem("kmTopicUsage") || "{}");
         if (usage.date !== today) {
           usage = { date: today, count: 0, extraFromAd: 0, adsWatched: 0 };
@@ -14201,6 +14229,17 @@ function drawResultCard(opts) {
           } catch (e) {
             return 0;
           }
+        },
+
+        /* Açılış kaybını örnekle — yalnız MAKUL bir değer görülünce ve bir kez.
+           Alt sınır 12: gürültüyü ele. Üst sınır 80: "üst+alt birlikte" (max 96)
+           ya da klavye gibi hâller yanlışlıkla üst pay sanılmasın. */
+        _kayipOrnekle: function () {
+          try {
+            if (this.acilisKayip > 0) return;
+            var k = this._kayip();
+            if (k >= 12 && k <= 80) this.acilisKayip = k;
+          } catch (e) {}
         },
 
         /* Kullanılacak ÜST güvenli alan (telafi payı için).
@@ -14571,10 +14610,22 @@ function drawResultCard(opts) {
              o andaki `screen.height - innerHeight` = WebKit'in fiilen uyguladığı inset.
              Bu, env() ölçümü ölü olduğunda üst telafi payının TEK sağlam kaynağı
              (kullanıcının cihazında 47 çıkıyor = tam olarak üst güvenli alan).
-             Reklamdan sonra kayıp 0'a düşse bile bu değer korunur. */
+             Reklamdan sonra kayıp 0'a düşse bile bu değer korunur.
+             🪤 20 AĞU 2. TUR — TEK ATIŞLIK ÖRNEKLEME YETMİYORDU: `init()` sayfa
+             YORUMLANIRKEN çalışıyor; o an WebKit güvenli alan iç çekmesini henüz
+             uygulamamış olabiliyor → kayıp 0 okunuyor, `acilisKayip` hiç yazılmıyor,
+             `ustGuvenli()` 0 dönüyor ve **üst telafi payı sonsuza kadar devre dışı
+             kalıyor** (kullanıcı: "reklamlardan sonra yine durum çubuğuna kayıyor").
+             ➜ Örnekleme tekrarlanıyor: açılışta + 800ms + 2500ms + her normal resize.
+                İlk MAKUL değer yakalandığında sabitlenir. */
+          this._kayipOrnekle();
           try {
-            var _k0 = this._kayip();
-            if (_k0 > 8) this.acilisKayip = _k0;
+            setTimeout(function () {
+              self._kayipOrnekle();
+            }, 800);
+            setTimeout(function () {
+              self._kayipOrnekle();
+            }, 2500);
           } catch (e) {}
           // ⭐ 20 AĞU — KENDİNİ İYİLEŞTİRME: görünüm alanı normale dönerse telafi payını
           // kaldır, banner rezervini yeniden hesapla. Tetikleyiciler: yön değişimi,
@@ -14582,7 +14633,11 @@ function drawResultCard(opts) {
           try {
             window.addEventListener("resize", function () {
               try {
-                if (!self.vpKayipMi()) self.ustPayiUygula(false);
+                if (!self.vpKayipMi()) {
+                  self.ustPayiUygula(false);
+                  // Yerleşim normalken örnekleme için en güvenilir an.
+                  self._kayipOrnekle();
+                }
               } catch (e) {}
               try {
                 if (typeof KM_AD !== "undefined" && KM_AD._applyAdBottom)
