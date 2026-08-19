@@ -873,24 +873,7 @@ async function autoCloseExpiredRooms() {
     // sessizce kapanıyor, katılımcılar sonuçtan haberdar olmuyordu.
     // ⚠️ Push transaction DIŞINDA: transaction yeniden denenebilir, içine yan
     // etki koyulursa aynı bildirim birden çok kez gidebilir.
-    for (const code of kapananlar) {
-      try {
-        const title = "Oylama sonuçlandı! 🐙";
-        const body = "Kazananı görmek için dokun 👀";
-        await sendPush({ topic: "oda_" + code, title, body, room: code });
-        await logPush({
-          title,
-          body,
-          topic: "oda_" + code,
-          by: "server",
-          kind: "result",
-          ok: true,
-        });
-      } catch (e) {
-        // Bildirim gitmezse oda yine de kapalı — akış bozulmaz.
-        console.error("autoClose push (" + code + "):", e.message);
-      }
-    }
+    for (const code of kapananlar) await bildirOdaSonucu(code, "autoClose");
   } catch (e) {
     // Index yoksa Firestore FAILED_PRECONDITION + oluşturma linki döner. Sorgu hiç
     // çalışmadığı için OKUMA da yapmaz (güvenli başarısızlık: kota yanmaz).
@@ -906,11 +889,147 @@ async function autoCloseExpiredRooms() {
     console.error("autoCloseExpiredRooms:", e.message);
   }
 }
+// Oda sonucu bildirimi — sunucu tarafındaki İKİ kapanış yolunun ORTAK ucu
+// (autoCloseExpiredRooms + resolveStuckTiedRooms). Metin /room/notify ile
+// BİREBİR aynı olmak zorunda: kullanıcı sonucu kimin kapattığına göre farklı
+// bildirim görmemeli.
+// ⚠️ KAZANANI YAZMA (2 Ağu kullanıcı kararı) — bildirim sonucu ele verirse
+// uygulamayı açmaya gerek kalmıyor, kutlama anı kaçıyor.
+// ⚠️ Çağrı transaction DIŞINDA olmalı: transaction yeniden denenebilir, içine
+// yan etki koyulursa aynı bildirim birden çok kez gider.
+async function bildirOdaSonucu(code, nereden) {
+  try {
+    const title = "Oylama sonuçlandı! 🐙";
+    const body = "Kazananı görmek için dokun 👀";
+    await sendPush({ topic: "oda_" + code, title, body, room: code });
+    await logPush({
+      title,
+      body,
+      topic: "oda_" + code,
+      by: "server",
+      kind: "result",
+      ok: true,
+    });
+  } catch (e) {
+    // Bildirim gitmezse oda yine de kapalı — akış bozulmaz.
+    console.error(nereden + " push (" + code + "):", e.message);
+  }
+}
+
+// ── ÇEVRİMİÇİ OYLAMA: ASILI KALMIŞ "BERABERLİK" ODALARI ────────────────────
+// ⭐ 19 AĞU TESPİTİ — autoCloseExpiredRooms'un GÖREMEDİĞİ delik.
+// Beraberlikte oda `status:"tied"` yazılır ve kazananı belirleyecek çarkı
+// YALNIZ HOST döndürebilir (live-index.html: `if (shareCode && !amHost) return`
+// — çark yalnız host'ta dönüp sonucu yayınlar). Host süre dolmadan uygulamayı
+// kapattıysa çarkı çevirecek kimse KALMAZ → oda sonsuza kadar "tied" asılı
+// kalır: kazanan yok, `notifiedAt` yok, bildirim YOK, kimse haber alamaz.
+// autoCloseExpiredRooms bunu KURTARAMAZ, çünkü o yalnız `status=="open"` sorgular.
+// Aynı delik oy verilmemiş odalarda da var: autoClose voterCount===0 görünce
+// "tied" yazıp bırakıyor, o oda da orada asılı kalıyor.
+// ⭐ Çözüm: süresi dolalı GRACE kadar olmuş "tied" odaları sunucu adil RASTGELE
+// kazananla kapatır — çarkın yaptığının birebir aynısı (çark da tieItems
+// içinden rastgele seçer), yani client davranışının portu.
+// ⚠️⚠️ KOTA KURALI (17 Tem dersi): bu sorguya giren HER oda AYNI turda "tied"
+// durumundan ÇIKARILMAK ZORUNDA. Çıkmayan bir oda her turda yeniden okunur ve
+// sonsuza kadar okunmaya devam eder → firestore-kota-kaçağı geri gelir. Bu
+// yüzden aşağıda hiçbir "atla, sonra bakarız" dalı YOK: aday listesi boş olsa
+// bile oda kapatılır.
+// ✅ Ek index GEREKMEZ: aynı (status ASC, closesAt ASC) bileşik index'i kullanır.
+const TIE_GRACE_MS = 3 * 60 * 1000;
+async function resolveStuckTiedRooms() {
+  try {
+    // GRACE payı: çarkı çeviren AÇIK bir client varsa sonucu o yazsın. Çark
+    // saniyeler sürer; 3 dakika sonra hâlâ "tied" ise gerçekten kimse yok.
+    const esik = Date.now() - TIE_GRACE_MS;
+    const snap = await adminDb
+      .collection("rooms")
+      .where("status", "==", "tied")
+      .where("closesAt", "<=", esik)
+      .orderBy("closesAt")
+      .limit(50)
+      .get();
+    const kapananlar = [];
+    for (const docSnap of snap.docs) {
+      let bildirilecek = null;
+      await adminDb.runTransaction(async (tx) => {
+        const fresh = await tx.get(docSnap.ref);
+        if (!fresh.exists) return;
+        const data = fresh.data();
+        if (data.status !== "tied") return; // bu arada host çarkı çevirmiş
+        const parts = data.participants || {};
+        const adaylar =
+          Array.isArray(data.tieItems) && data.tieItems.length
+            ? data.tieItems
+            : Array.isArray(data.options)
+              ? data.options
+              : [];
+        const voterCount = Object.values(parts).filter(
+          (p) => p && p.submitted === true,
+        ).length;
+        if (!adaylar.length) {
+          // Aday yok → yazılacak kazanan da yok. Yine de "tied"den ÇIKAR:
+          // bırakılırsa bu oda her turda tekrar okunur (kota kaçağı).
+          tx.update(docSnap.ref, {
+            status: "closed",
+            tieItems: [],
+            closedBy: "server-tie",
+            closedAt: Date.now(),
+            notifiedAt: Date.now(),
+          });
+          return;
+        }
+        const winner = adaylar[Math.floor(Math.random() * adaylar.length)];
+        let winnerPoints = 0;
+        Object.values(parts).forEach((p) => {
+          if (p && p.submitted === true && p.votes)
+            winnerPoints += +(p.votes[winner] || 0);
+        });
+        tx.update(docSnap.ref, {
+          status: "closed",
+          winner,
+          winnerPoints,
+          winnerVoters: voterCount,
+          tieItems: [],
+          // Çark durumu temizlenmeli, yoksa açılan client eski animasyonu oynatır.
+          tbSpin: null,
+          tbSeed: null,
+          closedBy: "server-tie",
+          closedAt: Date.now(),
+          // Bildirimi bu tur BİZ göndereceğiz → /room/notify tekrar göndermesin.
+          notifiedAt: Date.now(),
+        });
+        // Hiç oy verilmemiş odada haber verilecek kimse yok → push atma.
+        // (Oda yine de kapandı; sorgudan düştü, kota güvende.)
+        if (voterCount > 0) bildirilecek = docSnap.id;
+      });
+      if (bildirilecek) kapananlar.push(bildirilecek);
+    }
+    for (const code of kapananlar) await bildirOdaSonucu(code, "tieResolve");
+  } catch (e) {
+    if (String(e.code) === "9" || /FAILED_PRECONDITION|index/i.test(e.message)) {
+      console.error(
+        "resolveStuckTiedRooms: composite index EKSİK (rooms: status ASC, closesAt ASC).",
+        "Beraberlik kurtarması devre dışı:",
+        e.message,
+      );
+      return;
+    }
+    console.error("resolveStuckTiedRooms:", e.message);
+  }
+}
+
 // ⚠️ 5 DAKİKA (eskiden 60sn). Süre-dolunca-kapanışın ASIL çözümü client tarafındaki
 // deadlineClose (açık olan herhangi bir katılımcı kapatır); bu interval yalnız
 // KİMSE açık değilken devreye giren yedek katman → sık dönmesi gereksiz.
-setInterval(autoCloseExpiredRooms, 5 * 60 * 1000);
-setTimeout(autoCloseExpiredRooms, 8000); // başlangıçta birikmiş süresi dolmuş odaları da kapat
+// ⚠️ SIRA ÖNEMLİ: önce açık odalar kapanır (bir kısmı "tied" olabilir), sonra
+// beraberlik kurtarması bakar. Yeni "tied" olanlar GRACE yüzünden bu turda
+// zaten alınmaz — bir sonraki tura kalır, doğru davranış budur.
+async function odaBakimTuru() {
+  await autoCloseExpiredRooms();
+  await resolveStuckTiedRooms();
+}
+setInterval(odaBakimTuru, 5 * 60 * 1000);
+setTimeout(odaBakimTuru, 8000); // başlangıçta birikmiş süresi dolmuş odaları da kapat
 
 // Günlük Merci mesaj limitleri (kullanıcı başına). Abuse/maliyet tavanı.
 // MODEL (22 Tem): Pro OLMAYAN için ücretsiz günlük hak YOK — client'ta ödüllü reklam
@@ -2975,6 +3094,22 @@ async function sendPush(o) {
         // de notificationActionPerformed olayını tetikler. Doğru davranış budur.
         // ⚠️ Buraya clickAction EKLEME.
       },
+    },
+    // ⭐ 19 AĞU — iOS BLOĞU EKSİKTİ. iOS 1.0.1 canlıya çıktı ama bu mesajda hiç
+    // `apns` yoktu: FCM `notification` payload'ını APNs'e çevirirken `aps.sound`
+    // YAZMAZ → bildirim iPhone'a SESSİZ düşer (ses yok, titreşim yok, yalnız
+    // listede belirir). Kullanıcı sonucu kaçırır; Android'de ses çaldığı için
+    // kusur uzun süre görünmez kalır.
+    // `apns-priority: 10` = hemen teslim et. Varsayılan 5 "güç tasarrufu"
+    // sınıfıdır: iOS teslimi gruplayıp DAKİKALARCA geciktirebilir — oylama
+    // sonucu gibi anlık bir bildirim için yanlış sınıf.
+    // ⚠️ sound "default" BİLEREK: Android'deki merci_ding res/raw'da duruyor,
+    // iOS paketinde (Runner bundle) KARŞILIĞI YOK. Olmayan bir ses adı yazmak
+    // iOS'ta bildirimi yine SESSİZ yapar. Özel ses istenirse önce .caf dosyası
+    // bundle'a eklenmeli, sonra burası değişmeli.
+    apns: {
+      headers: { "apns-priority": "10" },
+      payload: { aps: { sound: "default" } },
     },
   });
 }
