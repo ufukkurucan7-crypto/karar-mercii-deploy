@@ -19521,7 +19521,7 @@ function drawResultCard(opts) {
                 Authorization: "Bearer " + token,
               },
               body: JSON.stringify({
-                messages: aiMessages,
+                messages: _kmSonKonusma(aiMessages),
                 groupCount: S.count,
                 history: S.history.slice(0, 15),
                 // Ücretsiz kota yalnız native uygulamada (bkz. _kmPlt yorumu)
@@ -21969,6 +21969,30 @@ function drawResultCard(opts) {
         }
       }
 
+      // ⭐ 19 AĞU — SUNUCUYA GİDEN SOHBET GEÇMİŞİNİ KIRP (maliyet).
+      // Konuşmanın TAMAMI her turda baştan gönderiliyordu: 10 turluk bir
+      // sohbette 10. mesajın girdisi 1.'nin 3-4 katı → mesaj başı AI maliyeti
+      // konuşma boyunca tırmanıyordu. Ekranda tüm sohbet AYNEN durur, yalnız
+      // MODELE giden bağlam kırpılır — kullanıcı hiçbir fark görmez.
+      // ⚠️ İlk eleman "user" olmak zorunda (API kuralı); sondan kırpınca başa
+      // assistant düşebileceği için hizalanıyor. Sunucuda da aynı kırpma var
+      // (eski istemciler için) — ikisi birbirinin yedeği.
+      var KM_MERCI_TUR_TAVANI = 10;
+      function _kmSonKonusma(arr) {
+        try {
+          if (!Array.isArray(arr)) return arr;
+          var a = arr.slice(-KM_MERCI_TUR_TAVANI);
+          while (a.length && a[0] && a[0].role !== "user") a.shift();
+          if (a.length) return a;
+          for (var i = arr.length - 1; i >= 0; i--)
+            if (arr[i] && arr[i].role === "user")
+              return arr.slice(i, i + KM_MERCI_TUR_TAVANI);
+          return arr;
+        } catch (e) {
+          return arr;
+        }
+      }
+
       // ⚠️ 19 AĞU — KATILIMCI SAYACI ODAYA GÖRE DEĞİL KENDİNE GÖRE SAYIYORDU.
       // `data.timeLimit * 60` odanın TOPLAM süresidir; odaya sonradan katılan
       // kişi sıfırdan tam süre görüyordu (10 dakikalık odaya 8. dakikada giren
@@ -23152,7 +23176,7 @@ function drawResultCard(opts) {
                 Authorization: "Bearer " + token,
               },
               body: JSON.stringify({
-                messages: roAiMessages,
+                messages: _kmSonKonusma(roAiMessages),
                 groupCount: 0,
                 history: [],
               }),
