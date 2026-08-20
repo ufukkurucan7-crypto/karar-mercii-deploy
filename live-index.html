@@ -13223,9 +13223,29 @@ function drawResultCard(opts) {
       }
       function injectMerciBridge(cardEl, winner) {
         try {
+          /* ⭐ 20 AĞU — İKİ KUSUR (kullanıcı canlıda gördü):
+             1) 🔴 BAYAT ÇİP: eski kod yalnız AYNI karttaki çipi siliyordu. Yeni sonuç
+                YENİ kart yarattığı için ÖNCEKİ sonucun çipi ekranda kalıyordu →
+                kazanan "tavşan" iken altta hâlâ "'balık' için yer mi arıyorsun?"
+                yazıyordu. ("tavşan" mekân sayılmaz, yani o çip zaten eskiydi —
+                kullanıcı iki ayrı sonuçta da aynı bayat metni gördü.)
+                ➜ Artık BELGE GENELİNDE bütün bayat çipler siliniyor.
+             2) 🔴 ÇİFT GİRİŞ: sonuç kartında zaten sabit bir "🐙 Merci'ye Sor"
+                düğmesi var; çip onun birkaç satır üstünde İKİNCİ bir Merci girişi
+                açıyordu ("hem yer mi arıyorsun var hem 2 altta Merci'ye sor").
+                ➜ Kapsayıcıda genel düğme VARSA çip hiç eklenmiyor. */
+          var eskiler = document.querySelectorAll(".merci-bridge");
+          for (var i = 0; i < eskiler.length; i++)
+            if (eskiler[i].parentNode)
+              eskiler[i].parentNode.removeChild(eskiler[i]);
           if (!cardEl || !_isPlaceLike(winner)) return;
-          var old = cardEl.querySelector(".merci-bridge");
-          if (old) old.remove();
+          var kapsayici =
+            (cardEl.closest && cardEl.closest(".sec")) || cardEl;
+          if (
+            kapsayici.querySelector &&
+            kapsayici.querySelector('[onclick*="askMerciAboutResult"]')
+          )
+            return; // genel "Merci'ye Sor" zaten var → ikinci giriş açma
           var chip = document.createElement("button");
           chip.type = "button";
           chip.className = "merci-bridge";
@@ -14400,6 +14420,8 @@ function drawResultCard(opts) {
               window.scrollY || document.documentElement.scrollTop || 0;
             this.baseVH = window.innerHeight;
           } catch (e) {}
+          // Reklamın videosu ses oturumunu alabilsin (bkz. sesiAskiyaAl notu).
+          this.sesiAskiyaAl();
         },
 
         /* WebKit'i viewport'u yeniden hesaplamaya zorla: meta değişimi
@@ -14427,11 +14449,51 @@ function drawResultCard(opts) {
            19 Ağu'da tek atışlık nudge yapılıp sonucuna hiç bakılmıyordu. */
         vpKayipMi: function () {
           try {
+            /* ⭐ 20 AĞU 2. TUR — MUTLAK REFERANS (baseVH ZEHİRLENİYORDU).
+               Eskiden yalnız `baseVH` = reklam açılmadan HEMEN ÖNCEKİ yükseklik ile
+               karşılaştırılıyordu. Sayfa önceki bir reklamdan sonra ZATEN kaymışsa
+               `beforeFullscreenAd` o BOZUK yüksekliği baseVH'ye yazıyor → bir sonraki
+               reklamda "kayma yok" deniyor → telafi HİÇ uygulanmıyor ve ekran KALICI
+               bozuk kalıyor. Kullanıcı tam bunu bildirdi: "ilk çarkta anlık kaydı sonra
+               düzeldi, sonra tekrar reklam geldi ve bu kez düzelmedi."
+               Sağlıklı yükseklik MUTLAK olarak bilinebiliyor: ekran yüksekliği eksi
+               açılışta ölçülen inset. Bu değer reklamdan etkilenmez, zehirlenemez. */
+            var sh = (window.screen && window.screen.height) || 0;
+            if (sh && this.acilisKayip > 0)
+              return window.innerHeight > sh - this.acilisKayip + 8;
             if (!this.baseVH) return false;
             return window.innerHeight - this.baseVH > 8;
           } catch (e) {
             return false;
           }
+        },
+
+        /* ⭐ 20 AĞU — TAM EKRAN REKLAM SIRASINDA SES BAĞLAMINI ASKIYA AL.
+           🔴 İKİ KEZ CANLIDA DONDU (geçiş + ödüllü): geri sayım "5"te takılı kaldı,
+              hiçbir yere dokunulmuyor, uygulamayı öldürmek gerekti. **İkisinde de
+              reklamveren DECATHLON'du** → "bozuk/dandik kreatif" açıklaması ÇÜRÜDÜ,
+              içerik derecesi (Teen) de zaten geri alınmıştı ve yine oldu.
+           HİPOTEZ: AdMob reklamları video oynatır; iOS'ta video oynatımı
+           AVAudioSession'a bağlıdır. Bizim WebAudio bağlamımız (SAC) çark tıkları
+           yüzünden sürekli "running" durumda duruyor ve ses oturumunu tutuyor.
+           Reklamın oynatıcısı oturumu alamayınca video hiç başlamıyor → geri sayım
+           ilerlemiyor → reklam kapatılamıyor. Örüntü uyuyor: donmaların ikisi de
+           ÇARK ÇEVRİLDİKTEN (yani onlarca tık sesi çaldıktan) hemen sonra geldi.
+           ➜ Reklam açılmadan bağlam askıya alınıyor, kapanınca geri açılıyor.
+           ⚠️ RİSKSİZ: askıdaki bağlam yalnız ses çalmaz; `ac()` zaten "suspended"
+              görünce resume ediyor, yani hipotez yanlışsa bile hiçbir şey bozulmaz.
+           🔙 DONMA DEVAM EDERSE hipotez çürür → o zaman reklam formatını kapat. */
+        sesiAskiyaAl: function () {
+          try {
+            if (typeof SAC !== "undefined" && SAC && SAC.state === "running")
+              SAC.suspend().catch(function () {});
+          } catch (e) {}
+        },
+        sesiGeriAc: function () {
+          try {
+            if (typeof SAC !== "undefined" && SAC && SAC.state !== "running")
+              SAC.resume().catch(function () {});
+          } catch (e) {}
         },
 
         /* nudgeViewport tutmazsa İKİNCİ KADEME. minimum-scale değişimi
@@ -14485,8 +14547,13 @@ function drawResultCard(opts) {
           var self = this;
           var y = this._scrollBefore || 0;
           var tur = 0;
+          // Reklam kapandı → ses bağlamını geri aç (askıya alma: beforeFullscreenAd).
+          this.sesiGeriAc();
           var adim = function () {
             tur++;
+            try {
+              self.sesiGeriAc(); // geç gelen turlarda da garanti et
+            } catch (e) {}
             // 1) Klavye bayrağı takılı kaldıysa temizle: reklam sırasında gelen sahte
             //    visualViewport küçülmesi _kbOpen'ı true bırakabiliyor (bkz. ~24520),
             //    dönüşte resize gelmezse banner kalıcı gizli kalırdı.
