@@ -437,7 +437,15 @@
         left: 0;
         right: 0;
         bottom: 0;
-        height: var(--vp-bottom, 0px);
+        /* ⚠️ Yükseklik `--vp-bottom` (34px ölçüsü) DEĞİL, REZERVİN TAMAMI.
+           Sebep: cihaz fotoğrafında banner'ın altındaki açıklık ölçtüğümüz 34px'ten
+           büyük görünüyor (eklentinin kendi kenar boşluğu + fotoğraf açısı). Sabit bir
+           sayıya güvenmek yerine bandın TAMAMINI boyuyoruz — bu bant zaten `.app`in
+           `padding-bottom: var(--ad-bottom)` ile ayırdığı yer, orada DURAN içerik yok,
+           yalnız KAYAN içerik geçiyor. Native banner bu şeridin ÜSTÜNE çizildiği için
+           fazladan boyamak görünmez; yalnız banner'ın örtmediği açıklık kapanır.
+           Böylece ölçüm hatası bu düzeltmeyi bozamaz. */
+        height: var(--ad-bottom, 0px);
         background: var(--surface);
         z-index: 55;
         pointer-events: none;
@@ -15103,7 +15111,21 @@ function drawResultCard(opts) {
             // "Teen" G + PG + T'yi açar, **MatureAudience (+18) yine ENGELLİ** kalır.
             // ⚠️ Uygulamanın mağaza yaş derecelendirmesiyle uyumlu olmalı; +18 açılmıyor.
             // Remote JS'te olduğu için AAB/iOS rebuild gerektirmez.
-            await AdMob.initialize({ maxAdContentRating: "General" });
+            /* ⭐ 20 AĞU 04:45 — "Teen" GERİ AÇILDI (2. deneme, bu kez gerekçeli).
+               1. denemede (02:32) Teen açıldı ve reklam DONDU → 13 dk sonra geri
+               alındı. Ama sonra donma "General"da da tekrarladı → **içerik derecesi
+               suçsuzdu**, asıl sebep WebAudio'nun ses oturumunu tutmasıydı
+               (bkz. KM_VP.sesiAskiyaAl). O düzeltmeden sonra:
+                 • aynı reklamveren (Decathlon) geldi, ÇARPI çıktı, KAPANDI ✅
+                 • ödüllü VİDEO reklam sorunsuz oynadı ve ödül verdi ✅
+               Yani donmanın kökü kapandı; Teen'i tutmak için sebep kalmadı.
+               NEDEN ÖNEMLİ: teşhis paneli banner'ın gizlenmediğini, sadece
+               DOLMADIĞINI kanıtladı (`banner yuklendi: false`, `gizleyen modal: (yok)`).
+               "General" (G) AdMob'un en kısıtlayıcı derecesi; envanterin büyük kısmı
+               en az "Teen" (T). Doluluğu artıracak en büyük kod tarafı kaldıraç bu.
+               ⚠️ MatureAudience (+18) YİNE ENGELLİ — yalnız G+PG+T açılır.
+               🔙 Donma geri gelirse önce SES düzeltmesini şüphelen, dereceyi değil. */
+            await AdMob.initialize({ maxAdContentRating: "Teen" });
             this.ready = true;
             // PRO kullanıcı değilse alt banner'ı göster + popup'larda otomatik gizle
             if (!isPremium) {
@@ -15249,6 +15271,11 @@ function drawResultCard(opts) {
               // (banner alttaki seçenek/butonların üstüne binmesin).
               AdMob.addListener("bannerAdSizeChanged", function (size) {
                 var h = size && size.height ? size.height : 0;
+                if (h > 0 && self._bosTmr) {
+                  clearTimeout(self._bosTmr); // reklam geri geldi → bırakma sayacını iptal et
+                  self._bosTmr = null;
+                  self._bannerYuklendi = true;
+                }
                 _setAd(h > 0 ? h + "px" : "0px");
               });
               /* ⭐ 20 AĞU — "BANNER GELDİ, TAB YERİNE OTURDU, BANNER KAYBOLDU"
@@ -15264,11 +15291,31 @@ function drawResultCard(opts) {
                  ➜ Rezerv artık YALNIZ hiç reklam yüklenmemişken sıfırlanıyor.
                     Bir kez yüklendiyse tazeleme hataları rezervi BOZMAZ. */
               AdMob.addListener("bannerAdFailedToLoad", function () {
-                if (self._bannerYuklendi) return; // ekranda duran reklamı bozma
-                _setAd("0px");
+                if (!self._bannerYuklendi) {
+                  _setAd("0px");
+                  return;
+                }
+                /* ⭐ 20 AĞU — ORTA YOL: "bannerlar bir süre sonra yok oluyor".
+                   Tazeleme hatasında rezervi ANINDA sıfırlamak düzeni zıplatıyordu
+                   (önceki hata). Ama süresiz KORUMAK da yeni bir hataya yol açar:
+                   reklam gerçekten gitmişse ekranda KALICI boş bir bant kalır —
+                   "sekmeler ortada, altta boşluk" tablosu. İkisi de kötü.
+                   ➜ Rezerv 45 sn KORUNUR (kısa süreli doluluk boşlukları düzeni
+                     zıplatmasın), o süre içinde yeni reklam gelmezse BIRAKILIR.
+                   Yeni reklam gelirse sayaç iptal edilir (aşağıdaki iki dinleyici). */
+                if (self._bosTmr) return;
+                self._bosTmr = window.setTimeout(function () {
+                  self._bosTmr = null;
+                  self._bannerYuklendi = false;
+                  _setAd("0px");
+                }, 45000);
               });
               // Reklam geldi → rezerv dursun (kesin yükseklik sizeChanged'den gelir).
               AdMob.addListener("bannerAdLoaded", function () {
+                if (self._bosTmr) {
+                  clearTimeout(self._bosTmr);
+                  self._bosTmr = null;
+                }
                 self._bannerYuklendi = true;
                 var cur =
                   document.documentElement.style.getPropertyValue("--ad-bottom");
