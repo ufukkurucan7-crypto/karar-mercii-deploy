@@ -571,6 +571,25 @@
         top: 0;
         right: 0;
         bottom: 0;
+        /* ⭐ 20 AĞU — iOS CİHAZ KUSURU (fotoğraf): menü tam ekran çekmecesi
+           top:0'dan başlıyordu → başlık ("Menü") ve KAPATMA TUŞU çentiğin /
+           durum çubuğunun ALTINDA yarısı kesik kalıyordu; kullanıcı menüyü
+           kapatamıyordu. Altta da AdMob banner'ı son maddeyi örtüyordu.
+           ⚠️ padding (margin değil): zemin rengi çentiğin altına kadar sürsün,
+           tepede beyaz şerit oluşmasın. */
+        /* 🔴 env() BU UYGULAMADA 0 DÖNÜYOR — cihazda ölçüldü (20 Ağu, KM_VP
+           notu: "olculen safeTop: 0"). Sebep: viewport meta'sında viewport-fit=cover
+           YOK ve WebKit sonradan yazılanı saymıyor. Bu yüzden tek başına env()
+           yazmak SESSİZ ÖLÜ YAMA olurdu (klasik tuzak: kod doğru, girdi sıfır).
+           ➜ Gerçek ölçü KM_VP.ustGuvenli() — screen.height - innerHeight farkından
+           türetiliyor ve bu cihazda 47px. openMenu() her açılışta --km-ust'e yazar.
+           max(): ileride viewport-fit=cover eklenirse env() devreye girer, iki
+           mekanizma çakışmaz. */
+        padding-top: max(env(safe-area-inset-top, 0px), var(--km-ust, 0px));
+        padding-bottom: calc(
+          env(safe-area-inset-bottom, 0px) + var(--ad-bottom, 0px)
+        );
+        box-sizing: border-box;
         width: 260px;
         background: #fff;
         box-shadow: -4px 0 28px rgba(var(--ac-shadow),0.18);
@@ -915,6 +934,13 @@
 
       /* ── PAYWALL ── */
       .paywall-box {
+        /* 20 AĞU — CİHAZ SS'İ: kutu sekme çubuğunun ARKASINDA kalıyordu; başlık
+           yarıdan kesiliyor, "Pro'ya Geç" butonu çubuğun altına düşüyordu.
+           scrollIntoView bunu okur → kutu dock + banner rezervinin ÜSTÜNE gelir.
+           ⚠️ --ad-bottom banner rezervi (KM_AD yazar), 90px = dock + nefes payı. */
+        scroll-margin-bottom: calc(
+          90px + var(--ad-bottom, 0px) + env(safe-area-inset-bottom, 0px)
+        );
         margin: 12px 16px;
         background: linear-gradient(135deg, var(--ac-bg2), var(--ac-bg3));
         border: 2px solid var(--ac-ll);
@@ -14170,7 +14196,14 @@ function drawResultCard(opts) {
         // ⚠️ 17 AĞU — REKLAM HAKKI BİTTİĞİNDE AYRI METİN ŞART.
         // Günlük tavan (AD_MAX_PER_DAY) geldikten sonra eski metin YALAN olurdu:
         // "kısa bir reklam izle" der, buton reklam açmaz, kullanıcı arar durur.
-        var _pwKalanReklam = _pwNative ? kalanReklamHakki() : 0;
+        // ⭐ 20 AĞU — SUNUCU TAVANI DOLUYKEN REKLAM BUTONU BASILMAZ.
+        // Kullanıcının birebir sözü: "hakkım dolduysa nasıl reklam izliyorum,
+        // böyle kandırıyormuşuz gibi olmuş". Haklı: reklam yalnız BURADAKİ
+        // sayacı artırıyordu, sunucu tavanı yerinde kalıyordu → izlenen reklamın
+        // karşılığı yoktu. srvFull, sunucudan adHelps:false gelince yazılır ve
+        // gün sonuna kadar (kmTopicUsage.date ile) durur.
+        var _pwSrvDolu = !!getTopicUsage().srvFull;
+        var _pwKalanReklam = _pwNative && !_pwSrvDolu ? kalanReklamHakki() : 0;
         if (_pwNative && _pwKalanReklam > 0) {
           _pwSub =
             "Kısa bir reklam izle, +" + AD_MSG_BONUS +
@@ -14184,11 +14217,16 @@ function drawResultCard(opts) {
           _pwCounter = "Bugün " + _pwKalanReklam + " reklam hakkın kaldı";
         } else if (_pwNative) {
           // Hak bitti: reklam butonu HİÇ basılmıyor, tek yol PRO ya da yarın.
-          _pwSub =
-            "Bugünkü " + AD_MAX_PER_DAY +
-            " reklam hakkını kullandın. Yarın yenilenir — beklemek istemezsen PRO ile günde 50 mesaj, reklamsız.";
+          // İki AYRI sebep, iki AYRI metin: (a) reklam hakkı bitti (b) sunucu
+          // günlük mesaj tavanı doldu — reklam (b)'yi açmaz, öyle de söyle.
+          _pwSub = _pwSrvDolu
+            ? "Bugünkü Merci hakkın doldu 🐙 Gece yarısı yenilenir — beklemek istemezsen PRO ile günde 50 mesaj, reklamsız."
+            : "Bugünkü " + AD_MAX_PER_DAY +
+              " reklam hakkını kullandın. Yarın yenilenir — beklemek istemezsen PRO ile günde 50 mesaj, reklamsız.";
           _pwBtn2 = "";
-          _pwCounter = "Reklam hakkın yarın yenilenir";
+          _pwCounter = _pwSrvDolu
+            ? "Hakkın gece yarısı yenilenir"
+            : "Reklam hakkın yarın yenilenir";
         } else {
           // ⚠️ 18 AĞU — iOS tarayıcı için AYRI DAL KALDIRILDI.
           // Eskiden `!_kmIsIOSWeb()` ile ikiye ayrılıyordu: iPhone/iPad tarayıcı
@@ -14214,6 +14252,15 @@ function drawResultCard(opts) {
           '<div class="paywall-counter">' + _pwCounter + "</div>";
         var chatWrap = document.querySelector(".chat-wrap");
         chatWrap.parentNode.insertBefore(wrap, chatWrap.nextSibling);
+        /* 20 AĞU — Kutu sayfa akışına ekleniyor ama GÖRÜNÜR ALANA GETİRİLMİYORDU:
+           sabit sekme çubuğu üstüne biniyor, kullanıcı "ekranın altı bozuk" diye
+           bildiriyordu (cihaz ss'i, Android). Ekleme + bir kare bekle (yerleşim
+           otursun) → ortala. scroll-margin-bottom dock'u hesaba katıyor. */
+        try {
+          setTimeout(function () {
+            wrap.scrollIntoView({ behavior: "smooth", block: "center" });
+          }, 60);
+        } catch (e) {}
         document.getElementById("ask-merci").disabled = true;
         document.getElementById("ai-ctx").disabled = true;
         // Not: PRO satış modalını otomatik AÇMIYORUZ — kutudaki "Pro'ya Geç" ve
@@ -14577,8 +14624,29 @@ function drawResultCard(opts) {
             if (typeof SAC !== "undefined" && SAC && SAC.state === "running")
               SAC.suspend().catch(function () {});
           } catch (e) {}
+          /* ⭐ 20 AĞU — SES BEKÇİSİ (canlı arıza, iOS).
+             Kullanıcı: "uygulama sessizdi, reklam geldi, kapattım, ses kendi
+             kendine geldi". KÖK NEDEN: suspend() reklam GÖSTERİLMEDEN önce
+             çağrılıyor; show...() reddedilirse (dolum yok / iptal / plugin
+             hatası) .catch yalnız finish(false) yapıyordu → afterFullscreenAd
+             HİÇ çalışmıyor → bağlam SÜRESİZ askıda kalıyor. Ses ancak bir
+             sonraki reklam kapanınca geri geliyordu.
+             ➜ Bekçi: askıya almadan sonra 90 sn içinde kimse geri açmazsa
+             kendiliğinden açılır. Reklamın en uzun hali ~60 sn, yani meşru
+             reklamı KESMEZ. resume() zaten "running" ise no-op (idempotent). */
+          try {
+            clearTimeout(this._sesBekci);
+            var _self = this;
+            this._sesBekci = setTimeout(function () {
+              _self.sesiGeriAc();
+            }, 90000);
+          } catch (e) {}
         },
         sesiGeriAc: function () {
+          try {
+            clearTimeout(this._sesBekci);
+            this._sesBekci = null;
+          } catch (e) {}
           try {
             if (typeof SAC !== "undefined" && SAC && SAC.state !== "running")
               SAC.resume().catch(function () {});
@@ -15120,6 +15188,11 @@ function drawResultCard(opts) {
               })
               .catch(function (e) {
                 console.log("Interstitial hata", e);
+                // 20 AĞU: reklam AÇILAMADI → beforeFullscreenAd'in askıya aldığı
+                // ses bağlamını geri aç. Yoksa uygulama sessiz kalıyor (iOS).
+                try {
+                  if (window.KM_VP) window.KM_VP.sesiGeriAc();
+                } catch (e2) {}
                 finish(false);
               });
           });
@@ -15580,6 +15653,10 @@ function drawResultCard(opts) {
               })
               .catch(function (e) {
                 console.log("Rewarded hata", e);
+                // 20 AĞU: aynı sebep — interstitial catch'indeki nota bak.
+                try {
+                  if (window.KM_VP) window.KM_VP.sesiGeriAc();
+                } catch (e2) {}
                 finish(false);
               });
           });
@@ -15592,6 +15669,16 @@ function drawResultCard(opts) {
         var btn = document.querySelector(".paywall-btn-ad");
         // Savunma katmanı: hak bittiyse duvar bu butonu zaten basmıyor, ama eski
         // bir duvar ekranda kalmış olabilir (ör. son reklam izlendikten sonra).
+        // 20 AĞU: sunucu tavanı doluyken reklam AÇMA — izletip karşılığını
+        // verememek en kötü takas (bkz. srvFull).
+        if (getTopicUsage().srvFull) {
+          appendMsg(
+            "merci",
+            "Bugünkü Merci hakkın doldu 🐙 Reklam izlemene gerek yok — gece yarısı yenilenir, ya da PRO ile hemen devam edebilirsin.",
+          );
+          if (btn) btn.remove();
+          return;
+        }
         if (kalanReklamHakki() <= 0) {
           appendMsg(
             "merci",
@@ -20396,6 +20483,33 @@ function drawResultCard(opts) {
               var _mEl = document.getElementById("chat-messages");
               if (_mEl && _mEl.lastElementChild) _mEl.lastElementChild.remove();
               window._pendingQ = text;
+              /* ⭐ 20 AĞU — ÜÇ DÜZELTME BİRDEN (canlı arıza):
+                 1) SAYAÇ GERİ ALINIYORDU: mesaj gönderilmeden önce usage.count++
+                    yapılıyor, 429'da mesaj geri alınıyor ama sayaç KALIYORDU →
+                    kullanıcı hiç cevap almadığı istek için hak kaybediyordu.
+                    Sunucu used alanini gönderiyorsa onunla EŞİTLE (tek doğru kaynak
+                    sunucu), yoksa bir geri al.
+                 2) adHelps:false → reklam bu duvarı AÇMAZ. srvFull işaretlenir,
+                    paywall reklam butonunu basmaz, gerçek sebep gösterilir.
+                 3) Sunucunun error metni eskiden return ile ÇÖPE GİDİYORDU →
+                    kullanıcı neden reddedildiğini HİÇ öğrenemiyordu
+                    (bkz. hafıza: ai-hata-mesaji-tuzagi). Artık yazılıyor. */
+              try {
+                if (!isPremium && premiumResolved) {
+                  var _u429 = getTopicUsage();
+                  if (typeof data.used === "number" && typeof data.limit === "number") {
+                    // Sunucu tavanı istemci aritmetiğinden bağımsız → oradan hizala
+                    _u429.count = Math.max(_u429.count || 0, data.used);
+                  } else {
+                    _u429.count = Math.max(0, (_u429.count || 0) - 1);
+                  }
+                  if (data.adHelps === false) _u429.srvFull = true;
+                  saveTopicUsage(_u429);
+                }
+              } catch (e429) {}
+              if (data.adHelps === false && data.error) {
+                appendMsg("merci", data.error, false);
+              }
               showPaywall();
               return;
             }
@@ -26473,6 +26587,18 @@ function drawResultCard(opts) {
         function openMenu() {
           var mo = document.getElementById("menu-overlay");
           var md = document.getElementById("menu-drawer");
+          // 20 AĞU — iOS: çekmece top:0'dan başlıyor, başlık ve KAPATMA TUŞU
+          // çentiğin altında kalıyordu (kullanıcı fotoğrafı). env() burada 0
+          // döndüğü için ölçülen değeri kendimiz yazıyoruz.
+          try {
+            if (window.KM_VP && typeof KM_VP.ustGuvenli === "function") {
+              var _ust = KM_VP.ustGuvenli() || 0;
+              document.documentElement.style.setProperty(
+                "--km-ust",
+                (_ust > 0 ? _ust : 0) + "px",
+              );
+            }
+          } catch (e) {}
           if (mo) mo.classList.add("on");
           if (md) md.classList.add("on");
           // Hub'dayken menü açılırsa geçmişte tuzak olmayabilir → geri tuşu
