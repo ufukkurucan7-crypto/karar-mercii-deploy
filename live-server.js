@@ -651,7 +651,7 @@ const KM_INTERNAL_TOKEN = require("crypto").randomBytes(24).toString("hex");
 // gibi 450 satırlık birikmiş mantık olduğu gibi korunuyor; sadece skipComment ile
 // ikinci Haiku yorumu atlanıyor (nihai cevabı asıl model yazacak).
 async function callNearbyInternal({
-  lat, lng, type, query, auth, osmCuisine, osmShop, osmIsim,
+  lat, lng, type, query, auth, osmCuisine, osmShop, osmIsim, exclude, intentText,
 }) {
   const r = await fetch(`http://127.0.0.1:${PORT}/nearby`, {
     method: "POST",
@@ -664,6 +664,18 @@ async function callNearbyInternal({
       lat, lng, type, query, skipComment: true,
       // Modelin ürettiği OSM ipuçları — /nearby tarafında SANITIZE edilir.
       osmCuisine, osmShop, osmIsim,
+      // ⭐ 20 AĞU — İKİ CANLI KUSURUN KAPANDIĞI YER:
+      // exclude    = sohbette DAHA ÖNCE GÖSTERİLMİŞ mekan isimleri. Araç yolu bunu
+      //              hiç göndermiyordu → ikinci öneri listesi birincinin aynısı
+      //              çıkıyordu ("aynı mekanlar tekrar" kusuru). /nearby'nin exclude
+      //              mantığı zaten vardı, sadece bu hat ona bağlı DEĞİLDİ.
+      // intentText = kullanıcının KENDİ cümleleri (arama terimi DEĞİL). Modelin
+      //              `arama` alanı genel isteklerde BOŞ kalıyor ("gece yemeği ve
+      //              bira" → arama:"") ve /nearby'nin oturmalı/içkili sinyalleri
+      //              yalnız `query`ye baktığı için niyet SUNUCUYA HİÇ ULAŞMIYORDU
+      //              → en yakın büfe/çiğköfteci listeleniyordu.
+      exclude: Array.isArray(exclude) ? exclude : [],
+      intentText: intentText || "",
     }),
   });
   const body = await r.json().catch(() => ({}));
@@ -1527,6 +1539,32 @@ app.post("/merci", rateLimit, authAndQuota, async (req, res) => {
     // ⭐ 19 AĞU — KIRP, REDDETME (aşağıdaki kirpKonusma'nın gerekçesi orada).
     const konusma = kirpKonusma(messages);
 
+    // ── 20 AĞU — NİYET METNİ (mekan alakası için) ────────────────────────────
+    // ⚠️ KÖK NEDEN (canlı): kullanıcı "gece yemeği ve bira" dedi, kartlarda büfe,
+    // çiğköfteci, DÜĞÜN SALONU çıktı. Sebep prompt DEĞİL, hattın kendisi:
+    // `mekan_ara`nın `arama` alanı — şemanın kendi talimatıyla — genel isteklerde
+    // BOŞ bırakılıyor ("belirli bir şey söylemediyse BOŞ BIRAK"). /nearby'deki
+    // oturmalı/içkili sinyalleri (`wantsSitdown`) YALNIZ o alana bakıyordu →
+    // kullanıcının cümlesi arama katmanına HİÇ ULAŞMIYORDU.
+    // ➜ Kullanıcının son cümleleri niyet SİNYALİ olarak taşınıyor. ARAMA TERİMİ
+    //    DEĞİL (serbest metin aramasına verilmez — o tuzak 2 Ağu'da yaşandı),
+    //    sadece "oturmalı mı / içki var mı" gibi kova kararlarında kullanılır.
+    const _kullaniciMetni = konusma
+      .filter((m) => m && m.role === "user" && typeof m.content === "string")
+      .slice(-3)
+      .map((m) => m.content)
+      .join(" ")
+      .slice(0, 300);
+    // Sohbette DAHA ÖNCE GÖSTERİLMİŞ mekan isimleri (client biriktirir, yeni konuda
+    // sıfırlar). Araç yolu bunu göndermediği için aynı kartlar tekrar tekrar
+    // basılıyordu; /nearby'nin exclude süzgeci hazır duruyordu, bağlı değildi.
+    const _gosterilenMekanlar = (
+      Array.isArray(req.body && req.body.shownPlaces) ? req.body.shownPlaces : []
+    )
+      .slice(-40)
+      .map((x) => String(x || "").slice(0, 60).trim())
+      .filter(Boolean);
+
     // ── GEÇMİŞ ANALİZİ ──
     let historyContext = "";
     if (history && history.length > 0) {
@@ -1686,6 +1724,10 @@ Tanımıyorsan normal yorum yap. Espriyi kısa tut, 1 cümle.`
     // client İKİNCİ bir /nearby araması tetikler (çift kota + çift kart).
     let toolRan = false;
     let toolPlaces = null;
+    // Son GEÇERLİ konuşma (araç sonuçları dahil). Model metin üretmeden biterse
+    // (ör. tool_use bloğunun ortasında max_tokens'a takılırsa) buradan TEK bir
+    // araçsız kurtarma turu atılır — bkz. "BOŞ METİN KURTARMA".
+    let sonKonusma = null;
     if (useTools) {
       let convo = konusma.slice();
       let tur = 0;
@@ -1707,6 +1749,10 @@ Tanımıyorsan normal yorum yap. Espriyi kısa tut, 1 cümle.`
               osmCuisine: inp.osm_cuisine || "",
               osmShop: inp.osm_shop || "",
               osmIsim: inp.osm_isim || "",
+              // Sohbette zaten gösterilmiş mekanlar bir daha gelmesin.
+              exclude: _gosterilenMekanlar,
+              // Kullanıcının kendi cümlesi → oturmalı/içkili niyet sinyali.
+              intentText: _kullaniciMetni,
             });
             const bulunan = Array.isArray(found.places) ? found.places : [];
             // Kartları SON BAŞARILI aramadan al; boş tur öncekini silmesin.
@@ -1768,6 +1814,7 @@ Tanımıyorsan normal yorum yap. Espriyi kısa tut, 1 cümle.`
           { role: "assistant", content: response.content },
           { role: "user", content: toolResults },
         ]);
+        sonKonusma = convo; // araç sonuçlarıyla kapanmış GEÇERLİ konuşma
         // Son turda aracı GERİ ÇEK → model mecburen metin yazar, sonsuz
         // araç-çağırma sarmalıyla boş cevap dönmesi imkânsız hale gelir.
         const sonTur = tur >= MAX_TOOL_TURN;
@@ -1783,6 +1830,38 @@ Tanımıyorsan normal yorum yap. Espriyi kısa tut, 1 cümle.`
     response.content.forEach((block) => {
       if (block.type === "text") text += block.text;
     });
+
+    // ── BOŞ METİN KURTARMA (20 AĞU — "Bi şeyler ters gitti" + ALAKASIZ KARTLAR) ──
+    // CANLI KUSUR: kullanıcı önce "Bir şeyler ters gitti, tekrar dene!" hata
+    // mesajını gördü, ARDINDAN mekan kartları geldi. Sebep: aşağıdaki yanıtta
+    // `text` boş kalınca hata metni basılıyor AMA `places: toolPlaces` yine
+    // gönderiliyor → tek istekte "hata + kart" çelişkisi.
+    // METİN NEDEN BOŞ KALIR: araç döngüsü yalnız `stop_reason === "tool_use"`
+    // durumunu sürdürür. Model bir tool_use bloğunun ORTASINDA max_tokens'a
+    // takılırsa (uzun osm_isim regex'i vb.) stop_reason "max_tokens" olur,
+    // içerikte tek bir text bloğu bulunmaz ve döngü sessizce biter.
+    // ➜ Kurtarma: elde araç sonuçlarıyla kapanmış GEÇERLİ bir konuşma varsa TEK
+    //   bir araçsız çağrı at — araç verilmediği için model metin yazmak ZORUNDA.
+    //   Bu yol yalnız bu nadir arızada çalışır, normal akışta maliyet değişmez.
+    if (!text && sonKonusma) {
+      console.warn(
+        "BOŞ METİN → araçsız kurtarma turu (stop_reason=" +
+          (response && response.stop_reason) + ")",
+      );
+      try {
+        const kurtarma = { ...baseReq, messages: sonKonusma };
+        delete kurtarma.tools;
+        const r2 = await anthropic.messages.create(kurtarma, {
+          timeout: ANTHROPIC_TIMEOUT_MAIN,
+        });
+        response = r2;
+        r2.content.forEach((block) => {
+          if (block.type === "text") text += block.text;
+        });
+      } catch (e) {
+        console.error("Kurtarma turu da başarısız:", e.message);
+      }
+    }
 
     // Türkçe-kesilme koruması: yanıt max_tokens limitine takılıp kesildiyse,
     // yarım kalan son cümleyi kırp (yoksa "anlaşılmıyor" hissi olur).
@@ -1897,8 +1976,17 @@ Tanımıyorsan normal yorum yap. Espriyi kısa tut, 1 cümle.`
         }),
       );
     }
+    // ⚠️ HATA MESAJI + KART AYNI YANITTA OLAMAZ ([[ai-hata-mesaji-tuzagi]]).
+    // Kurtarma turundan sonra hâlâ metin yoksa: elde GERÇEK mekan varsa hata
+    // DEĞİL, kartları takdim eden nötr bir cümle gönderilir (uydurma yok, teknik
+    // detay yok). Mekan da yoksa eski dürüst hata mesajı kalır.
+    const guvenliMetin =
+      text ||
+      (toolPlaces && toolPlaces.length
+        ? "En yakındakileri çıkardım, aşağıda 👇"
+        : "Bir şeyler ters gitti, tekrar dene!");
     res.json({
-      text: text || "Bir şeyler ters gitti, tekrar dene!",
+      text: guvenliMetin,
       setLocation, // yazıyla verilen konumun koordinatı (varsa) → client günceller
       // Araç çalıştıysa mekan kartları AYNI yanıtta gelir → client'ın ayrıca
       // /nearby çağırmasına gerek kalmaz (eski akışta iki HTTP turu vardı).
@@ -2576,6 +2664,17 @@ const CUISINE_RULES = [
 // ya da isimle yanlış eşleşip geliyordu. İstek çiğköfte'nin KENDİSİ değilse ELE.
 const CIGKOFTE_CHAINS = /komagene|çiğ ?köfte|cig ?kofte|çiğköftem|çiğköfte|oses/i;
 
+// ── YEME-İÇME OLMAYAN MEKAN ADLARI (20 AĞU — CANLI: "DÜĞÜN SALONU" KARTI) ──
+// Kullanıcı "gece yemeği ve bira" istedi, kartlardan biri DÜĞÜN SALONU çıktı.
+// Bu yerler OSM'de amenity=restaurant, TomTom'da RESTAURANT/RESTAURANT_AREA
+// olarak etiketlenebiliyor (mutfakları var) ama hiçbir yorumla "gidip yemek
+// yenecek mekan" DEĞİLLER: rezervasyonla organizasyona açılırlar.
+// ⚠️ İSİM TABANLI ve DAR tutuldu: yalnız organizasyon/kurum ibareleri. "Salon"
+// tek başına YOK (kuaför değil ama "Salon Restaurant" gibi gerçek isimler var).
+// Bu süzgeç YALNIZ yeme-içme kovalarında (food/cafe/dessert) uygulanır.
+const NON_DINING_NAME =
+  /(d[üu][ğg][üu]n salon|d[üu][ğg][üu]n saray|nikah|k[ıi]na salon|balo salon|davet salon|organizasyon|toplant[ıi] salon|konferans salon|kongre merkez|catering|yemekhane|kantin|ta[şs][ıi]mal[ıi] yemek|cenaze|ta[zc]iye|mezarl[ıi]k)/i;
+
 function haversine(la1, lo1, la2, lo2) {
   const R = 6371000;
   const toR = (d) => (d * Math.PI) / 180;
@@ -2633,6 +2732,16 @@ app.post("/nearby", rateLimit, async (req, res) => {
     const query = String((req.body && req.body.query) || "")
       .toLowerCase()
       .slice(0, 80);
+    // ── NİYET METNİ (20 AĞU) ────────────────────────────────────────────────
+    // Kullanıcının KENDİ cümlesi. ⚠️ ARAMA TERİMİ DEĞİLDİR: hiçbir zaman TomTom'a
+    // ya da Overpass isim regex'ine verilmez (o tuzak 2 Ağu'da yaşandı). Yalnızca
+    // "oturmalı mı / içki var mı" gibi KOVA kararlarında sinyal olarak okunur.
+    // Sebep: `mekan_ara`nın `arama` alanı genel isteklerde boş kalıyor, bu yüzden
+    // "gece yemeği ve bira" gibi net bir niyet arama katmanına hiç ulaşmıyordu.
+    const intentText = String((req.body && req.body.intentText) || "")
+      .toLowerCase()
+      .slice(0, 300);
+    const niyetMetni = (query + " " + intentText).trim();
     // Yalnız sunucu-içi araç çağrısında true (bkz. aşağıdaki yorum bloğu).
     const skipComment = !!(req.body && req.body.skipComment);
     // ── MODELİN ÜRETTİĞİ OSM İPUÇLARI (2 AĞU) ──
@@ -2653,9 +2762,28 @@ app.post("/nearby", rateLimit, async (req, res) => {
     // (Domino's) DEĞİL, servisli-oturmalı restoran (amenity=restaurant) istenir.
     // Bu sinyalde fast_food bucket'ı ELENİR (aşağıda). Örn "makarna şarap içeceğiz"
     // → Big Chefs (restaurant) EVET, Domino's/büfe HAYIR.
-    const wantsSitdown =
-      /şarap|sarap|içki|icki|alkol|bira|kokteyl|kokteil|rakı|raki|meyhane|şaraph|saraph|oturmal|à la carte|a la carte|akşam yeme|aksam yeme|romantik|masa(da|ya)?\b|garson|servisli|restoran|restaurant/i.test(
-        query,
+    const OTURMALI_RE =
+      /şarap|sarap|içki|icki|alkol|bira|kokteyl|kokteil|rakı|raki|meyhane|şaraph|saraph|oturmal|à la carte|a la carte|akşam yeme|aksam yeme|gece yeme|yemeğe çık|yemege cik|romantik|masa(da|ya)?\b|garson|servisli|restoran|restaurant/i;
+    // ⚠️ İKİ AYRI SİNYAL, KARIŞTIRMA:
+    //   wantsSitdown  = YALNIZ arama terimine bakar. Spesifik bir şey aranırken
+    //                   (kokoreç, kumpir...) mutfak/amenity daraltmasını yönetir.
+    //                   Buraya sohbet metnini KARIŞTIRMAK regresyon olurdu:
+    //                   "bira içerken kokoreç" → amenity restaurant'a kilitlenir,
+    //                   kokoreççiler (fast_food) elenir, sonuç boşalırdı.
+    //   oturmaliNiyet = arama terimi + kullanıcının cümlesi. YALNIZ genel kova
+    //                   seçiminde kullanılır (aşağıda). Canlı kusur buradaydı:
+    //                   model genel isteklerde `arama`yı boş bırakınca ("gece
+    //                   yemeği ve bira" → arama:"") sinyal ölüyor, fast_food
+    //                   kovası açık kalıyor ve kartlara büfe/çiğköfteci düşüyordu.
+    const wantsSitdown = OTURMALI_RE.test(query);
+    const oturmaliNiyet = OTURMALI_RE.test(niyetMetni);
+    // İÇKİ NİYETİ: yemek isteğinin yanında bira/rakı/şarap/kokteyl geçiyorsa
+    // kullanıcı "oturup içki de içebileceğimiz yer" istiyordur. Bu durumda yemek
+    // kovası SADECE restoran değil, bar/pub'ı da kapsar (canlı istek: "gece
+    // yemeği ve bira" → oturmalı restoran/meyhane/bar).
+    const alkolNiyeti =
+      /\bbira\b|birahane|\bpub\b|kokteyl|kokteil|şarap|sarap|\biçki\b|\bicki\b|alkol|rakı|raki|meyhane/i.test(
+        niyetMetni,
       );
     // RAKI/MEYHANE/BALIK NİYETİ — bar/pub DEĞİL, meyhane / balık lokantası / oturmalı
     // restoran ister. Rakı bir bar/pub içkisi DEĞİLDİR (bar/pub = bira & kokteyl);
@@ -2741,8 +2869,13 @@ app.post("/nearby", rateLimit, async (req, res) => {
     }
     // Oturmalı/içkili istekte yemek bucket'ını SADECE restaurant'a daralt (fast_food
     // = büfe/Domino's/dönerci-tezgah → şarap servisi yok, oturmalı değil → ELE).
-    if (typeKey === "food" && wantsSitdown) {
-      bucketSelectors = ['["amenity"="restaurant"]'];
+    // İÇKİ de isteniyorsa bar/pub kovası EKLENİR: "gece yemeği ve bira" isteğinde
+    // kullanıcının beklediği küme oturmalı restoran + meyhane + bar'dır.
+    const alkolluYemek = typeKey === "food" && oturmaliNiyet && alkolNiyeti;
+    if (typeKey === "food" && oturmaliNiyet) {
+      bucketSelectors = alkolluYemek
+        ? ['["amenity"="restaurant"]', '["amenity"="bar"]', '["amenity"="pub"]']
+        : ['["amenity"="restaurant"]'];
     }
     // ÇOKLU ENDPOINT: overpass-api.de sık sık "server too busy" (Dispatcher timeout)
     // verip JSON yerine HTML döndürüyordu → .json() patlıyor → boş liste → hiç mekan
@@ -2952,6 +3085,14 @@ app.post("/nearby", rateLimit, async (req, res) => {
             const k = String(p.name).toLowerCase().trim();
             if (excludeSet.size && excludeSet.has(k)) return false;
             if (seenTt.has(k)) return false;
+            // Düğün salonu / catering / yemekhane gibi "gidilemez" yerler:
+            // TomTom yolu OSM boru hattını ATLADIĞI için bu süzgeç BURADA da
+            // olmak zorunda (yoksa yalnız OSM tarafı korunur).
+            if (
+              ["food", "cafe", "dessert"].includes(typeKey) &&
+              NON_DINING_NAME.test(String(p.name))
+            )
+              return false;
             seenTt.add(k);
             return true;
           })
@@ -3054,6 +3195,13 @@ app.post("/nearby", rateLimit, async (req, res) => {
         const kindTr = forceKind || (tag && KIND_TR[tag]);
         if (!kindTr) return null; // tanınmayan/alakasız kategori → gösterme
         if (NAME_BLOCKLIST.test(String(name))) return null; // baro/hukuk kurumu → ele
+        // Düğün/nikah salonu, catering, yemekhane, kantin → yemeğe GİDİLEN yer
+        // değil; yeme-içme kovalarında kart olamaz (canlı kusur, 20 Ağu).
+        if (
+          ["food", "cafe", "dessert"].includes(typeKey) &&
+          NON_DINING_NAME.test(String(name))
+        )
+          return null;
         // Spesifik et/kebap/döner/köfte/ızgara isteğinde çiğköfte zincirleri (Komagene
         // vb.) alakasız → ele. Yalnız çiğköfte'nin KENDİSİ istenmedikçe uygulanır.
         if (
@@ -3063,7 +3211,8 @@ app.post("/nearby", rateLimit, async (req, res) => {
         )
           return null;
         // BAR aramasında içki mekanı OLMAYAN yerleri ele (spor/dernek/otel).
-        if (typeKey === "bar") {
+        // İçkili yemek isteğinde bar/pub selektörleri de açık → aynı süzgeç şart.
+        if (typeKey === "bar" || alkolluYemek) {
           if (isNonDrinkVenue(e.tags)) return null;
           if (BAR_NAME_EXCLUDE.test(String(name))) return null;
         }
