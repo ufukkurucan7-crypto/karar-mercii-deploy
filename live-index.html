@@ -419,6 +419,29 @@
       html.km-vp-shift .hdr {
         padding-top: calc(14px + var(--vp-top, 0px));
       }
+      /* ⭐ 20 AĞU — BANNER'IN ALTINDAKİ ŞERİDİ KAPAT.
+         🔴 CİHAZ KARESİ ("son hata"): banner geldiğinde altında ~34px'lik bir bantta
+            SAYFA İÇERİĞİ (çarkın alt dilimleri) görünüyor. Yerleşim aslında DOĞRU —
+            sekme çubuğu banner'ın tam üstünde — ama eklenti banner'ı home indicator'ın
+            ÜSTÜNE sabitlediği için banner ile ekranın dibi arasında bir şerit kalıyor
+            ve oradan kayan içerik sızıyor. "Sekmeler ekranın ortasında" hissi bundan.
+         ➜ O bant uygulama yüzeyiyle opak kapatılıyor.
+         ⚠️ z-index 55: .tabs (60) ALTINDA kalır → sekmeleri örtmez. Native banner
+            zaten WebView'in üstünde çizilir, onu da örtemez. pointer-events:none →
+            hiçbir dokunma hedefini çalmaz.
+         ⚠️ Yalnız `bannerExtra() > 0` iken (alt inset uygulanmamış iOS cihazlarda)
+            açılır; Android/web'de sınıf hiç eklenmez. */
+      html.km-alt-serit body::after {
+        content: "";
+        position: fixed;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        height: var(--vp-bottom, 0px);
+        background: var(--surface);
+        z-index: 55;
+        pointer-events: none;
+      }
       /* 📣 Duyuru bandı (panelden yönetilir). Renkler AÇIK YAZILDI —
          var(--ac-bg) gibi toplu kurallar koyu temada okunmaz hale getiriyor
          (konum modalı dersi). Üç tür: bilgi / uyarı / bakım. */
@@ -14525,6 +14548,23 @@ function drawResultCard(opts) {
         /* SON ÇARE (3. kademe): WebKit hiçbir dürtmeye cevap vermiyorsa başlığın üst
            dolgusunu ölçülen güvenli alan kadar büyüt → başlık durum çubuğunun altından
            çıkar. Görsel telafi; WebKit düzelince sınıf KALDIRILIR, çift boşluk olmaz. */
+        /* Banner ile ekranın dibi arasında kalan güvenli alan şeridini opak kapat
+           (bkz. html.km-alt-serit kuralı). bannerExtra() zaten iOS + "alt inset yok"
+           koşullarını içeriyor → başka yerde kendiliğinden açılmaz. */
+        altSeritUygula: function () {
+          try {
+            var d = document.documentElement;
+            var alt = this.bannerExtra() || 0;
+            if (alt > 0) {
+              d.style.setProperty("--vp-bottom", alt + "px");
+              d.classList.add("km-alt-serit");
+            } else {
+              d.classList.remove("km-alt-serit");
+              d.style.removeProperty("--vp-bottom");
+            }
+          } catch (e) {}
+        },
+
         ustPayiUygula: function (ac) {
           try {
             var d = document.documentElement;
@@ -14737,6 +14777,7 @@ function drawResultCard(opts) {
             }, 800);
             setTimeout(function () {
               self._kayipOrnekle();
+              self.altSeritUygula(); // ölçüm oturduktan sonra alt şeridi kur
             }, 2500);
           } catch (e) {}
           // ⭐ 20 AĞU — KENDİNİ İYİLEŞTİRME: görünüm alanı normale dönerse telafi payını
@@ -14750,6 +14791,7 @@ function drawResultCard(opts) {
                   // Yerleşim normalken örnekleme için en güvenilir an.
                   self._kayipOrnekle();
                 }
+                self.altSeritUygula();
               } catch (e) {}
               try {
                 if (typeof KM_AD !== "undefined" && KM_AD._applyAdBottom)
