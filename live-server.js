@@ -1068,7 +1068,17 @@ setTimeout(odaBakimTuru, 8000); // başlangıçta birikmiş süresi dolmuş odal
 // localStorage'da olduğu için (kurcalanabilir) bedava mesaj sızar.
 // ⚠️ Bu iki dosya birlikte deploy edilmeli — biri gider diğeri kalırsa yukarıdaki
 // iki arızadan biri CANLIDA oluşur.
-const FREE_DAILY_LIMIT = 4;
+// ⭐ 20 AĞU — 4 → 6. SIFIR PAY ARIZAYA DÖNÜŞTÜ (canlı, kullanıcı bildirdi).
+// 4 = AD_MSG_BONUS(2) × AD_MAX_PER_DAY(2), yani tavan reklam hakkıyla TAM eşitti.
+// Sonuç: modele giden ama cevap üretemeyen HER istek (timeout, API hatası, ağ)
+// kullanıcının hakkından bir mesaj yiyordu ve kullanıcı karşılığında hiçbir şey
+// almıyordu. İki reklam izleyip sıfır cevap alan kullanıcı gördük.
+// 6 = 4 hak + 2 mesaj pay. Payı kasten client'ın üretebileceğinden YÜKSEK tuttuk;
+// eski notun "yüksek kalırsa localStorage kurcalanıp bedava mesaj sızar" uyarısı
+// hâlâ doğru ama sızıntının tavanı günde 2 mesaj ≈ $0,01 — arızanın maliyetinden
+// (kullanıcının reklam izleyip eli boş kalması) kat kat ucuz.
+// ⚠️ Ayrıca artık kota İADE ediliyor (bkz. kotaIade) → pay ikinci emniyet kemeri.
+const FREE_DAILY_LIMIT = 6;
 const PRO_DAILY_LIMIT = 60;
 
 // ── PRO GEÇERLİLİK ──
@@ -1340,6 +1350,7 @@ async function authAndQuota(req, res, next) {
       return res.status(429).json({
         error:
           "Merci uygulamada çalışıyor 📲 Uygulamayı indirip ücretsiz sorabilir ya da PRO ile tarayıcıdan da devam edebilirsin.",
+        adHelps: false, // tarayıcıda ödüllü reklam altyapısı YOK
       });
     }
 
@@ -1358,6 +1369,9 @@ async function authAndQuota(req, res, next) {
           error:
             "Merci şu an çok yoğun 🐙 Birazdan tekrar dene — ya da PRO ile kesintisiz devam et.",
           limitReached: true,
+          // Reklam bu duvarı açmaz (bütçe tavanı global) → istemci reklam
+          // butonu basmasın.
+          adHelps: false,
         });
       }
     }
@@ -1377,7 +1391,12 @@ async function authAndQuota(req, res, next) {
     allowed = await adminDb.runTransaction(async (tx) => {
       const snap = await tx.get(usageRef);
       const count = snap.exists ? snap.data().count || 0 : 0;
-      if (count >= limit) return false;
+      // 20 AĞU: reddedersek istemciye KAÇ/KAÇ olduğunu söyleyeceğiz — "reklam
+      // izle" yalanının yerine gerçek sebep gitsin (bkz. aşağıdaki 429).
+      if (count >= limit) {
+        req._kmKotaDolu = { used: count, limit };
+        return false;
+      }
       tx.set(
         usageRef,
         {
@@ -1390,6 +1409,8 @@ async function authAndQuota(req, res, next) {
       );
       return true;
     });
+    // Sayaç ARTTI → istek cevapsız biterse geri verilebilsin (bkz. kotaIade).
+    if (allowed) req._kmKotaRef = usageRef;
   } catch (e) {
     // Ağ / kota tavanı / izin / gecikme → oturum SAĞLAM, altyapı geçici bozuk.
     console.error(
@@ -1404,9 +1425,26 @@ async function authAndQuota(req, res, next) {
 
   // Kota AŞIMI meşru bir REDDİR (altyapı hatası değil) → 429 aynen korunur.
   if (!allowed) {
-    return res
-      .status(429)
-      .json({ error: "Günlük Merci hakkın doldu!", limitReached: true });
+    // ⭐ 20 AĞU — "REKLAM İZLE" YALANI KAPATILDI.
+    // İstemci 429'u KOŞULSUZ paywall'a bağlıyordu ve paywall reklam butonu
+    // basıyordu. Ama günlük tavan SUNUCUDA: reklam yalnız istemcinin
+    // localStorage sayacını artırır, tavan yerinde kalır. Kullanıcı reklamı
+    // izliyor, "+2 mesaj" yazısını görüyor, soru yine reddediliyordu — yani
+    // izlettiğimiz reklamın karşılığını VEREMİYORDUK. adHelps:false bunu
+    // istemciye açıkça söyler; istemci o durumda reklam butonunu HİÇ basmaz.
+    const _kd = req._kmKotaDolu || {};
+    console.log(
+      "KOTA DOLU 429 — uid:", req._kmUid || "?",
+      "used:", _kd.used, "limit:", _kd.limit,
+    );
+    return res.status(429).json({
+      error:
+        "Bugünkü Merci hakkın doldu 🐙 Gece yarısı yenilenir — beklemek istemezsen PRO ile günde 50 mesaj, reklamsız.",
+      limitReached: true,
+      adHelps: false,
+      used: _kd.used,
+      limit: _kd.limit,
+    });
   }
 
   // Global sayaç: yalnız GERÇEKTEN modele gidecek istekler sayılır (kimlik, ban,
@@ -1415,6 +1453,7 @@ async function authAndQuota(req, res, next) {
   aiSay();
 
   req.uid = uid;
+  req._kmUid = uid; // 429 loglarında kim olduğunu görmek için (teşhis)
   next();
 }
 
@@ -1513,6 +1552,34 @@ function kirpKonusma(messages, turTavani, karakterTavani) {
     }
   }
   return a;
+}
+
+// ⭐ 20 AĞU — KOTA İADESİ.
+// authAndQuota sayacı modeli ÇAĞIRMADAN ÖNCE artırıyor (yarış koşulunu önlemek
+// için doğru), ama cevap üretilemezse geri VERMİYORDU → her hata kullanıcının
+// hakkından bir mesaj yiyordu, karşılığında hiçbir şey almıyordu. Günlük hak 4
+// iken iki hata günün yarısını siliyordu.
+// ⚠️ Yalnız CEVAPSIZ biten istekte çağır (500/504). Cevap gittiyse hak meşru
+// harcanmıştır. İki kez iade etmemek için referans null'lanıyor.
+async function kotaIade(req) {
+  try {
+    const ref = req && req._kmKotaRef;
+    if (!ref) return;
+    req._kmKotaRef = null;
+    await adminDb.runTransaction(async (tx) => {
+      const snap = await tx.get(ref);
+      const count = snap.exists ? snap.data().count || 0 : 0;
+      if (count <= 0) return;
+      tx.set(
+        ref,
+        { count: count - 1, updatedAt: FieldValue.serverTimestamp() },
+        { merge: true },
+      );
+    });
+    console.log("KOTA IADE — cevap uretilemedi, hak geri verildi:", req._kmUid || "?");
+  } catch (e) {
+    console.error("KOTA IADE HATASI:", e.message);
+  }
 }
 
 app.post("/merci", rateLimit, authAndQuota, async (req, res) => {
@@ -1994,6 +2061,8 @@ Tanımıyorsan normal yorum yap. Espriyi kısa tut, 1 cümle.`
       places: toolPlaces,
     });
   } catch (error) {
+    // Cevap üretilemedi → harcanan hakkı geri ver (bkz. kotaIade).
+    kotaIade(req);
     // Timeout'u ayır: kullanıcı donmasın, dürüst ve Merci ağzıyla bir cevap alsın.
     if (isAnthropicTimeout(error)) {
       console.error("ANTHROPIC TIMEOUT (/merci):", error.message);
