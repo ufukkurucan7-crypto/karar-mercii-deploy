@@ -11140,16 +11140,74 @@
       // ── vc32 NATIVE KÖPRÜLERİ (hepsi guard'lı — vc31/web'de sessizce yok sayılır) ──
       // Önbellekteki konum (kmUserGeo) → {lat,lng} ya da null.
       // /merci'ye koordinat göndermek için: sunucudaki `mekan_ara` aracı aramayı
-      // kendi içinde yapabilsin. 6 saat tazelik kuralı merciNearby ile AYNI değil
-      // bilerek — burada bayat koordinat da işe yarar (araca hiç vermemektense
-      // yaklaşık konum daha iyi; /nearby zaten yarıçapı kademeli genişletiyor).
-      function _kmGeo() {
+      // kendi içinde yapabilsin.
+      // ⚠️ 20 AĞU — DAVRANIŞ DEĞİŞTİ. Burada TAZELİK KURALI YOKTU: kaç gün önce
+      // yazılmış olursa olsun koordinat /merci'ye gidiyordu. CANLI KUSUR bundan
+      // çıktı: kullanıcı hazır taslağa bastı, Merci konumu HİÇ SORMADAN eski
+      // (bayat) koordinatın çevresindeki "rastgele" mekanları önerdi; kullanıcı
+      // sonra konumunu YAZMAK zorunda kaldı. Bayat koordinat "yaklaşık konum"
+      // değil, YANLIŞ konum olabiliyor.
+      // ➜ Varsayılan tazelik merciNearby ile AYNI: 6 saat. Bayatsa çağıran taraf
+      //   ya tazeler (_kmGeoTaze) ya da koordinat GÖNDERMEZ → sunucu aracı açmaz
+      //   ve konum isteme akışı devreye girer.
+      function _kmGeo(maxAgeMs) {
         try {
           var g = JSON.parse(localStorage.getItem("kmUserGeo") || "null");
-          if (g && isFinite(g.lat) && isFinite(g.lng))
-            return { lat: g.lat, lng: g.lng };
+          if (!g || !isFinite(g.lat) || !isFinite(g.lng)) return null;
+          var limit = maxAgeMs === undefined ? 6 * 60 * 60 * 1000 : maxAgeMs;
+          // `t` yoksa (çok eski kayıt) tazeliği DOĞRULANAMAZ → bayat say.
+          if (limit > 0 && (!g.t || Date.now() - g.t > limit)) return null;
+          return { lat: g.lat, lng: g.lng };
         } catch (e) {}
         return null;
+      }
+      // Taze koordinat sözü. Önbellek tazeyse anında döner; bayatsa TEK sessiz
+      // GPS tazelemesi denenir (izin zaten verilmişse kullanıcıya hiçbir şey
+      // sorulmaz, tipik olarak <1 sn — Geolocation maximumAge 60 sn). 4 sn içinde
+      // gelmezse null döner: koordinat göndermemek, YANLIŞ koordinat göndermekten
+      // iyidir (sunucu o zaman konum isteme yolunu çalıştırır).
+      function _kmGeoTaze() {
+        var taze = _kmGeo();
+        if (taze) return Promise.resolve(taze);
+        // Hiç konum kaydı yok ya da kullanıcı izni reddetmiş → burada zorlama;
+        // [[NEED_LOCATION]] yolu izin kartını zaten düzgün gösteriyor.
+        try {
+          if (
+            !localStorage.getItem("kmUserGeo") ||
+            localStorage.getItem("kmLocDenied")
+          )
+            return Promise.resolve(null);
+        } catch (e) {
+          return Promise.resolve(null);
+        }
+        if (typeof getGeo !== "function") return Promise.resolve(null);
+        return new Promise(function (resolve) {
+          var bitti = false;
+          var zamanlayici = setTimeout(function () {
+            if (bitti) return;
+            bitti = true;
+            resolve(null);
+          }, 4000);
+          getGeo()
+            .then(function (p) {
+              if (bitti) return;
+              bitti = true;
+              clearTimeout(zamanlayici);
+              try {
+                localStorage.setItem(
+                  "kmUserGeo",
+                  JSON.stringify({ lat: p.lat, lng: p.lng, t: Date.now() }),
+                );
+              } catch (e) {}
+              resolve({ lat: p.lat, lng: p.lng });
+            })
+            .catch(function () {
+              if (bitti) return;
+              bitti = true;
+              clearTimeout(zamanlayici);
+              resolve(null);
+            });
+        });
       }
       // Sunucuya "hangi platformdayız" bilgisi. /merci ve /options ücretsiz
       // kotayı 18 Ağu'dan beri YALNIZ native uygulamada veriyor: tarayıcıda
@@ -20257,6 +20315,9 @@ function drawResultCard(opts) {
         var isNewTopic = aiMessages.length === 0;
         if (isNewTopic) {
           currentTopicId = Date.now().toString();
+          // Yeni konu = temiz sayfa. Gösterilen mekan listesi konuşmaya ÖZELDİR;
+          // taşınırsa yeni konuda gerçek mekanlar boşuna elenir.
+          window._shownPlaces = [];
         }
         // Ücretsiz GÜNLÜK MESAJ limiti (her kullanıcı mesajı sayılır). SADECE PRO
         // durumu çözülünce uygulanır (giriş yarışında PRO bloklanmasın). "Yeni Konu"
@@ -20287,7 +20348,10 @@ function drawResultCard(opts) {
 
         currentUser
           .getIdToken()
-          .then((token) =>
+          // Token ile BİRLİKTE taze koordinat: bayat konumla sessizce mekan
+          // önermek canlı kusurdu (bkz. _kmGeoTaze).
+          .then((token) => Promise.all([token, _kmGeoTaze()]))
+          .then(([token, _geo]) =>
             fetch("/merci", {
               method: "POST",
               headers: {
@@ -20310,8 +20374,12 @@ function drawResultCard(opts) {
                 // model mekanları GÖREREK cevap yazıyor. Koordinat yoksa (konum
                 // kapalı) sunucu aracı hiç tanımlamaz → eski [[NEED_LOCATION]]
                 // işaret yolu aynen çalışır, davranış değişmez.
-                lat: _kmGeo() ? _kmGeo().lat : undefined,
-                lng: _kmGeo() ? _kmGeo().lng : undefined,
+                lat: _geo ? _geo.lat : undefined,
+                lng: _geo ? _geo.lng : undefined,
+                // Bu sohbette DAHA ÖNCE gösterilmiş mekanlar → sunucu araç
+                // aramasında bunları hariç tutar. Olmadığında ikinci öneri
+                // listesi birincinin AYNISI çıkıyordu (canlı kusur, 20 Ağu).
+                shownPlaces: (window._shownPlaces || []).slice(-40),
               }),
             }),
           )
@@ -20398,13 +20466,11 @@ function drawResultCard(opts) {
             // data.places === null → araç hiç çalışmadı, aşağıdaki eski işaret
             // yolu (locType/nearbyType) devrede kalır.
             if (data.places && data.places.length) {
+              // ⚠️ İsimleri BURADA ayrıca biriktirme: appendPlaceCards zaten
+              // window._shownPlaces'e yazıyor. Eskiden iki kez yazılıyordu →
+              // aynı isim listede iki yer kaplıyor, 40'lık hariç-tutma
+              // bütçesinin yarısı boşa gidiyordu.
               appendPlaceCards(data.places);
-              // "başka öner" akışı gösterilenleri hariç tutabilsin diye kaydet
-              window._shownPlaces = (window._shownPlaces || []).concat(
-                data.places.map(function (p) {
-                  return p.name;
-                }),
-              );
             }
             if (locType) {
               var _lt = locType;
