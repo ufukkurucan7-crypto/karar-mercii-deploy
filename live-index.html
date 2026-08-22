@@ -429,9 +429,20 @@
          ⚠️ z-index 55: .tabs (60) ALTINDA kalır → sekmeleri örtmez. Native banner
             zaten WebView'in üstünde çizilir, onu da örtemez. pointer-events:none →
             hiçbir dokunma hedefini çalmaz.
-         ⚠️ Yalnız `bannerExtra() > 0` iken (alt inset uygulanmamış iOS cihazlarda)
-            açılır; Android/web'de sınıf hiç eklenmez. */
-      html.km-alt-serit body::after {
+         ⚠️ `km-alt-serit` yalnız `bannerExtra() > 0` iken (alt inset uygulanmamış iOS
+            cihazlarda) açılır.
+         ⭐ 22 AĞU — `km-ad-rezerv` EKLENDİ (ANDROID'İ DE KAPSAR).
+            CİHAZ KARESİ (Android, 1.jpeg): rezerv (75px) ayrıldı ama reklam HİÇ
+            gelmedi → sekme çubuğu yukarı çıktı, altındaki banttan ÇARK göründü;
+            "sekmeler ekranın ortasında, altta boşluk" tablosu. Maske iOS'a özel
+            olduğu için Android'de o bant ŞEFFAF kalıyordu.
+            ➜ Rezerv > 0 olan HER platformda bant opak kapanıyor. Gerçek banner
+            varsa native olarak bu şeridin ÜSTÜNE çizilir → görsel değişiklik olmaz;
+            yalnız reklamın örtmediği açıklık sızdırmaz. (Boşluğun kendisini
+            KM_AD._bosBekcisiKur 10 sn sonra geri veriyor — bu yalnız o ana kadarki
+            görüntüyü kurtarır.) */
+      html.km-alt-serit body::after,
+      html.km-ad-rezerv body::after {
         content: "";
         position: fixed;
         left: 0;
@@ -15326,6 +15337,43 @@ function drawResultCard(opts) {
             kmAdGapChanged();
           } catch (e) {}
         },
+        /* ⭐ 22 AĞU — İYİMSER REZERV BEKÇİSİ ("reklam gelir gibi oldu, gelmedi").
+           🔴 CİHAZ BİLDİRİMİ (Android, 1.jpeg): "reklam gelir gibi oldu yukarı kaydı,
+              banner da gelmedi, bir süre böyle boşluklu kaldı, sonra kendiliğinden
+              aşağı oturdu." Aynı oturumda cihaz AĞ İZNİ soruyordu (WLAN/veri).
+           KÖK NEDEN: showBanner() 75px'i ANINDA rezerve ediyor (aşağıdaki iyimser
+           rezerv). İzin diyaloğu yüzünden AdMob isteği ağa hiç çıkamayınca ne
+           `bannerAdLoaded` ne `bannerAdFailedToLoad` geliyor — istek ASKIDA kalıyor.
+           Mevcut kodda rezervi geri veren TEK yol `bannerAdFailedToLoad`'dı; o olay
+           gelmediği için boşluk, AdMob'un kendi iç zaman aşımına kadar (onlarca
+           saniye) ekranda kalıyordu. Kullanıcının "sonra kendiliğinden oturdu"
+           dediği an tam olarak o geç gelen olaydır.
+           ➜ 10 sn içinde reklamın GERÇEKTEN yüklendiğine dair hiçbir kanıt yoksa
+             (ne loaded ne pozitif sizeChanged) rezerv bırakılır.
+           ⚠️ REGRESYON YOK: reklam sonradan gelirse `bannerAdSizeChanged`/
+              `bannerAdLoaded` rezervi yeniden yazar (_applyAdBottom tek yazma noktası).
+              Yani "olay yayınlamayan cihaz" senaryosunda bile en kötü ihtimal
+              10 sn sonra boşluğun kapanmasıdır — reklam varsa olay da vardır.
+           ⚠️ 45 sn'lik `_bosTmr` ile KARIŞTIRMA: o, BİR KEZ yüklenmiş banner'ın
+              tazeleme hatasına ait. Bu bekçi ise HİÇ yüklenmemiş banner içindir. */
+        _ilkTmr: null,
+        _bekciIptal: function () {
+          if (this._ilkTmr) {
+            clearTimeout(this._ilkTmr);
+            this._ilkTmr = null;
+          }
+        },
+        _bosBekcisiKur: function () {
+          if (this._ilkTmr || this._bannerYuklendi) return;
+          var self = this;
+          this._ilkTmr = window.setTimeout(function () {
+            self._ilkTmr = null;
+            if (self._bannerYuklendi || isPremium) return;
+            if (self._bannerH > 0) return; // gerçek yükseklik geldi → dokunma
+            self._bannerH = 0; // "reklam yok" → rezervi bırak
+            self._applyAdBottom();
+          }, 10000);
+        },
         showBanner: function () {
           if (!this.inApp()) return;
           if (isPremium) return; // PRO: banner asla gösterme
@@ -15402,10 +15450,13 @@ function drawResultCard(opts) {
               // (banner alttaki seçenek/butonların üstüne binmesin).
               AdMob.addListener("bannerAdSizeChanged", function (size) {
                 var h = size && size.height ? size.height : 0;
+                if (h > 0) {
+                  self._bekciIptal(); // gerçek yükseklik geldi → iyimser bekçi gereksiz
+                  self._bannerYuklendi = true;
+                }
                 if (h > 0 && self._bosTmr) {
                   clearTimeout(self._bosTmr); // reklam geri geldi → bırakma sayacını iptal et
                   self._bosTmr = null;
-                  self._bannerYuklendi = true;
                 }
                 _setAd(h > 0 ? h + "px" : "0px");
               });
@@ -15443,6 +15494,7 @@ function drawResultCard(opts) {
               });
               // Reklam geldi → rezerv dursun (kesin yükseklik sizeChanged'den gelir).
               AdMob.addListener("bannerAdLoaded", function () {
+                self._bekciIptal(); // reklam geldi → iyimser bekçiyi durdur
                 if (self._bosTmr) {
                   clearTimeout(self._bosTmr);
                   self._bosTmr = null;
@@ -15454,6 +15506,8 @@ function drawResultCard(opts) {
               });
             } catch (e) {}
           }
+          // ⭐ 22 AĞU: iyimser rezerv ayrıldı → 10 sn içinde reklam gelmezse bırak.
+          this._bosBekcisiKur();
           AdMob.showBanner({
             adId: this.bannerId(),
             adSize: "ADAPTIVE_BANNER",
@@ -15501,6 +15555,13 @@ function drawResultCard(opts) {
           // Rezervi her koşulda geri ver (web'de zaten hiç set edilmez, no-op).
           try {
             document.documentElement.style.setProperty("--ad-bottom", "0px");
+          } catch (e) {}
+          // Bekleyen bekçiler PRO'da anlamsız (rezerv zaten 0) — iptal et.
+          this._bekciIptal();
+          // Rezerv bandı maskesini de kaldır (yoksa PRO'da ekranın dibinde
+          // opak bir şerit kalırdı — 22 Ağu km-ad-rezerv kuralı).
+          try {
+            kmRezervSeridi();
           } catch (e) {}
           var AdMob = this.plugin();
           if (!AdMob) return;
@@ -16575,7 +16636,23 @@ function drawResultCard(opts) {
          ⚠️ Kaplama açık değilse kancalar null → hiçbir iş yapılmaz (PRO'da tur
          zaten bannersız çizilir, gereksiz yeniden çizim olmaz). */
       var _kmAdGapTimer = null;
+      /* ⭐ 22 AĞU — REZERV BANDI MASKESİ (html.km-ad-rezerv).
+         --ad-bottom > 0 iken ekranın dibindeki o bant opak kapatılır; 0 olunca sınıf
+         kalkar. Sınıfın kendisi geometriye DOKUNMAZ (maske position:fixed), yalnız
+         "boş bantta kayan içerik görünüyor" sızıntısını keser.
+         ⚠️ Debounce'un DIŞINDA çağrılır: arka arkaya iki değişimde ikincisi
+         `if (_kmAdGapTimer) return` ile elenirse sınıf yanlış değerde kalırdı. */
+      function kmRezervSeridi() {
+        try {
+          var d = document.documentElement;
+          var v = parseFloat(d.style.getPropertyValue("--ad-bottom")) || 0;
+          if (v > 0) d.classList.add("km-ad-rezerv");
+          else d.classList.remove("km-ad-rezerv");
+        } catch (e) {}
+      }
+      window.kmRezervSeridi = kmRezervSeridi;
       function kmAdGapChanged() {
+        kmRezervSeridi();
         if (_kmAdGapTimer) return; // arka arkaya sinyal → tek yeniden çizim
         _kmAdGapTimer = setTimeout(function () {
           _kmAdGapTimer = null;
