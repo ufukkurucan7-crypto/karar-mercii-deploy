@@ -15574,8 +15574,27 @@ function drawResultCard(opts) {
           else if (AdMob.hideBanner) AdMob.hideBanner().catch(function () {});
         },
         // Ekranda açık bir popup/modal var mı?
+        /* 🔴 22 AĞU — `#paywall-wrap` BU LİSTEDEN ÇIKARILDI (GELİR KAYBIYDI).
+           CİHAZ BİLDİRİMİ: "Merci sekmesine geçince ekran scroll ediyor, tam o an
+           banner kayboluyor; diğer sekmelere dönünce de bir daha gelmiyor."
+           KÖK NEDEN: kota duvarı açılınca `#paywall-wrap` DOM'a ekleniyor ve
+           `scrollIntoView` çalışıyor (kullanıcının gördüğü kayma tam olarak bu).
+           Liste onu "modal" saydığı için `refreshBanner()` → `setBannerVisible(false)`
+           → banner gizleniyordu. Ama duvar geçici bir katman DEĞİL: sayfa akışında
+           duran bir kutu ve kota dolduğu için GÜN SONUNA KADAR DOM'da kalıyor —
+           üstelik sekme değiştirmek onu kaldırmıyor. Sonuç: banner tüm sekmelerde
+           kalıcı olarak kayboluyordu.
+           💸 Neden ağır: duvarı gören kullanıcı = ücretsiz kotasını bitiren, yani
+              EN ÇOK reklam gösterilecek kullanıcı. Tam o anda banner kapanıyordu.
+           ➜ Banner'ı gizlemeye gerek YOK: `.paywall-box` position:fixed değil, akış
+             içinde; `scroll-margin-bottom: calc(90px + var(--ad-bottom) + ...)` ve
+             `.app { padding-bottom: var(--ad-bottom) }` zaten banner'ı hesaba katıyor,
+             kutu banner'ın ARKASINDA kalmıyor (20 Ağu'da o ayrıca düzeltilmişti).
+           ⚠️ Diğer seçiciler DURUYOR: hepsi gerçekten geçici katman (`.on` ile açılıp
+              kapanan modallar, `#chat-hist-overlay` ve `#km-tour` DOM'dan remove
+              ediliyor). Bu listeye bir daha AKIŞ İÇİ eleman ekleme — gizleme kalıcı olur. */
         modalSelectors:
-          ".menu-overlay.on, .info-modal.on, .pro-modal.on, .auth-modal.on, .confirm-modal.on, .modal-overlay.on, #paywall-wrap, #chat-hist-overlay, #km-tour, .settings-panel.on",
+          ".menu-overlay.on, .info-modal.on, .pro-modal.on, .auth-modal.on, .confirm-modal.on, .modal-overlay.on, #chat-hist-overlay, #km-tour, .settings-panel.on",
         anyModalOpen: function () {
           try {
             return !!document.querySelector(this.modalSelectors);
