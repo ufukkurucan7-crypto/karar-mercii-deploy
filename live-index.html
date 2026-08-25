@@ -20406,6 +20406,12 @@ function drawResultCard(opts) {
         }, 50);
       }
       async function merciNearby(type, query) {
+        /* ⭐ 25 AĞU — MEKAN AKIŞININ GİRİŞ KAPISI. `getGeo()` zaten reddediyor ama
+           reddi yakalayan dal kullanıcıya "konum iznini aç" diyor — İngilizcede o izin
+           HİÇ istenmiyor, yani çözemeyeceği bir eylem öneriliyor. Akışı en başta,
+           sessizce durduruyoruz. (Bu yol İngilizcede zaten tetiklenmemeli; bu bir
+           EMNİYET AĞI — model beklenmedik bir işaret üretirse diye.) */
+        if (window.KM_LANG && window.KM_LANG !== "tr") return;
         if (!currentUser) {
           signInWithGoogle();
           return;
