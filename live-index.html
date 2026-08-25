@@ -28194,8 +28194,20 @@ function drawResultCard(opts) {
           var b = document.getElementById("lang-btn");
           if (!b) return;
           b.addEventListener("click", function () {
-            // İki dil var → doğrudan diğerine geç (ayrı bir modal gereksiz)
-            sec(mevcut() === "tr" ? "en" : "tr");
+            /* ⭐ 25 AĞU — ANLIK DEĞİŞTİRME KALDIRILDI. Kaza riski vardı ve kullanıcı
+               neyi kaybedeceğini bilmiyordu. Metinler her sürümde ÖTEKİ dili anlatır. */
+            var hedef = mevcut() === "tr" ? "en" : "tr";
+            if (typeof showConfirm !== "function") { sec(hedef); return; }
+            showConfirm(
+              "Dili İngilizceye çevir?",
+              "Uygulama yeniden yüklenecek ve arayüz İngilizce olacak. " +
+                "<b>Yakındaki mekan önerisi</b> İngilizcede henüz yok, o özellik kapanır. " +
+                "Karar geçmişin, PRO üyeliğin ve ayarların olduğu gibi kalır. " +
+                "İstediğin an geri dönebilirsin.",
+              function () { sec(hedef); },
+              "Değiştir",
+              "Vazgeç"
+            );
           });
         });
       })();
