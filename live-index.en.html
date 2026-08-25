@@ -13809,7 +13809,9 @@ function drawResultCard(opts) {
         _fmtMoney: function (v, cur) {
           var digits = v < 20 ? 2 : 0;
           try {
-            return new Intl.NumberFormat("tr-TR", {
+            /* ⭐ 25 AĞU — dile göre. Sabit "tr-TR" iken Amerikalı kullanıcı USD fiyatı
+               "$4,99" (virgüllü) görüyordu. TR'de ₺49 aynen kalır. */
+            return new Intl.NumberFormat(window.KM_LANG === "en" ? "en-US" : "tr-TR", {
               style: "currency",
               currency: cur || "TRY",
               minimumFractionDigits: digits,
@@ -16047,6 +16049,24 @@ function drawResultCard(opts) {
         gaming: "oyun", "escape room": "kaçış", escape: "kaçış",
         billiards: "bilardo", pool: "bilardo", snooker: "bilardo",
       };
+/* ⭐ 25 AĞU — TARİH GÖSTERİMİ. Geçmiş kayıtları "GG.AA.YYYY" olarak SAKLANIR
+         (tr-TR). Saklama biçimi DEĞİŞTİRİLEMEZ: "bugün/dün" karşılaştırması ona
+         dayanıyor ve değiştirilirse MEVCUT kayıtların eşleşmesi bozulur.
+         Bu yüzden yalnız EKRANA basarken çeviriyoruz. */
+      function kmTarihGoster(saklanan) {
+        var t = String(saklanan || "");
+        if (!window.KM_LANG || window.KM_LANG === "tr") return t;
+        var m = t.match(/^(\d{2})\.(\d{2})\.(\d{4})$/);
+        if (!m) return t; // beklenmedik biçim → dokunma
+        try {
+          return new Date(+m[3], +m[2] - 1, +m[1]).toLocaleDateString(
+            window.KM_LANG,
+          );
+        } catch (e) {
+          return t;
+        }
+      }
+
       function getSaying(w) {
         var s = (w || "").toLowerCase();
         for (var k in SAYINGS)
@@ -25248,6 +25268,7 @@ function drawResultCard(opts) {
           var _dun = new Date(Date.now() - 86400000).toLocaleDateString("tr-TR");
           if (_tar === _bug) _tar = "today";
           else if (_tar === _dun) _tar = "yesterday";
+          else _tar = kmTarihGoster(_tar); // dile göre biçim
         } catch (e) {}
         document.getElementById("hist-summary-txt").textContent =
           (_last.emoji ? _last.emoji + " " : "") +
@@ -25287,7 +25308,7 @@ function drawResultCard(opts) {
             '</b><br><span style="font-size:10px;color:var(--ac-l2)">' +
             _kmEsc(h.mode) +
             " · " +
-            _kmEsc(h.date || "") +
+            _kmEsc(kmTarihGoster(h.date)) +
             "</span>" +
             (h.comment
               ? '<div class="hist-cmt">"' + _kmEsc(h.comment) + '"</div>'
