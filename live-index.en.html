@@ -17039,7 +17039,7 @@ function drawResultCard(opts) {
                 var _w = document.getElementById("ai-login-wall");
                 this.sel = _w && _w.offsetParent ? "#ai-login-wall" : ".merci-ai-hero";
                 this.body =
-                  "All you need to ask Merci is to <b>sign in</b> — <b>watch a short ad, get " + AD_MSG_BONUS + " messages</b> (up to " + AD_MAX_PER_DAY + " ads a day)! With PRO it's 50 messages a day, ad-free. Once you're in you can ask 'what should I eat, where should I go' and get spots near you.";
+                  "All you need to ask Merci is to <b>sign in</b> — <b>watch a short ad, get " + AD_MSG_BONUS + " messages</b> (up to " + AD_MAX_PER_DAY + "ads a day)! With PRO it's 50 messages a day, ad-free. Once you're in you can ask 'what should I eat, what should we watch' and get an answer on the spot.";
               } else {
                 this.sel = ".merci-ai-hero";
                 this.body =
@@ -17053,7 +17053,7 @@ function drawResultCard(opts) {
             settle: 240,
             pose: "chat",
             title: "⚡ Quick Start",
-            body: "Start with one tap using ready-made questions: 'What should I eat?', 'Any cafés nearby?', 'What should I watch?'…",
+            body: "Start with one tap using ready-made questions: 'What should I eat?', 'What should I watch?', 'What should we do?'…",
             skipIf: function () {
               return !currentUser;
             },
@@ -17064,7 +17064,7 @@ function drawResultCard(opts) {
             settle: 240,
             pose: "think",
             title: "✍️ Describe your situation",
-            body: "Or write your situation in your own words. Give <b>location permission</b> and I'll bring up places near you; if you can't decide, I'll pick for you 🐙",
+            body: "Or just write your situation in your own words — if you can't decide, I'll pick for you 🐙",
             skipIf: function () {
               return !currentUser;
             },
@@ -17470,7 +17470,7 @@ function drawResultCard(opts) {
           sel: ".merci-ai-hero",
           alt: "#ai-login-wall",
           pose: "glasses",
-          tx: "Write your situation in your own words or tap one of the ready-made questions. Give <b>location permission</b> and I'll bring up places near you too 🐙",
+          tx: "Write your situation in your own words, or tap one of the ready-made questions 🐙",
         },
       };
       var _kmHintEl = null;
@@ -20406,6 +20406,12 @@ function drawResultCard(opts) {
         }, 50);
       }
       async function merciNearby(type, query) {
+        /* ⭐ 25 AĞU — MEKAN AKIŞININ GİRİŞ KAPISI. `getGeo()` zaten reddediyor ama
+           reddi yakalayan dal kullanıcıya "konum iznini aç" diyor — İngilizcede o izin
+           HİÇ istenmiyor, yani çözemeyeceği bir eylem öneriliyor. Akışı en başta,
+           sessizce durduruyoruz. (Bu yol İngilizcede zaten tetiklenmemeli; bu bir
+           EMNİYET AĞI — model beklenmedik bir işaret üretirse diye.) */
+        if (window.KM_LANG && window.KM_LANG !== "tr") return;
         if (!currentUser) {
           signInWithGoogle();
           return;
@@ -27364,8 +27370,7 @@ function drawResultCard(opts) {
           Everyone gives stars; vote from a single phone, or online with everyone
           on their own.
           <h3>🧠 Ask Merci</h3>
-          Our AI-powered octopus assistant suggests options, looks up places and
-          analyzes your history.
+          Our AI-powered octopus assistant suggests options and analyzes your decision history.
           <h3>📡 Online Voting</h3>
           Everyone joins with a link or room code, and results update live.
           <br />
@@ -27924,8 +27929,7 @@ function drawResultCard(opts) {
         </div>
         <div class="auth-perks">
           <div class="auth-perk">
-            <span class="auth-perk-icon">📍</span> Real place suggestions near you
-            (cafés, restaurants...)
+            <span class="auth-perk-icon">📍</span> Save your decision history and pick up where you left off
           </div>
           <div class="auth-perk">
             <span class="auth-perk-icon">🎁</span>
