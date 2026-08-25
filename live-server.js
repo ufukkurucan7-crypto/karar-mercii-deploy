@@ -302,9 +302,29 @@ app.get("/app-ads.txt", (req, res) => {
 // "son iyi kopyayı sakla" yazsaydık aynı şikayeti (eski sürüm) geri getirirdik.
 // Ağ varsa DAİMA taze; ağ yoksa bayat uygulama yerine NET bir çevrimdışı ekranı.
 const SW_SOURCE = `// Karar Mercii service worker — network-first, HTML önbelleğe ALINMAZ.
-const OFFLINE_HTML = \`<!doctype html><html lang="tr"><head><meta charset="utf-8">
+/* ⭐ 25 AĞU — ÇEVRİMDIŞI EKRANI ARTIK İKİ DİLLİ.
+// Buradaki metin TÜRKÇEYE SABİTLENMİŞTİ: İngilizce (Decidopus) kullanıcısı ağ
+// kesilince "İnternet yok — Karar Mercii" yazan MOR bir ekran görüyordu. Uygulama
+// sayfayı uzaktan yüklediği için bu ekran nadir değil, ilk açılışta da çıkabiliyor.
+//
+// ⚠️ NEDEN navigator.language, NEDEN SUNUCU DEĞİL: sunucu tarafında _dilSec ile
+// seçseydik, tarayıcının service worker GÜNCELLEME isteği ile sayfanın dili
+// arasında bayatlama riski olurdu (SW ayrı bir istek, ayrı bir önbellek yolu).
+// SW'nin kendi içinde karar vermesi bu bağı tamamen koparıyor.
+// Kural sunucudakiyle AYNI: Türkçe yalnız Türkçe cihazda, diğer her dil İngilizce.
+// Bilinen sınır: Türkçe cihazda uygulamayı elle İngilizceye alan kullanıcı bu
+// ekranı Türkçe görür (SW localStorage/çerez okuyamaz). Kabul edildi — nadir. */
+const _TR = (navigator.language || "tr").toLowerCase().startsWith("tr");
+const _OFFLINE_METIN = _TR
+  ? { lang: "tr", ad: "Karar Mercii", baslik: "Çevrimdışısın", h1: "İnternet yok",
+      p: "Karar Mercii çalışmak için internete ihtiyaç duyuyor. Bağlantını kontrol edip tekrar dene.",
+      btn: "Tekrar Dene" }
+  : { lang: "en", ad: "Decidopus", baslik: "You are offline", h1: "No connection",
+      p: "Decidopus needs an internet connection to work. Check your connection and try again.",
+      btn: "Try Again" };
+const OFFLINE_HTML = \`<!doctype html><html lang="\${_OFFLINE_METIN.lang}"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Çevrimdışısın — Karar Mercii</title><style>
+<title>\${_OFFLINE_METIN.baslik} — \${_OFFLINE_METIN.ad}</title><style>
 html,body{margin:0;height:100%;font-family:system-ui,-apple-system,"Segoe UI",sans-serif}
 body{background:linear-gradient(160deg,#4c1d95,#6d28d9);color:#fff;display:flex;
 align-items:center;justify-content:center;text-align:center;padding:24px}
@@ -313,9 +333,8 @@ h1{font-size:20px;margin:0 0 10px;font-weight:800}
 p{font-size:14px;line-height:1.55;opacity:.85;margin:0 0 22px}
 button{background:#fff;color:#5b21b6;border:none;padding:13px 26px;border-radius:14px;
 font-size:15px;font-weight:800;cursor:pointer}</style></head><body><div class="b">
-<div class="e">🐙</div><h1>İnternet yok</h1>
-<p>Karar Mercii çalışmak için internete ihtiyaç duyuyor. Bağlantını kontrol edip
-tekrar dene.</p><button onclick="location.reload()">Tekrar Dene</button>
+<div class="e">🐙</div><h1>\${_OFFLINE_METIN.h1}</h1>
+<p>\${_OFFLINE_METIN.p}</p><button onclick="location.reload()">\${_OFFLINE_METIN.btn}</button>
 </div></body></html>\`;
 
 self.addEventListener("install", (e) => self.skipWaiting());
@@ -638,6 +657,794 @@ app.get(["/indir", "/download"], (req, res) => {
   // gösterdiği için sunucudan ayırt edilemez): iki seçeneği birden göster.
   res.type("html").send(INDIR_HTML);
 });
+
+
+// ── HUKUK SAYFALARI: DİLE DUYARLI SERVİS (25 AĞU) ───────────────────────────
+// 🔴 NEDEN: mağazaya verilen gizlilik/şartlar bağlantıları YALNIZ TÜRKÇEYDİ ve
+// /terms.html HİÇ YOKTU (404). Apple, İngilizce ürün sayfasında Türkçe hukuk
+// metnini kabul etmez; abonelikli uygulamada "Terms of Use (EULA)" bağlantısının
+// da çalışması beklenir.
+//
+// ⚠️ NEDEN AYRI DOSYA DEĞİL DE ROUTE: km-deploy.sh yalnız index + server çeker;
+// public/ altına dosya koymak AYRI bir curl adımı gerektirir (aynı gerekçe /sw.js
+// için de geçerli, yukarıya bakın). Route olarak sunulunca sunucuyla deploy olur.
+//
+// ⚠️ TÜRKÇE SAYFALAR BURADA DEĞİL: privacy.html ve delete-account.html'in Türkçe
+// sürümleri public/ altında DURUYOR. Türkçe istekte next() diyoruz, express.static
+// devralıyor — böylece mevcut Türkçe metin tek yerde kalır, kopyası çıkmaz.
+// terms.html'in Türkçesi public/'te YOK, o yüzden her iki dili de burada.
+//
+// Dil kaynağı _dilSec(): ?_l= → km_lang çerezi → Accept-Language → tr.
+// Mağaza konsollarına verilecek İngilizce adresler:
+//   https://kararmercii.com/privacy.html?_l=en
+//   https://kararmercii.com/terms.html?_l=en
+//   https://kararmercii.com/delete-account.html?_l=en
+const _HUKUK_SAYFALARI = {
+  "/privacy.html": { en: `<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Privacy Policy — Decidopus</title>
+    <style>
+      body {
+        font-family: -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+        max-width: 760px;
+        margin: 0 auto;
+        padding: 24px;
+        line-height: 1.6;
+        color: #222;
+      }
+      h1 {
+        font-size: 1.6rem;
+      }
+      h2 {
+        font-size: 1.15rem;
+        margin-top: 1.6em;
+      }
+      a {
+        color: #6b4eff;
+      }
+      .updated {
+        color: #666;
+        font-size: 0.9rem;
+      }
+      footer {
+        margin-top: 40px;
+        padding-top: 16px;
+        border-top: 1px solid #eee;
+        font-size: 0.85rem;
+        color: #666;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Privacy Policy</h1>
+    <p class="updated">Last updated: August 2026</p>
+
+    <p>
+      This privacy policy applies to the <strong>Decidopus</strong> website
+      (kararmercii.com) and mobile app (together, the "Service") and explains
+      how user data is collected, used and protected. The website and the
+      mobile app both continue to operate in the same way. The Service is
+      developed by ASY Tech Studio. By using the Service you accept this
+      policy.
+    </p>
+
+    <h2>Information We Collect</h2>
+    <ul>
+      <li>
+        <strong>Account information:</strong> when you sign in with Google, we
+        receive your name, email address, profile photo and your unique user
+        ID (through Google / Firebase Authentication).
+      </li>
+      <li>
+        <strong>App content:</strong> the decisions and voting rooms you create
+        are stored against your account. "Merci" AI chat content is not stored
+        permanently; only when you rate a reply (👍/👎) do we keep a short
+        excerpt of your message together with Merci's answer, in order to
+        improve quality and prevent abuse. If abuse is detected, your access to
+        Merci may be limited.
+      </li>
+      <li>
+        <strong>Usage data:</strong> we keep a count of your daily AI usage in
+        order to prevent abuse of the Service.
+      </li>
+      <li>
+        <strong>Advertising and device information:</strong> the Service shows
+        Google AdMob ads. AdMob may process data such as your advertising ID
+        and device information under its own policy. PRO members see no ads.
+      </li>
+      <li>
+        <strong>Location information:</strong> only when you use the "suggest
+        places near me" feature and grant permission, your device's approximate
+        or precise location is read. Location is used only to find places near
+        you at that moment; it may be sent to OpenStreetMap for place data and
+        to Anthropic to produce a short suggestion. Your location is not
+        tracked continuously, is not collected in the background and is not
+        stored permanently on your device.
+        <br />
+        <strong>Please note:</strong> the nearby-places feature is currently
+        available only in the Turkish version of the app, so this permission is
+        not requested in English. The app is distributed as a single binary and
+        the location permission is declared for that reason; the disclosure
+        above describes what happens if and when you use the feature.
+      </li>
+    </ul>
+
+    <h2>How We Use Your Information</h2>
+    <ul>
+      <li>To create your account and manage your session,</li>
+      <li>To store your decision history and voting rooms and show them to you,</li>
+      <li>To provide the "Merci" AI feature and prevent abuse of it,</li>
+      <li>To show ads so that the Service can stay free,</li>
+      <li>To suggest places near you (restaurants, cafés and so on) when you
+        allow it.</li>
+    </ul>
+    <p>
+      We use each category of data only for the purpose it was collected for.
+      <strong>We do not sell your personal information and we do not share it
+      for cross-context behavioral advertising.</strong> Our service providers
+      operate globally, so your data may be processed on servers outside your
+      country, including in the United States.
+    </p>
+
+    <h2>Third-Party Services</h2>
+    <p>
+      The Service uses the third-party services below. Their own privacy
+      policies apply:
+    </p>
+    <ul>
+      <li>
+        Google Firebase (authentication, database, notifications) —
+        <a href="https://firebase.google.com/support/privacy" target="_blank"
+          >Firebase Privacy</a
+        >
+      </li>
+      <li>
+        Google AdMob (advertising) —
+        <a href="https://policies.google.com/privacy" target="_blank"
+          >Google Privacy Policy</a
+        >
+      </li>
+      <li>
+        Anthropic (Claude AI) — chat content you write in the "Ask Merci"
+        feature is sent to Anthropic's servers so that a reply can be
+        generated.
+        <a href="https://www.anthropic.com/legal/privacy" target="_blank"
+          >Anthropic Privacy Policy</a
+        >
+      </li>
+      <li>
+        RevenueCat (PRO subscription management) —
+        <a href="https://www.revenuecat.com/privacy" target="_blank"
+          >RevenueCat Privacy Policy</a
+        >
+      </li>
+      <li>
+        OpenStreetMap / Overpass (location query for "suggest places near me")
+        —
+        <a
+          href="https://wiki.osmfoundation.org/wiki/Privacy_Policy"
+          target="_blank"
+          >OSM Privacy Policy</a
+        >
+      </li>
+    </ul>
+
+    <h2>Artificial Intelligence</h2>
+    <p>
+      Ask Merci runs on Anthropic's Claude AI. What you write in the chat is
+      sent to Anthropic's servers so a reply can be generated. Anthropic does
+      not use API inputs or outputs to train its models by default, and keeps
+      them only for a limited period under its commercial terms. Even so,
+      please do not type sensitive personal information into the chat.
+    </p>
+
+    <h2>Your Privacy Rights (GDPR / CCPA)</h2>
+    <ul>
+      <li>Know what personal data we hold about you, and why</li>
+      <li>Request a copy of it, or ask us to correct it</li>
+      <li>Ask us to delete it, or withdraw your consent at any time</li>
+    </ul>
+    <p>
+      You can delete your account and everything in it from inside the app, or
+      write to
+      <a href="mailto:asytechstudio@gmail.com">asytechstudio@gmail.com</a>. We
+      will never treat you differently for exercising these rights.
+    </p>
+
+    <h2>Cookies and Local Storage</h2>
+    <p>
+      The app uses localStorage on your device to remember your settings. You
+      can reset or limit your advertising ID at any time in your device
+      settings.
+    </p>
+
+    <h2>Data Retention and Deletion</h2>
+    <p>
+      We keep your data for as long as your account exists. You can remove your
+      account and your whole history from inside the app using the sign-out or
+      account deletion options — delete your account and your decision history
+      and rooms go with it. See
+      <a href="/delete-account.html?_l=en">Account and Data Deletion</a> for
+      the details, or contact us at the email address below to request
+      deletion.
+    </p>
+
+    <h2>Children's Privacy</h2>
+    <p>
+      The Service is intended for ages 13 and up. We do not knowingly collect
+      personal information from children under 13; if you believe a child has
+      given us theirs, write to us and we will delete it.
+    </p>
+
+    <h2>Changes</h2>
+    <p>
+      This privacy policy may be updated from time to time. Updates are
+      published on this page, and the date at the top always shows the current
+      version.
+    </p>
+
+    <h2>Contact</h2>
+    <p>
+      For questions:
+      <a href="mailto:asytechstudio@gmail.com">asytechstudio@gmail.com</a>
+    </p>
+
+    <footer>
+      <p>
+        Decidopus — developed by ASY Tech Studio · asytechstudio@gmail.com<br />
+        <a href="/terms.html?_l=en">Terms of Use</a> ·
+        <a href="/delete-account.html?_l=en">Account and Data Deletion</a>
+      </p>
+    </footer>
+  </body>
+</html>` },
+  "/terms.html": { tr: `<!DOCTYPE html>
+<html lang="tr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Kullanım Koşulları — Karar Mercii</title>
+    <style>
+      body {
+        font-family: -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+        max-width: 760px;
+        margin: 0 auto;
+        padding: 24px;
+        line-height: 1.6;
+        color: #222;
+      }
+      h1 {
+        font-size: 1.6rem;
+      }
+      h2 {
+        font-size: 1.15rem;
+        margin-top: 1.6em;
+      }
+      a {
+        color: #6b4eff;
+      }
+      .updated {
+        color: #666;
+        font-size: 0.9rem;
+      }
+      footer {
+        margin-top: 40px;
+        padding-top: 16px;
+        border-top: 1px solid #eee;
+        font-size: 0.85rem;
+        color: #666;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Kullanım Koşulları</h1>
+    <p class="updated">Son güncelleme: Ağustos 2026</p>
+
+    <p>
+      Bu Kullanım Koşulları, <strong>Karar Mercii</strong> web sitesi
+      (kararmercii.com) ve mobil uygulamasının (bundan sonra birlikte "Hizmet")
+      kullanımını düzenler. Hizmeti kullanarak bu koşulları kabul etmiş
+      olursunuz. Kişisel verilerinizin nasıl işlendiğini
+      <a href="/privacy.html">Gizlilik Politikası</a> sayfasında
+      bulabilirsiniz.
+    </p>
+
+    <h2>1. Taraflar</h2>
+    <p>
+      Bu koşullar, <strong>ASY Tech Studio</strong> ile Karar Mercii kullanıcısı
+      arasındaki ilişkiyi düzenler. İletişim:
+      <a href="mailto:asytechstudio@gmail.com">asytechstudio@gmail.com</a>
+    </p>
+
+    <h2>2. Hizmet</h2>
+    <p>
+      Karar Mercii; grup kararlarını çark, oylama, çekiliş ve yapay zeka ile
+      kolaylaştıran bir web ve mobil uygulamadır. Uygulamanın temel kullanımı
+      ücretsizdir ve reklam gösterilerek finanse edilir.
+    </p>
+
+    <h2>3. PRO Aboneliği ve Otomatik Yenileme</h2>
+    <p>
+      PRO, isteğe bağlı ve <strong>otomatik yenilenen</strong> bir aboneliktir.
+      Aboneliğe ilişkin şartlar:
+    </p>
+    <ul>
+      <li>
+        Abonelik süresi ve ücreti, satın alma ekranında satın almadan önce yerel
+        para biriminizde açıkça gösterilir.
+      </li>
+      <li>
+        Ücret, satın alma onaylandığında <strong>App Store veya Google Play
+        hesabınızdan</strong> tahsil edilir.
+      </li>
+      <li>
+        Abonelik, <strong>mevcut dönemin bitiminden en az 24 saat önce</strong>
+        iptal edilmediği sürece aynı süre ve aynı ücretle otomatik olarak
+        yenilenir. Yenileme ücreti, dönemin bitiminden önceki 24 saat içinde
+        tahsil edilir.
+      </li>
+      <li>
+        Aboneliğinizi istediğiniz zaman <strong>mağaza hesabınızın ayarlarından</strong>
+        (App Store → Abonelikler veya Google Play → Abonelikler) iptal
+        edebilirsiniz. Uygulamayı silmek aboneliği iptal etmez.
+      </li>
+      <li>
+        Ödeme, faturalandırma, iade ve iptal işlemleri ilgili mağaza (Apple veya
+        Google) tarafından yürütülür; bu işlemler ASY Tech Studio tarafından
+        değil, mağaza tarafından gerçekleştirilir. İade taleplerinizi mağazaya
+        iletmeniz gerekir.
+      </li>
+      <li>
+        Ücretsiz deneme sunulduğu durumlarda, denemenin kullanılmayan kısmı
+        aboneliği satın aldığınızda sona erer.
+      </li>
+      <li>PRO üyeler reklam görmez.</li>
+    </ul>
+
+    <h2>4. Kullanım Şartları</h2>
+    <ul>
+      <li>13 yaşından büyük olduğunuzu kabul edersiniz</li>
+      <li>Hizmeti yalnızca yasal amaçlarla kullanacağınızı</li>
+      <li>Sistemi kötüye kullanmayacağınızı</li>
+      <li>Başkalarının haklarını ihlal etmeyeceğinizi</li>
+      <li>
+        Kötüye kullanım, taciz veya otomasyon (bot) tespit edilmesi hâlinde,
+        ücretli (PRO) üye olsanız dahi hizmet erişiminizin — özellikle
+        "Merci'ye Danış" yapay zeka özelliğinin — kısıtlanabileceğini kabul
+        edersiniz
+      </li>
+    </ul>
+
+    <h2>5. Yapay Zeka</h2>
+    <p>
+      "Merci'ye Danış" bilgi amaçlıdır ve yalnızca karar verme konusunda
+      yardımcı olur. ASY Tech Studio yanıtların doğruluğunu garanti etmez.
+      Merci; kumar, bahis veya alkol/tütün tüketimini teşvik etmez.
+    </p>
+
+    <h2>6. Fikri Mülkiyet</h2>
+    <p>
+      Tüm tasarım, kod ve Merci karakteri ASY Tech Studio'ya aittir. İzinsiz
+      kopyalanamaz.
+    </p>
+
+    <h2>7. Sorumluluk</h2>
+    <p>
+      Hizmet "olduğu gibi" sunulur. ASY Tech Studio kesintisiz veya hatasız
+      çalışmayı garanti etmez ve Hizmeti kullanarak verdiğiniz kararlardan
+      sorumluluk kabul etmez. Bu koşullardaki hiçbir hüküm, yürürlükteki
+      mevzuata göre sınırlandırılamayan sorumlulukları sınırlandırmaz.
+    </p>
+
+    <h2>8. Hesabınızı Silme</h2>
+    <p>
+      Hesabınızı ve verilerinizi istediğiniz zaman uygulama içinden
+      silebilirsiniz. Ayrıntılar için
+      <a href="/delete-account.html">Hesap ve Veri Silme</a> sayfasına bakın.
+      Aboneliğinizin ayrıca mağaza hesabınızdan iptal edilmesi gerektiğini
+      unutmayın.
+    </p>
+
+    <h2>9. Değişiklikler</h2>
+    <p>
+      Bu koşullar zaman zaman güncellenebilir. Güncellemeler bu sayfada
+      yayımlanır ve sayfanın başındaki tarih geçerli sürümü gösterir.
+    </p>
+
+    <h2>10. Hukuk</h2>
+    <p>
+      Bu koşullar Türkiye hukukuna tabidir. Anlaşmazlıklarda İstanbul
+      mahkemeleri yetkilidir. Tüketici mevzuatından doğan zorunlu haklarınız
+      saklıdır.
+    </p>
+
+    <h2>11. İletişim</h2>
+    <p>
+      Sorularınız için:
+      <a href="mailto:asytechstudio@gmail.com">asytechstudio@gmail.com</a>
+    </p>
+
+    <footer>
+      <p>
+        Karar Mercii — Geliştirici: ASY Tech Studio · asytechstudio@gmail.com<br />
+        <a href="/privacy.html">Gizlilik Politikası</a> ·
+        <a href="/delete-account.html">Hesap ve Veri Silme</a>
+      </p>
+    </footer>
+  </body>
+</html>`, en: `<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Terms of Use — Decidopus</title>
+    <style>
+      body {
+        font-family: -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+        max-width: 760px;
+        margin: 0 auto;
+        padding: 24px;
+        line-height: 1.6;
+        color: #222;
+      }
+      h1 {
+        font-size: 1.6rem;
+      }
+      h2 {
+        font-size: 1.15rem;
+        margin-top: 1.6em;
+      }
+      a {
+        color: #6b4eff;
+      }
+      .updated {
+        color: #666;
+        font-size: 0.9rem;
+      }
+      footer {
+        margin-top: 40px;
+        padding-top: 16px;
+        border-top: 1px solid #eee;
+        font-size: 0.85rem;
+        color: #666;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Terms of Use</h1>
+    <p class="updated">Last updated: August 2026</p>
+
+    <p>
+      These Terms of Use govern your use of the <strong>Decidopus</strong>
+      website (kararmercii.com) and mobile app (together, the "Service"). By
+      using the Service you accept these terms. How we handle your personal data
+      is explained in our
+      <a href="/privacy.html?_l=en">Privacy Policy</a>.
+    </p>
+
+    <h2>1. Parties</h2>
+    <p>
+      These terms govern the relationship between <strong>ASY Tech Studio</strong>
+      and you, as a user of Decidopus. Contact:
+      <a href="mailto:asytechstudio@gmail.com">asytechstudio@gmail.com</a>
+    </p>
+
+    <h2>2. The Service</h2>
+    <p>
+      Decidopus helps groups decide together with a wheel, group voting, raffles
+      and AI suggestions. The app is free to use and is funded by advertising.
+    </p>
+
+    <h2>3. PRO Subscription and Auto-Renewal</h2>
+    <p>
+      PRO is an optional, <strong>auto-renewing</strong> subscription. The
+      following terms apply:
+    </p>
+    <ul>
+      <li>
+        The length of the subscription and its price are shown clearly on the
+        purchase screen, in your local currency, before you buy.
+      </li>
+      <li>
+        Payment is charged to your <strong>App Store or Google Play account</strong>
+        when you confirm the purchase.
+      </li>
+      <li>
+        The subscription renews automatically for the same period at the same
+        price unless you cancel <strong>at least 24 hours before the current
+        period ends</strong>. Your account is charged for the renewal within the
+        24 hours before the period ends.
+      </li>
+      <li>
+        You can cancel at any time in your <strong>store account settings</strong>
+        (App Store → Subscriptions, or Google Play → Subscriptions). Deleting
+        the app does not cancel the subscription.
+      </li>
+      <li>
+        Payments, billing, refunds and cancellations are handled by the store
+        (Apple or Google), not by ASY Tech Studio. Refund requests must be made
+        to the store.
+      </li>
+      <li>
+        Where a free trial is offered, any unused part of it ends when you buy
+        the subscription.
+      </li>
+      <li>PRO members see no ads.</li>
+    </ul>
+
+    <h2>4. Your Commitments</h2>
+    <ul>
+      <li>You confirm that you are 13 or older</li>
+      <li>You will use the app only for lawful purposes</li>
+      <li>You will not abuse the service or try to break it</li>
+      <li>You will not infringe anyone else's rights</li>
+      <li>
+        You accept that if abuse, harassment or automation (bots) is detected,
+        your access — especially to the "Ask Merci" AI feature — may be limited
+        even if you are a paying PRO member
+      </li>
+    </ul>
+
+    <h2>5. Artificial Intelligence</h2>
+    <p>
+      Ask Merci is there to help you decide and nothing more. ASY Tech Studio
+      does not guarantee that its answers are accurate. Merci does not encourage
+      gambling, betting, or alcohol or tobacco use.
+    </p>
+
+    <h2>6. Intellectual Property</h2>
+    <p>
+      All design, code and the Merci character belong to ASY Tech Studio and may
+      not be copied without permission.
+    </p>
+
+    <h2>7. Liability</h2>
+    <p>
+      The app is provided "as is". ASY Tech Studio does not guarantee
+      uninterrupted or error-free operation and accepts no responsibility for
+      the decisions you make using it. Nothing in these terms limits any
+      liability that cannot be limited under applicable law.
+    </p>
+
+    <h2>8. Deleting Your Account</h2>
+    <p>
+      You can delete your account and your data from inside the app at any time.
+      See <a href="/delete-account.html?_l=en">Account and Data Deletion</a> for
+      the details. Note that a PRO subscription must be cancelled separately in
+      your store account.
+    </p>
+
+    <h2>9. Changes</h2>
+    <p>
+      These terms may be updated from time to time. Updates are published on
+      this page, and the date at the top always shows the current version.
+    </p>
+
+    <h2>10. Governing Law</h2>
+    <p>
+      These terms are governed by the laws of Türkiye, with the courts of
+      Istanbul having jurisdiction — without prejudice to any mandatory consumer
+      protection rights you have under the laws of your country of residence.
+    </p>
+
+    <h2>11. Contact</h2>
+    <p>
+      For questions:
+      <a href="mailto:asytechstudio@gmail.com">asytechstudio@gmail.com</a>
+    </p>
+
+    <footer>
+      <p>
+        Decidopus — developed by ASY Tech Studio · asytechstudio@gmail.com<br />
+        <a href="/privacy.html?_l=en">Privacy Policy</a> ·
+        <a href="/delete-account.html?_l=en">Account and Data Deletion</a>
+      </p>
+    </footer>
+  </body>
+</html>` },
+  "/delete-account.html": { en: `<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Account and Data Deletion — Decidopus</title>
+    <style>
+      body {
+        font-family: -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+        max-width: 760px;
+        margin: 0 auto;
+        padding: 24px;
+        line-height: 1.6;
+        color: #222;
+      }
+      h1 {
+        font-size: 1.6rem;
+      }
+      h2 {
+        font-size: 1.15rem;
+        margin-top: 1.6em;
+      }
+      a {
+        color: #6b4eff;
+      }
+      .updated {
+        color: #666;
+        font-size: 0.9rem;
+      }
+      .box {
+        background: #f4f6fb;
+        border-radius: 10px;
+        padding: 16px 20px;
+        margin: 18px 0;
+      }
+      ol {
+        padding-left: 20px;
+      }
+      table {
+        border-collapse: collapse;
+        width: 100%;
+        margin: 12px 0;
+      }
+      th,
+      td {
+        border: 1px solid #ddd;
+        padding: 8px 10px;
+        text-align: left;
+        font-size: 0.95rem;
+      }
+      th {
+        background: #f0f2f7;
+      }
+      footer {
+        margin-top: 40px;
+        padding-top: 16px;
+        border-top: 1px solid #eee;
+        font-size: 0.85rem;
+        color: #666;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Account and Data Deletion — Decidopus</h1>
+    <p class="updated">Last updated: August 2026</p>
+
+    <p>
+      This page explains how to delete the account you created in
+      <strong>Decidopus</strong> and the data associated with it. Decidopus is
+      developed by ASY Tech Studio.
+    </p>
+
+    <h2>Delete your account from inside the app (recommended)</h2>
+    <div class="box">
+      <p>
+        You can delete your account yourself, at any time, without contacting
+        us:
+      </p>
+      <ol>
+        <li>Open Decidopus and make sure you are signed in.</li>
+        <li>Open the menu with the <strong>&#9776;</strong> button in the top bar.</li>
+        <li>Tap <strong>Delete My Account</strong> at the bottom of the menu.</li>
+        <li>Confirm when you are asked to.</li>
+      </ol>
+      <p>
+        Deletion is <strong>immediate and permanent</strong>. Your account and
+        the data listed below are removed, you are signed out, and the data
+        cannot be recovered afterwards.
+      </p>
+    </div>
+
+    <h2>Alternative: request deletion by email</h2>
+    <div class="box">
+      <p>
+        If you can no longer open the app or sign in, send an email from the
+        Google account address you used in the app to:
+      </p>
+      <p>
+        <strong>Email:</strong>
+        <a
+          href="mailto:asytechstudio@gmail.com?subject=Account%20Deletion%20Request%20-%20Decidopus"
+          >asytechstudio@gmail.com</a
+        >
+      </p>
+      <p><strong>Subject:</strong> Account Deletion Request - Decidopus</p>
+      <p>
+        Once we receive your request we permanently delete your account and the
+        associated data <strong>within 30 days at the latest</strong>, and let
+        you know when it is done.
+      </p>
+    </div>
+
+    <h2>What gets deleted</h2>
+    <p>
+      When your account is deleted, the following data is permanently removed:
+    </p>
+    <table>
+      <tr>
+        <th>Data type</th>
+        <th>Description</th>
+      </tr>
+      <tr>
+        <td>Account record</td>
+        <td>
+          Your user document (users/{uid}): name, email address, profile photo
+          and app preferences
+        </td>
+      </tr>
+      <tr>
+        <td>Decision history</td>
+        <td>Every decision, wheel result and raffle result saved to your account</td>
+      </tr>
+      <tr>
+        <td>Room records</td>
+        <td>Voting rooms you created or joined, and your votes in them</td>
+      </tr>
+      <tr>
+        <td>Usage counters</td>
+        <td>Your AI and location usage counters</td>
+      </tr>
+      <tr>
+        <td>Sign-in record</td>
+        <td>Your Firebase Authentication record (the account itself)</td>
+      </tr>
+    </table>
+
+    <h2>What this does not cover</h2>
+    <ul>
+      <li>
+        <strong>Your PRO subscription.</strong> Subscriptions are managed by the
+        App Store or Google Play, not by us. Deleting your account does not
+        cancel a subscription — cancel it in your store account settings (App
+        Store → Subscriptions, or Google Play → Subscriptions) before or after
+        deleting.
+      </li>
+      <li>
+        <strong>Rooms other people created.</strong> If you joined someone
+        else's room, the room itself belongs to its creator and stays with them;
+        your votes and your personal data are removed from it.
+      </li>
+    </ul>
+
+    <h2>Data we may retain</h2>
+    <p>
+      Where legal obligations or the prevention of fraud and abuse require it,
+      limited transaction records may be kept for as long as the applicable law
+      requires. Apart from that, we do not keep your personal data.
+    </p>
+
+    <h2>Questions</h2>
+    <p>
+      Write to
+      <a href="mailto:asytechstudio@gmail.com">asytechstudio@gmail.com</a> and we
+      will help.
+    </p>
+
+    <footer>
+      <p>
+        Decidopus — developed by ASY Tech Studio · asytechstudio@gmail.com<br />
+        <a href="/privacy.html?_l=en">Privacy Policy</a> ·
+        <a href="/terms.html?_l=en">Terms of Use</a>
+      </p>
+    </footer>
+  </body>
+</html>` },
+};
+function _hukukGonder(req, res, next) {
+  const kayit = _HUKUK_SAYFALARI[req.path];
+  if (!kayit) return next();
+  const html = kayit[_dilSec(req)];
+  // Bu dilde gömülü sürüm yoksa public/ altındaki dosyaya bırak (Türkçe yol).
+  if (!html) return next();
+  // Araya giren önbellekler yanlış dili dağıtmasın — index ile aynı kural.
+  res.set("Vary", "Cookie, Accept-Language");
+  res.set("Cache-Control", "no-cache");
+  res.type("html").send(html);
+}
+app.get("/privacy.html", _hukukGonder);
+app.get("/terms.html", _hukukGonder);
+app.get("/delete-account.html", _hukukGonder);
 
 app.use(express.static(path.join(__dirname, "public")));
 
