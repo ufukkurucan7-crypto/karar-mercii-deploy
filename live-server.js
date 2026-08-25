@@ -759,8 +759,9 @@ const _HUKUK_SAYFALARI = {
         <strong>Location information:</strong> only when you use the "suggest
         places near me" feature and grant permission, your device's approximate
         or precise location is read. Location is used only to find places near
-        you at that moment; it may be sent to OpenStreetMap for place data and
-        to Anthropic to produce a short suggestion. Your location is not
+        you at that moment; it may be sent to TomTom for place data (and to
+        OpenStreetMap as a fallback when TomTom returns nothing) and to
+        Anthropic to produce a short suggestion. Your location is not
         tracked continuously, is not collected in the background and is not
         stored permanently on your device.
         <br />
@@ -825,6 +826,13 @@ const _HUKUK_SAYFALARI = {
         RevenueCat (PRO subscription management) —
         <a href="https://www.revenuecat.com/privacy" target="_blank"
           >RevenueCat Privacy Policy</a
+        >
+      </li>
+      <li>
+        TomTom (place search for "suggest places near me" — your coordinates
+        are sent to find nearby places) —
+        <a href="https://www.tomtom.com/privacy/" target="_blank"
+          >TomTom Privacy Policy</a
         >
       </li>
       <li>
@@ -907,6 +915,165 @@ const _HUKUK_SAYFALARI = {
         <a href="/delete-account.html?_l=en">Account and Data Deletion</a>
       </p>
     </footer>
+  </body>
+</html>`, tr: `<!DOCTYPE html>
+<html lang="tr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Gizlilik Politikası — Karar Mercii</title>
+    <style>
+      body {
+        font-family: -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+        max-width: 760px;
+        margin: 0 auto;
+        padding: 24px;
+        line-height: 1.6;
+        color: #222;
+      }
+      h1 {
+        font-size: 1.6rem;
+      }
+      h2 {
+        font-size: 1.15rem;
+        margin-top: 1.6em;
+      }
+      a {
+        color: #6b4eff;
+      }
+      .updated {
+        color: #666;
+        font-size: 0.9rem;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Gizlilik Politikası</h1>
+    <p class="updated">Son güncelleme: 24 Haziran 2026</p>
+
+    <p>
+      Bu gizlilik politikası, <strong>Karar Mercii</strong> web sitesi
+      (kararmercii.com) ve mobil uygulaması (bundan sonra birlikte "Hizmet")
+      için geçerlidir ve kullanıcı verilerini nasıl topladığını, kullandığını
+      ve koruduğunu açıklar. Hem web sitesi hem mobil uygulama aynı şekilde
+      hizmet vermeye devam etmektedir. Hizmet, ASY Tech Studio tarafından
+      geliştirilmiştir. Hizmeti kullanarak bu politikayı kabul etmiş olursunuz.
+    </p>
+
+    <h2>Topladığımız Bilgiler</h2>
+    <ul>
+      <li>
+        <strong>Hesap bilgileri:</strong> Google ile giriş yaptığınızda
+        adınız, e-posta adresiniz, profil fotoğrafınız ve benzersiz kullanıcı
+        kimliğiniz (Google/Firebase Authentication aracılığıyla) alınır.
+      </li>
+      <li>
+        <strong>Uygulama içeriği:</strong> Oluşturduğunuz kararlar ve oylama
+        odaları hesabınıza bağlı olarak saklanır. "Merci" yapay zekâ sohbet
+        içerikleri kalıcı olarak saklanmaz; yalnızca bir yanıta geri bildirim
+        (👍/👎) verdiğinizde mesajın kısa bir bölümü ve Merci'nin yanıtı,
+        kaliteyi artırmak ve kötüye kullanımı önlemek amacıyla saklanır. Kötüye
+        kullanım tespit edilirse Merci erişiminiz kısıtlanabilir.
+      </li>
+      <li>
+        <strong>Kullanım verileri:</strong> Hizmetin kötüye kullanımını önlemek
+        için günlük yapay zekâ kullanım sayınız tutulur.
+      </li>
+      <li>
+        <strong>Reklam ve cihaz bilgileri:</strong> Hizmet, Google AdMob
+        reklamları gösterir. AdMob, reklam kimliği (Advertising ID) ve cihaz
+        bilgileri gibi verileri kendi politikası kapsamında işleyebilir.
+      </li>
+      <li>
+        <strong>Konum bilgisi:</strong> Yalnızca "Yakınımda yer öner"
+        özelliğini kullandığınızda ve izin verdiğinizde, cihazınızın yaklaşık
+        veya kesin konumu alınır. Konum yalnızca o an size yakın mekanları
+        bulmak için kullanılır; mekan verisi için TomTom'a (TomTom sonuç
+        döndürmezse yedek olarak OpenStreetMap'e) ve kısa öneri üretmek için
+        Anthropic'e iletilebilir. Konumunuz sürekli
+        izlenmez, arka planda toplanmaz ve cihazınızda kalıcı saklanmaz.
+      </li>
+    </ul>
+
+    <h2>Bilgileri Nasıl Kullanıyoruz</h2>
+    <ul>
+      <li>Hesabınızı oluşturmak ve oturumunuzu yönetmek,</li>
+      <li>Karar geçmişinizi ve oylama odalarınızı saklayıp size göstermek,</li>
+      <li>"Merci" yapay zekâ özelliğini sunmak ve kötüye kullanımı önlemek,</li>
+      <li>Reklam göstererek hizmeti ücretsiz sunabilmek için,</li>
+      <li>
+        İzin verdiğinizde size yakın mekanları (restoran, kafe vb.) önermek
+        için.
+      </li>
+    </ul>
+
+    <h2>Üçüncü Taraf Hizmetler</h2>
+    <p>
+      Hizmet aşağıdaki üçüncü taraf hizmetlerini kullanır. Bu hizmetlerin
+      kendi gizlilik politikaları geçerlidir:
+    </p>
+    <ul>
+      <li>
+        Google Firebase (kimlik doğrulama ve veri saklama) —
+        <a href="https://firebase.google.com/support/privacy" target="_blank"
+          >Firebase Gizlilik</a
+        >
+      </li>
+      <li>
+        Google AdMob (reklam) —
+        <a href="https://policies.google.com/privacy" target="_blank"
+          >Google Gizlilik Politikası</a
+        >
+      </li>
+      <li>
+        Anthropic (Claude AI) — "Merci'ye Danış" özelliğinde yazdığınız sohbet
+        içerikleri yanıt üretilmesi için Anthropic sunucularına iletilir.
+        <a href="https://www.anthropic.com/legal/privacy" target="_blank"
+          >Anthropic Gizlilik Politikası</a
+        >
+      </li>
+      <li>
+        TomTom ("Yakınımda yer öner" için mekan araması — yakındaki mekanları
+        bulmak üzere koordinatlarınız iletilir) —
+        <a href="https://www.tomtom.com/privacy/" target="_blank"
+          >TomTom Gizlilik Politikası</a
+        >
+      </li>
+      <li>
+        OpenStreetMap / Overpass ("Yakınımda yer öner" için konum sorgusu) —
+        <a
+          href="https://wiki.osmfoundation.org/wiki/Privacy_Policy"
+          target="_blank"
+          >OSM Gizlilik Politikası</a
+        >
+      </li>
+    </ul>
+
+    <h2>Veri Saklama ve Silme</h2>
+    <p>
+      Verileriniz hesabınız var olduğu sürece saklanır. Hesabınızı ve tüm
+      geçmişinizi uygulama içinden "Çıkış yap" veya hesap silme seçenekleriyle
+      kaldırabilirsiniz. Verilerinizin silinmesini talep etmek için aşağıdaki
+      e-posta adresinden bizimle iletişime geçebilirsiniz.
+    </p>
+
+    <h2>Çocukların Gizliliği</h2>
+    <p>
+      Hizmet 13 yaşından küçük çocuklara yönelik değildir ve bilerek bu yaş
+      grubundan veri toplamayız.
+    </p>
+
+    <h2>Değişiklikler</h2>
+    <p>
+      Bu gizlilik politikası zaman zaman güncellenebilir. Güncellemeler bu
+      sayfada yayımlanır.
+    </p>
+
+    <h2>İletişim</h2>
+    <p>
+      Sorularınız için:
+      <a href="mailto:asytechstudio@gmail.com">asytechstudio@gmail.com</a>
+    </p>
   </body>
 </html>` },
   "/terms.html": { tr: `<!DOCTYPE html>
