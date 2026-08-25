@@ -783,10 +783,16 @@ const _HUKUK_SAYFALARI = {
     </ul>
     <p>
       We use each category of data only for the purpose it was collected for.
-      <strong>We do not sell your personal information and we do not share it
-      for cross-context behavioral advertising.</strong> Our service providers
-      operate globally, so your data may be processed on servers outside your
-      country, including in the United States.
+      <strong>We do not sell your personal information for money.</strong> To
+      keep the Service free we show ads through Google AdMob, and for that your
+      advertising ID and basic device information are shared with Google and may
+      be used to show you personalised ads. Under some privacy laws — including
+      the CCPA in California — that sharing counts as “sharing” for
+      cross-context behavioural advertising. You can limit it from your device
+      settings, or remove ads entirely by subscribing to PRO. Apart from that we
+      do not sell your data to third parties or hand it over for their own
+      marketing. Our service providers operate globally, so your data may be
+      processed on servers outside your country, including in the United States.
     </p>
 
     <h2>Third-Party Services</h2>
@@ -846,6 +852,8 @@ const _HUKUK_SAYFALARI = {
       <li>Know what personal data we hold about you, and why</li>
       <li>Request a copy of it, or ask us to correct it</li>
       <li>Ask us to delete it, or withdraw your consent at any time</li>
+      <li>Opt out of personalised advertising: reset or delete your advertising
+        ID in your device settings, or subscribe to PRO to remove ads entirely</li>
     </ul>
     <p>
       You can delete your account and everything in it from inside the app, or
