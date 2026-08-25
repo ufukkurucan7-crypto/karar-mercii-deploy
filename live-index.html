@@ -9243,6 +9243,13 @@
     </script>
   </head>
   <body>
+    <script>
+      /* ⭐ i18n — ÜRETİCİ BU SATIRI YENİDEN YAZAR (uret.js).
+         Kaynakta daima "tr"; live-index.en.html üretilirken "en" olur.
+         Dile bağlı ÖZELLİK KAPILARI bunu okur. */
+      window.KM_LANG = "tr";
+      document.documentElement.setAttribute("data-km-lang", window.KM_LANG);
+    </script>
     <!-- ═══ İKON TANIMLARI: tek çizgi dili, 24 viewBox, currentColor ═══ -->
     <svg width="0" height="0" style="position: absolute" aria-hidden="true">
       <defs>
@@ -13321,6 +13328,9 @@ function drawResultCard(opts) {
       // Kazanan bir yemek/mekan türündeyse sonuç kartına bağlamlı çip ekle →
       // Merci sekmesine geç + inputu "yakınımda yer öner" ile ön-doldur.
       function _isPlaceLike(name) {
+        /* ⭐ 25 AĞU — Mekan özelliği v1'de yalnız Türkçede açık. Bu köprü başka
+           dilde HİÇ tetiklenmemeli; anahtar dizisi bilerek çevrilmedi. */
+        if (window.KM_LANG && window.KM_LANG !== "tr") return false;
         if (!name) return false;
         var s = String(name).toLocaleLowerCase("tr");
         var kw = [
@@ -13576,7 +13586,7 @@ function drawResultCard(opts) {
             ? KM_RC.priceStr[plan]
             : "";
         // Mağaza fiyatı beklenirken butonda da sabit rakam gösterme
-        if (typeof KM_RC !== "undefined" && KM_RC._masking) {
+        if (!sp || (typeof KM_RC !== "undefined" && KM_RC._masking)) {
           btn.textContent = "⭐ Pro'ya Geç";
           return;
         }
@@ -13838,7 +13848,10 @@ function drawResultCard(opts) {
                   var pct = Math.round((1 - yp.price / 12 / mp.price) * 100);
                   var badge = q("#plan-yearly .pro-plan-badge");
                   if (badge) {
-                    if (pct >= 5) badge.textContent = "%" + pct + " İNDİRİM";
+                    /* ⭐ 25 AĞU — yüzde işaretinin YERİ dile göre değişir (TR: %20 · EN: 20%).
+                       Kodda sabitlemek yerine şablonu çevrilebilir yaptık. */
+                    if (pct >= 5)
+                      badge.textContent = "%{n} İNDİRİM".replace("{n}", pct);
                     else badge.style.display = "none";
                   }
                 }
@@ -16019,10 +16032,28 @@ function drawResultCard(opts) {
         if (usedTpl.length > 12) usedTpl.shift();
         return c;
       }
+      /* ⭐ 25 AĞU — İNGİLİZCE KAZANAN HİÇ EŞLEŞMİYORDU. SAYINGS anahtarları Türkçe
+         (makarna, korku, romantik…) ve `kod` sınıfında olduğu için çevrilemez →
+         İngilizcede 23 mesajın 17'si erişilemez oluyor, hepsi GENERIC'e düşüyordu.
+         Sağ kalan 6'sı yalnızca adı zaten uluslararası olanlardı.
+         ➜ Takma adlar HER dilde çalışır; dil bayrağına gerek yok. */
+      var SAYING_ALIAS = {
+        pasta: "makarna", salad: "salata", comedy: "komedi", horror: "korku",
+        "sci-fi": "bilim", scifi: "bilim", "science fiction": "bilim",
+        romantic: "romantik", romance: "romantik", action: "aksiyon",
+        animation: "animasyon", cartoon: "animasyon", movie: "film",
+        beach: "sahil", seaside: "sahil", coffee: "kahve", tea: "çay",
+        cocktail: "kokteyl", "café": "kafe", cafe: "kafe", game: "oyun",
+        gaming: "oyun", "escape room": "kaçış", escape: "kaçış",
+        billiards: "bilardo", pool: "bilardo", snooker: "bilardo",
+      };
       function getSaying(w) {
         var s = (w || "").toLowerCase();
         for (var k in SAYINGS)
           if (s.indexOf(k) >= 0) return pickFresh(SAYINGS[k]);
+        for (var a in SAYING_ALIAS)
+          if (s.indexOf(a) >= 0 && SAYINGS[SAYING_ALIAS[a]])
+            return pickFresh(SAYINGS[SAYING_ALIAS[a]]);
         return pickFresh(GENERIC).replace("{X}", w);
       }
 
@@ -19959,7 +19990,10 @@ function drawResultCard(opts) {
       }
       // ── KONUM: yakındaki yerler (OSM/Overpass — ücretsiz) ──
       function getGeo() {
-        return new Promise(function (resolve, reject) {
+      if (window.KM_LANG && window.KM_LANG !== "tr") {
+        return Promise.reject(new Error("LANG_DISABLED"));
+      }
+      return new Promise(function (resolve, reject) {
           var Geo =
             window.Capacitor &&
             window.Capacitor.Plugins &&
@@ -20542,6 +20576,7 @@ function drawResultCard(opts) {
                 Authorization: "Bearer " + token,
               },
               body: JSON.stringify({
+                lang: window.KM_LANG || "tr",
                 messages: _kmSonKonusma(aiMessages),
                 groupCount: S.count,
                 history: S.history.slice(0, 15),
@@ -20904,7 +20939,7 @@ function drawResultCard(opts) {
                 "Content-Type": "application/json",
                 Authorization: "Bearer " + token,
               },
-              body: JSON.stringify({ theme: theme, count: 6, platform: _kmPlt() }),
+              body: JSON.stringify({ theme: theme, count: 6, platform: _kmPlt(), lang: window.KM_LANG || "tr" }),
             }),
           )
           .then((r) => r.json().then((data) => ({ status: r.status, data })))
@@ -24380,7 +24415,7 @@ function drawResultCard(opts) {
                 "Content-Type": "application/json",
                 Authorization: "Bearer " + token,
               },
-              body: JSON.stringify({ theme: theme, count: 6, platform: _kmPlt() }),
+              body: JSON.stringify({ theme: theme, count: 6, platform: _kmPlt(), lang: window.KM_LANG || "tr" }),
             }),
           )
           .then((r) => r.json().then((data) => ({ status: r.status, data })))
@@ -27158,6 +27193,11 @@ function drawResultCard(opts) {
           <span class="set-lbl">Karanlık Mod</span>
           <span class="set-state" id="dark-state">Kapalı</span>
         </button>
+        <button class="set-row" id="lang-btn">
+          <span class="set-ic">🌐</span>
+          <span class="set-lbl">Dil</span>
+          <span class="set-state" id="lang-state">Türkçe</span>
+        </button>
         <button class="set-row" id="theme-btn">
           <span class="set-ic">🎨</span>
           <span class="set-lbl">
@@ -27688,6 +27728,9 @@ function drawResultCard(opts) {
           <p style="margin-bottom: 4px">
             • Geri bildirim formu (e-posta, mesaj)
           </p>
+          <p style="margin-bottom: 4px">
+            • Konum (yalnız yakındaki mekanları önerirken, izin verirsen)
+          </p>
           <p style="margin-bottom: 4px">• Merci'ye Danış sohbet içerikleri</p>
           <p style="margin-bottom: 12px">
             • Reklam kimliği ve cihaz bilgileri (Google AdMob)
@@ -28113,5 +28156,70 @@ function drawResultCard(opts) {
         </div>
       </div>
     </div>
+
+    <script>
+      /* ⭐ 25 AĞU — DİL SEÇİMİ.
+         Tercih ÇEREZDE tutulur çünkü hangi dosyanın servis edileceğine SUNUCU karar
+         veriyor (İngilizce sürüm ayrı bir dosya) ve sunucu localStorage'ı göremez.
+         Native uygulama siteyi sorgu parametresiz açtığı için çerez tek güvenilir yol. */
+      (function () {
+        var DILLER = [
+          { kod: "tr", ad: "Türkçe" },
+          { kod: "en", ad: "English" },
+        ];
+        function mevcut() {
+          return (window.KM_LANG === "en") ? "en" : "tr";
+        }
+        function etiketYaz() {
+          var el = document.getElementById("lang-state");
+          if (!el) return;
+          var d = DILLER.filter(function (x) { return x.kod === mevcut(); })[0];
+          el.textContent = d ? d.ad : "Türkçe";
+        }
+        function sec(kod) {
+          if (kod === mevcut()) return;
+          try {
+            // 1 yıl. path=/ olmazsa alt yollarda okunmaz.
+            document.cookie = "km_lang=" + kod + ";path=/;max-age=31536000;SameSite=Lax";
+            localStorage.setItem("kmLang", kod);
+          } catch (e) {}
+          // Sunucu doğru dosyayı versin diye TAM yeniden yükleme; ?_l cache'i deler.
+          location.replace(
+            location.pathname + "?_l=" + kod + "&_t=" + Date.now()
+          );
+        }
+        window.kmDilSec = sec;
+        document.addEventListener("DOMContentLoaded", function () {
+          etiketYaz();
+          var b = document.getElementById("lang-btn");
+          if (!b) return;
+          b.addEventListener("click", function () {
+            // İki dil var → doğrudan diğerine geç (ayrı bir modal gereksiz)
+            sec(mevcut() === "tr" ? "en" : "tr");
+          });
+        });
+      })();
+    </script>
+
+    <script>
+      /* ⭐ 25 AĞU — DİL EMNİYET AĞI (sunucu Accept-Language'ı görmezse devreye girer).
+         Kural: cihaz dili "tr*" ise Türkçe, DİĞER HER DİL İngilizce.
+         Kullanıcının kendi seçimi (km_lang çerezi) varsa buraya HİÇ karışılmaz. */
+      (function () {
+        try {
+          if (document.cookie.indexOf("km_lang=") !== -1) return; // kullanıcı seçmiş
+          if (sessionStorage.getItem("kmDilDuzeltildi")) return;  // döngü koruması
+          var cihaz = (navigator.language || navigator.userLanguage || "").toLowerCase();
+          if (!cihaz) return;
+          var olmasiGereken = cihaz.indexOf("tr") === 0 ? "tr" : "en";
+          var suAn = window.KM_LANG === "en" ? "en" : "tr";
+          if (olmasiGereken === suAn) return;
+          sessionStorage.setItem("kmDilDuzeltildi", "1");
+          document.cookie =
+            "km_lang=" + olmasiGereken + ";path=/;max-age=31536000;SameSite=Lax";
+          location.replace(location.pathname + "?_l=" + olmasiGereken);
+        } catch (e) {}
+      })();
+    </script>
   </body>
 </html>
