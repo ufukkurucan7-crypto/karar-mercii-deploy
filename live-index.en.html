@@ -19306,13 +19306,26 @@ function drawResultCard(opts) {
       function merciPoseForWinner(winner) {
         var w = (winner || "").toLowerCase();
         // Korku → korkmuş Merci
-        if (/korku|horror|kabus|zombi|hayalet|gerilim/.test(w))
+        // 25 Ağu: İngilizce karşılıklar eklendi (thriller/ghost/scary/creepy…)
+        if (
+          /korku|horror|kabus|zombi|hayalet|gerilim|thriller|ghost|scary|creepy|nightmare|slasher/.test(
+            w,
+          )
+        )
           return merciSVGScared;
         // Aşk/romantik → aşık Merci
-        if (/aşk|ask|roman|sevgili|kalp|öpüş|flört|randevu|valentine/.test(w))
+        if (
+          /aşk|ask|roman|sevgili|kalp|öpüş|flört|randevu|valentine|love|date night|heart|kiss|crush|couple/.test(
+            w,
+          )
+        )
           return merciSVGLove;
         // Aksiyon/macera/spor → havalı (gözlüklü) Merci
-        if (/aksiyon|action|savaş|savas|dövüş|dovus|macera|spor|futbol|basket|kavga/.test(w))
+        if (
+          /aksiyon|action|savaş|savas|dövüş|dovus|macera|spor|futbol|basket|kavga|adventure|sport|soccer|football|basketball|fight|battle|workout|gym|hiking/.test(
+            w,
+          )
+        )
           return merciSVGGlasses;
         // Varsayılan → kutlama
         return merciSVGCelebrate;
