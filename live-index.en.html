@@ -15153,7 +15153,13 @@ function drawResultCard(opts) {
           var self = this;
           return new Promise(function (resolve) {
             var AdMob = self.plugin();
-            if (!self.inApp() || !AdMob || isPremium || !self.interstitialId()) {
+            if (
+              !self.inApp() ||
+              !AdMob ||
+              isPremium ||
+              !self.reklamIstenebilir || // AB rızası reddedildi
+              !self.interstitialId()
+            ) {
               resolve(false); // iOS'ta interstitial birimi yok → sessizce atla
               return;
             }
@@ -15223,6 +15229,75 @@ function drawResultCard(opts) {
               });
           });
         },
+        /* ═══ KM_UMP_RIZA — AB REKLAM RIZASI (25 AĞU) ═══════════════════════
+           Google'ın AB kullanıcı rızası politikası: AEA/İngiltere/İsviçre'deki
+           kullanıcıya reklam sunmadan ÖNCE sertifikalı bir onay formu gösterilmeli.
+           Formun İÇERİĞİ kodda değil, AdMob konsolunda tanımlı (Gizlilik ve
+           Mesajlaşma → Avrupa tüzükleri). Konsolda mesaj YAYINLANMAMIŞSA
+           isConsentFormAvailable false döner ve burası sessizce geçer.
+           🌍 Coğrafyayı BİZ belirlemiyoruz — UMP SDK'sı kullanıcının AB'de olup
+           olmadığına kendi karar verir. AB dışında status NOT_REQUIRED gelir,
+           hiçbir form çıkmaz, akış tek satır gecikmeyle biter.
+           ⚠️ HİÇBİR HATA REKLAMI ÖLDÜRMEZ: her şey dar try/catch içinde ve
+           requestConsentInfo'ya zaman aşımı konuldu (ağ takılırsa banner sonsuza
+           kadar beklemesin). Bilgi alınamazsa canRequestAds=true varsayılır —
+           SDK rıza dizesi olmadan zaten kişiselleştirilmemiş reklam sunar. */
+        zamanAsimli: function (sozVerilen, ms) {
+          return Promise.race([
+            sozVerilen,
+            new Promise(function (_, red) {
+              setTimeout(function () {
+                red(new Error("UMP zaman asimi " + ms + "ms"));
+              }, ms);
+            }),
+          ]);
+        },
+        // Rıza gerekiyorsa formu gösterir. ASLA throw etmez; her yolda bir bilgi
+        // nesnesi döner. Dönen nesne init'te reklam kapısı olarak kullanılır.
+        rizaAl: async function (AdMob) {
+          var VARSAYILAN = {
+            status: "UNKNOWN",
+            canRequestAds: true,
+            privacyOptionsRequirementStatus: "UNKNOWN",
+          };
+          // Eski eklenti sürümünde rıza modülü yok → eskisi gibi davran.
+          if (!AdMob || !AdMob.requestConsentInfo) return VARSAYILAN;
+          var bilgi;
+          try {
+            bilgi = await this.zamanAsimli(AdMob.requestConsentInfo(), 8000);
+          } catch (e) {
+            console.log("UMP bilgi alinamadi", e);
+            return VARSAYILAN;
+          }
+          if (!bilgi) return VARSAYILAN;
+          if (
+            bilgi.status === "REQUIRED" &&
+            bilgi.isConsentFormAvailable &&
+            AdMob.showConsentForm
+          ) {
+            try {
+              // Formu kullanıcı okuyor: uzun zaman aşımı, sadece kilit emniyeti.
+              var sonra = await this.zamanAsimli(AdMob.showConsentForm(), 180000);
+              if (sonra) bilgi = sonra;
+            } catch (e) {
+              console.log("UMP form gosterilemedi", e);
+            }
+          }
+          return bilgi;
+        },
+        // Menüdeki "Reklam Tercihleri" düğmesi buraya bağlı (AB'de zorunlu:
+        // rıza veren kullanıcı fikrini sonradan değiştirebilmeli).
+        gizlilikSecenekleriniAc: async function () {
+          var AdMob = this.plugin();
+          if (!AdMob || !AdMob.showPrivacyOptionsForm) return;
+          try {
+            await AdMob.showPrivacyOptionsForm();
+          } catch (e) {
+            console.log("UMP gizlilik secenekleri hata", e);
+          }
+        },
+        // Rıza reddedilirse false olur → banner ve geçiş reklamı hiç istenmez.
+        reklamIstenebilir: true,
         init: async function () {
           if (!this.inApp()) return; // web'de hiçbir şey yapma
           var AdMob = this.plugin();
@@ -15282,10 +15357,21 @@ function drawResultCard(opts) {
                en az "Teen" (T). Doluluğu artıracak en büyük kod tarafı kaldıraç bu.
                ⚠️ MatureAudience (+18) YİNE ENGELLİ — yalnız G+PG+T açılır.
                🔙 Donma geri gelirse önce SES düzeltmesini şüphelen, dereceyi değil. */
+            // 🔴 RIZA initialize'dan ÖNCE gelmeli — reklam isteği gitmeden karar
+            // verilmiş olsun. AB dışında bu satır neredeyse anında geçer.
+            var riza = await this.rizaAl(AdMob);
+            this.reklamIstenebilir = riza.canRequestAds !== false;
+            // AB'de "Reklam Tercihleri" girişi ZORUNLU; dışarıda menüyü
+            // kalabalıklaştırmamak için gizli kalır.
+            if (riza.privacyOptionsRequirementStatus === "REQUIRED") {
+              var gsBtn = document.getElementById("mi-ad-privacy");
+              if (gsBtn) gsBtn.style.display = "";
+            }
             await AdMob.initialize({ maxAdContentRating: "Teen" });
             this.ready = true;
             // PRO kullanıcı değilse alt banner'ı göster + popup'larda otomatik gizle
-            if (!isPremium) {
+            // (rıza reddedildiyse hiç reklam istemiyoruz — kapı reklamIstenebilir)
+            if (!isPremium && this.reklamIstenebilir) {
               this.showBanner();
               this.watchModals();
             }
@@ -15392,6 +15478,7 @@ function drawResultCard(opts) {
         showBanner: function () {
           if (!this.inApp()) return;
           if (isPremium) return; // PRO: banner asla gösterme
+          if (!this.reklamIstenebilir) return; // AB rızası reddedildi
           // PRO henüz ÇÖZÜLMEDİ ama önceki oturumda PRO'ydu → bekle (yukarıdaki not).
           if (!premiumResolved && this.proHint()) return;
           var AdMob = this.plugin();
@@ -26843,6 +26930,12 @@ function drawResultCard(opts) {
           miPrivacy.addEventListener("click", function () {
             openInfoModal("modal-privacy");
           });
+        var miAdPrivacy = document.getElementById("mi-ad-privacy");
+        if (miAdPrivacy)
+          miAdPrivacy.addEventListener("click", function () {
+            if (window.KM_AD && KM_AD.gizlilikSecenekleriniAc)
+              KM_AD.gizlilikSecenekleriniAc();
+          });
         var miTerms = document.getElementById("mi-terms");
         if (miTerms)
           miTerms.addEventListener("click", function () {
@@ -27165,6 +27258,13 @@ function drawResultCard(opts) {
         </button>
         <button class="menu-item" id="mi-privacy">
           <span class="menu-item-icon"><svg class="ic" viewBox="0 0 24 24"><use href="#i-lock"/></svg></span> Privacy Policy
+        </button>
+        <!-- REKLAM TERCİHLERİ (UMP) — AEA/İngiltere/İsviçre'de ZORUNLU: rıza veren
+             kullanıcı fikrini sonradan değiştirebilmeli. Varsayılan GİZLİ; yalnız
+             Google "gerekli" derse (privacyOptionsRequirementStatus === REQUIRED)
+             KM_AD.init onu görünür yapar. AB dışında hiç çıkmaz. -->
+        <button class="menu-item" id="mi-ad-privacy" style="display: none">
+          <span class="menu-item-icon"><svg class="ic" viewBox="0 0 24 24"><use href="#i-lock"/></svg></span> Ad Preferences
         </button>
         <button class="menu-item" id="mi-terms">
           <span class="menu-item-icon"><svg class="ic" viewBox="0 0 24 24"><use href="#i-doc"/></svg></span> Terms of Use
