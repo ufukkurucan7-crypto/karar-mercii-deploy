@@ -28172,8 +28172,20 @@ function drawResultCard(opts) {
           var b = document.getElementById("lang-btn");
           if (!b) return;
           b.addEventListener("click", function () {
-            // İki dil var → doğrudan diğerine geç (ayrı bir modal gereksiz)
-            sec(mevcut() === "tr" ? "en" : "tr");
+            /* ⭐ 25 AĞU — ANLIK DEĞİŞTİRME KALDIRILDI. Kaza riski vardı ve kullanıcı
+               neyi kaybedeceğini bilmiyordu. Metinler her sürümde ÖTEKİ dili anlatır. */
+            var hedef = mevcut() === "tr" ? "en" : "tr";
+            if (typeof showConfirm !== "function") { sec(hedef); return; }
+            showConfirm(
+              "Switch to Turkish?",
+              "The app will reload and the interface will be in Turkish. " +
+                "<b>Nearby place suggestions</b> will become available again. " +
+                "Your decision history, PRO membership and settings stay exactly as they are. " +
+                "You can switch back anytime.",
+              function () { sec(hedef); },
+              "Switch",
+              "Cancel"
+            );
           });
         });
       })();
