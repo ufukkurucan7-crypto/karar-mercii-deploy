@@ -1365,6 +1365,31 @@ const _HUKUK_SAYFALARI = {
       </p>
     </div>
 
+    <h2>Delete only your data, without deleting your account</h2>
+    <div class="box">
+      <p>
+        If you want to keep your account but clear what you have created, you
+        can delete your decision history from inside the app:
+      </p>
+      <ol>
+        <li>Open Decidopus and make sure you are signed in.</li>
+        <li>
+          On the home screen, tap the <strong>Decision History</strong> card (it
+          appears once you have at least one decision).
+        </li>
+        <li>
+          Tap <strong>Clear history</strong> at the bottom of the panel that
+          opens.
+        </li>
+        <li>Confirm when you are asked to.</li>
+      </ol>
+      <p>
+        Every entry in your decision history is removed from our servers and
+        from your device. This is immediate and permanent; your account, your
+        rooms and your PRO subscription are not affected.
+      </p>
+    </div>
+
     <h2>What gets deleted</h2>
     <p>
       When your account is deleted, the following data is permanently removed:
@@ -1434,6 +1459,215 @@ const _HUKUK_SAYFALARI = {
         Decidopus — developed by ASY Tech Studio · asytechstudio@gmail.com<br />
         <a href="/privacy.html?_l=en">Privacy Policy</a> ·
         <a href="/terms.html?_l=en">Terms of Use</a>
+      </p>
+    </footer>
+  </body>
+</html>`, tr: `<!DOCTYPE html>
+<html lang="tr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Hesap ve Veri Silme — Karar Mercii</title>
+    <style>
+      body {
+        font-family: -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+        max-width: 760px;
+        margin: 0 auto;
+        padding: 24px;
+        line-height: 1.6;
+        color: #222;
+      }
+      h1 {
+        font-size: 1.6rem;
+      }
+      h2 {
+        font-size: 1.15rem;
+        margin-top: 1.6em;
+      }
+      a {
+        color: #6b4eff;
+      }
+      .updated {
+        color: #666;
+        font-size: 0.9rem;
+      }
+      .box {
+        background: #f4f6fb;
+        border-radius: 10px;
+        padding: 16px 20px;
+        margin: 18px 0;
+      }
+      ol {
+        padding-left: 20px;
+      }
+      table {
+        border-collapse: collapse;
+        width: 100%;
+        margin: 12px 0;
+      }
+      th,
+      td {
+        border: 1px solid #ddd;
+        padding: 8px 10px;
+        text-align: left;
+        font-size: 0.95rem;
+      }
+      th {
+        background: #f0f2f7;
+      }
+      footer {
+        margin-top: 40px;
+        padding-top: 16px;
+        border-top: 1px solid #eee;
+        font-size: 0.85rem;
+        color: #666;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Hesap ve Veri Silme — Karar Mercii</h1>
+    <p class="updated">Son güncelleme: Ağustos 2026</p>
+
+    <p>
+      Bu sayfa, <strong>Karar Mercii</strong> uygulamasında oluşturduğunuz hesabı
+      ve hesabınızla ilişkili verileri nasıl sileceğinizi açıklar. Karar Mercii,
+      ASY Tech Studio tarafından geliştirilmektedir.
+    </p>
+
+    <h2>Hesabınızı uygulama içinden silin (önerilen)</h2>
+    <div class="box">
+      <p>
+        Hesabınızı bize ulaşmadan, istediğiniz anda kendiniz silebilirsiniz:
+      </p>
+      <ol>
+        <li>Karar Mercii'yi açın ve giriş yapmış olduğunuzdan emin olun.</li>
+        <li>
+          Üst çubuktaki <strong>&#9776;</strong> düğmesiyle menüyü açın.
+        </li>
+        <li>Menünün altındaki <strong>Hesabımı Sil</strong> seçeneğine dokunun.</li>
+        <li>Sorulduğunda onaylayın.</li>
+      </ol>
+      <p>
+        Silme işlemi <strong>anında ve kalıcıdır</strong>. Hesabınız ve aşağıda
+        listelenen veriler kaldırılır, oturumunuz kapatılır ve veriler daha sonra
+        geri getirilemez.
+      </p>
+    </div>
+
+    <h2>Alternatif: e-posta ile talep</h2>
+    <div class="box">
+      <p>
+        Uygulamayı artık açamıyorsanız veya giriş yapamıyorsanız, uygulamada
+        kullandığınız Google hesabının e-posta adresinden şu adrese yazın:
+      </p>
+      <p>
+        <strong>E-posta:</strong>
+        <a
+          href="mailto:asytechstudio@gmail.com?subject=Hesap%20Silme%20Talebi%20-%20Karar%20Mercii"
+          >asytechstudio@gmail.com</a
+        >
+      </p>
+      <p><strong>Konu:</strong> Hesap Silme Talebi - Karar Mercii</p>
+      <p>
+        Talebinizi aldıktan sonra hesabınızı ve ilişkili verileri
+        <strong>en geç 30 gün içinde</strong> kalıcı olarak sileriz ve işlem
+        tamamlandığında size bilgi veririz.
+      </p>
+    </div>
+
+    <h2>Hesabınızı silmeden yalnızca verilerinizi temizleyin</h2>
+    <div class="box">
+      <p>
+        Hesabınızı tutmak ama oluşturduğunuz kayıtları temizlemek isterseniz,
+        karar geçmişinizi uygulama içinden silebilirsiniz:
+      </p>
+      <ol>
+        <li>Karar Mercii'yi açın ve giriş yapmış olduğunuzdan emin olun.</li>
+        <li>
+          Ana ekranda <strong>Karar Geçmişi</strong> kartına dokunun (kart, en az
+          bir kararınız olduğunda görünür).
+        </li>
+        <li>
+          Açılan panelin altındaki <strong>Geçmişi temizle</strong> düğmesine
+          dokunun.
+        </li>
+        <li>Sorulduğunda onaylayın.</li>
+      </ol>
+      <p>
+        Karar geçmişinizdeki bütün kayıtlar hem sunucularımızdan hem de
+        cihazınızdan silinir. İşlem anında ve kalıcıdır; hesabınız, odalarınız ve
+        PRO aboneliğiniz bundan etkilenmez.
+      </p>
+    </div>
+
+    <h2>Silinen veriler</h2>
+    <p>
+      Hesabınız silindiğinde aşağıdaki veriler kalıcı olarak kaldırılır:
+    </p>
+    <table>
+      <tr>
+        <th>Veri türü</th>
+        <th>Açıklama</th>
+      </tr>
+      <tr>
+        <td>Hesap kaydı</td>
+        <td>
+          Kullanıcı belgeniz (users/{uid}): ad, e-posta adresi, profil fotoğrafı
+          ve uygulama tercihleri
+        </td>
+      </tr>
+      <tr>
+        <td>Karar geçmişi</td>
+        <td>Hesabınıza kaydedilmiş bütün kararlar, çark ve çekiliş sonuçları</td>
+      </tr>
+      <tr>
+        <td>Oda kayıtları</td>
+        <td>Oluşturduğunuz veya katıldığınız oylama odaları ve buradaki oylarınız</td>
+      </tr>
+      <tr>
+        <td>Kullanım sayaçları</td>
+        <td>Yapay zeka ve konum kullanım sayaçlarınız</td>
+      </tr>
+      <tr>
+        <td>Giriş kaydı</td>
+        <td>Firebase Authentication kaydınız (hesabın kendisi)</td>
+      </tr>
+    </table>
+
+    <h2>Bu işlemin kapsamadıkları</h2>
+    <ul>
+      <li>
+        <strong>PRO aboneliğiniz.</strong> Abonelikler bizim tarafımızdan değil,
+        App Store veya Google Play tarafından yönetilir. Hesabınızı silmek
+        aboneliği iptal etmez — silmeden önce ya da sonra mağaza hesabınızın
+        ayarlarından iptal edin (App Store → Abonelikler veya Google Play →
+        Abonelikler).
+      </li>
+      <li>
+        <strong>Başkalarının oluşturduğu odalar.</strong> Bir başkasının odasına
+        katıldıysanız oda, onu oluşturan kişiye aittir ve onda kalır; sizin
+        oylarınız ve kişisel verileriniz odadan kaldırılır.
+      </li>
+    </ul>
+
+    <h2>Saklanabilecek veriler</h2>
+    <p>
+      Yasal yükümlülükler ya da dolandırıcılık ve kötüye kullanımın önlenmesi
+      gerektirdiğinde, sınırlı işlem kayıtları ilgili mevzuatın gerektirdiği süre
+      boyunca saklanabilir. Bunun dışında kişisel verileriniz saklanmaz.
+    </p>
+
+    <h2>Sorular</h2>
+    <p>
+      <a href="mailto:asytechstudio@gmail.com">asytechstudio@gmail.com</a>
+      adresine yazın, yardımcı olalım.
+    </p>
+
+    <footer>
+      <p>
+        Karar Mercii — geliştirici: ASY Tech Studio · asytechstudio@gmail.com<br />
+        <a href="/privacy.html">Gizlilik Politikası</a> ·
+        <a href="/terms.html">Kullanım Koşulları</a>
       </p>
     </footer>
   </body>
