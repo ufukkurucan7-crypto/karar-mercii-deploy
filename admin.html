@@ -659,8 +659,12 @@
         if (!title || !body) { alert("Başlık ve metin zorunlu."); return; }
         var me = auth.currentUser && auth.currentUser.uid;
         if (!me) { alert("Oturum yok."); return; }
+        // ⚠️ İngilizce alan doluysa testte de gönder: aksi hâlde "test ettim,
+        // sorun yok" deyip canlıda İngilizce metnin bozuk olduğunu görürsün.
         _post("/admin/push", {
           title: title, body: body, url: $("pu").value.trim(), topic: "user_" + me,
+          titleEn: ($("pten") ? $("pten").value : "").trim(),
+          bodyEn: ($("pben") ? $("pben").value : "").trim(),
         })
           .then(function () { alert("🧪 Test gönderildi — yalnız senin cihazına."); })
           .catch(function (e) { alert("Hata: " + e.message); });
@@ -705,11 +709,22 @@
         var body = $("pb").value.trim();
         var url = $("pu").value.trim();
         var topic = $("ptopic").value.trim() || "tum-kullanicilar";
+        var titleEn = ($("pten") ? $("pten").value : "").trim();
+        var bodyEn = ($("pben") ? $("pben").value : "").trim();
         if (!title || !body) { alert("Başlık ve metin zorunlu."); return; }
-        if (!confirm('"' + title + '"\n\nBu bildirim ' + topic + ' abonelerine GİDECEK. Emin misin?')) return;
+        // ⚠️ Yarım İngilizce (yalnız başlık ya da yalnız metin) sunucuda sessizce
+        // atlanır — kullanıcı "gönderdim" sanır. Burada açıkça durdur.
+        if ((titleEn && !bodyEn) || (!titleEn && bodyEn)) {
+          alert("İngilizce başlık ve metnin İKİSİ de dolu olmalı (ya da ikisi de boş).");
+          return;
+        }
+        var uyari = titleEn
+          ? "\n\n🇬🇧 İngilizce sürüm de gidecek: \"" + titleEn + "\""
+          : "\n\n⚠️ İngilizce alanlar BOŞ — İngilizce kullanan hiç kimse bu duyuruyu ALMAYACAK.";
+        if (!confirm('"' + title + '"\n\nBu bildirim ' + topic + ' abonelerine GİDECEK.' + uyari + '\n\nEmin misin?')) return;
         var b = $("pbtn"); b.disabled = true; b.textContent = "Gönderiliyor…";
-        _post("/admin/push", { title: title, body: body, url: url, topic: topic })
-          .then(function () { alert("Gönderildi ✅"); $("pt").value = ""; $("pb").value = ""; $("pu").value = ""; loadPush(); })
+        _post("/admin/push", { title: title, body: body, url: url, topic: topic, titleEn: titleEn, bodyEn: bodyEn })
+          .then(function () { alert("Gönderildi ✅"); $("pt").value = ""; $("pb").value = ""; $("pu").value = ""; if ($("pten")) $("pten").value = ""; if ($("pben")) $("pben").value = ""; loadPush(); })
           .catch(function (e) { alert("Hata: " + e.message); })
           .then(function () { b.disabled = false; b.textContent = "📤 Şimdi Gönder"; });
       };
@@ -782,6 +797,9 @@
           '<input id="pt" placeholder="Başlık (ör. Akşam ne yesek? 🍽️)" style="width:100%;padding:9px;margin-bottom:6px">' +
           '<input id="pb" placeholder="Metin" style="width:100%;padding:9px;margin-bottom:6px">' +
           '<input id="pu" placeholder="Link — BOŞ BIRAK (dolu olursa tarayıcı açılır)" style="width:100%;padding:9px;margin-bottom:2px">' +
+          '<div style="margin:10px 0 4px;font-weight:900;font-size:12px;color:#666">🇬🇧 İngilizce sürüm (boş bırakılırsa İngilizce kullananlara HİÇ gitmez)</div>' +
+          '<input id="pten" placeholder="Title (English)" style="width:100%;padding:9px;margin-bottom:6px">' +
+          '<input id="pben" placeholder="Body (English)" style="width:100%;padding:9px;margin-bottom:2px">' +
           '<div style="font-size:12px;color:#888;margin-bottom:8px">Boşsa bildirime dokununca <b>uygulama</b> açılır. URL yazarsan uygulama yerine <b>harici tarayıcıda</b> o adres açılır (sponsorlu içerik / kampanya sayfası için).</div>' +
           '<div style="font-size:12px;font-weight:800;color:#555;margin-bottom:4px">Hedef kitle (topic)</div>' +
           '<input id="ptopic" value="tum-kullanicilar" style="width:100%;padding:9px;margin-bottom:2px">' +
