@@ -11675,6 +11675,35 @@
         // istersek bu id'yi merci_v2 yapmak ZORUNDAYIZ; aynı id'yi yeni sesle
         // yeniden oluşturmak HİÇBİR ŞEY YAPMAZ ve sessizce eski ses çalar.
         CHANNEL_ID: "merci_v1",
+        /* ⭐ 28 AĞU — BİLDİRİM DİLİ.
+           Push bildirimleri sunucudan TOPIC'e yayınlanıyor; topic'in içinde kimin
+           olduğu bilinmediği için mesajın dili gönderim anında seçilemiyor.
+           ➜ Topic dile göre bölündü. Türkçe adlar AYNEN kaldı (mevcut aboneler
+             ve açık odalar hiç etkilenmiyor), İngilizce için "_en" eki geldi.
+           ⚠️ live-server.js içindeki DIL_EKI ile BİREBİR aynı olmak zorunda. */
+        dil: function () {
+          return window.KM_LANG === "en" ? "en" : "tr";
+        },
+        ek: function (d) {
+          return (d || this.dil()) === "en" ? "_en" : "";
+        },
+        topicAll: function () {
+          return this.TOPIC_ALL + this.ek();
+        },
+        /* Dil değiştirildiğinde ESKİ dilin topic'lerinden çık — yoksa kullanıcı
+           aynı bildirimi iki dilde alır. Sayfa dil değişiminde tamamen yeniden
+           yüklendiği için burası her açılışta bir kez çalışıyor; zaten abone
+           olunmayan bir topic'ten çıkmak FCM'de hatasızdır (no-op). */
+        digerDilBirak: function () {
+          var self = this;
+          var d = this.dil() === "en" ? "tr" : "en";
+          try {
+            this.unsubscribe(this.TOPIC_ALL + this.ek(d));
+            this._rooms().forEach(function (r) {
+              if (r && r.c) self.unsubscribe(self.roomTopic(r.c, d));
+            });
+          } catch (e) {}
+        },
         plug: function () {
           return _capPlug("FirebaseMessaging");
         },
@@ -11720,7 +11749,7 @@
               // Kanal ABONELİKTEN ÖNCE kurulmalı: ilk bildirim gelmeden kanal
               // yoksa Android varsayılan kanalı yaratır ve özel ses ÇALMAZ.
               await this.ensureChannel();
-              await this.subscribe(this.TOPIC_ALL);
+              await this.subscribe(this.topicAll());
             }
             return granted;
           } catch (e) {
@@ -11741,9 +11770,13 @@
             await P.unsubscribeFromTopic({ topic: String(topic) });
           } catch (e) {}
         },
-        // Oda topic'i: sunucudaki safeTopic ile AYNI biçim ("oda_" + KOD).
-        roomTopic: function (code) {
-          return "oda_" + String(code || "").toUpperCase().trim();
+        // Oda topic'i: sunucudaki safeTopic ile AYNI biçim ("oda_" + KOD [+ "_en"]).
+        // ⚠️ dil parametresi YALNIZ digerDilBirak() için var; normal
+        //    çağrılarda VERİLMEZ ve o an geçerli arayüz dili kullanılır.
+        roomTopic: function (code, dil) {
+          return (
+            "oda_" + String(code || "").toUpperCase().trim() + this.ek(dil)
+          );
         },
         // ⭐ 19 AĞU — GERÇEK İZNİ SİSTEME SOR (yerel damgaya güvenme).
         // TESPİT: ok() yalnız localStorage'daki `kmPushOk` damgasına bakıyordu ve
@@ -11777,7 +11810,7 @@
           if (granted && !oncekiDamga) {
             // Ayarlardan yeni açılmış → kaçırılan TÜM abonelikleri kur.
             await this.ensureChannel();
-            await this.subscribe(this.TOPIC_ALL);
+            await this.subscribe(this.topicAll());
             this.subscribeUser();
           }
           if (granted) this.syncRooms();
@@ -11826,6 +11859,7 @@
         },
         syncRooms: function () {
           if (!this.plug() || !this.ok()) return;
+          this.digerDilBirak(); // ⭐ 28 Ağu: dil değiştiyse eski topic'lerden çık
           var now = Date.now(),
             self = this,
             kalan = [];
@@ -11873,7 +11907,7 @@
           // sonradan ekledik, izni önceden vermiş kullanıcıda kanal henüz yok.
           if (this.ok()) {
             this.ensureChannel();
-            this.subscribe(this.TOPIC_ALL);
+            this.subscribe(this.topicAll());
             // ⭐ 16 AĞU — KİŞİYE ÖZEL TOPIC: `user_<UID>`. İki işi birden çözer:
             //   1) Panelden bildirim göndermeden ÖNCE "yalnız bana test gönder"
             //      (yanlış bildirimi herkese atmanın geri dönüşü yok),
@@ -15148,6 +15182,90 @@ function drawResultCard(opts) {
             ? this.IDS.interstitialTest
             : this.real().interstitialReal;
         },
+        /* ⭐ 28 AĞU — TAM EKRAN REKLAM ÖN-YÜKLEME (gelir yaması).
+           Eskiden prepare + show AYNI ANDA yapılıyordu; AdMob'un reklamı getirmesi
+           1-5 sn sürdüğü için gösterim penceresi kaçıyordu. Artık bir sonraki
+           reklam hep hazır bekler.
+           ⚠️ prepare GÖSTERİM DEĞİLDİR: AdMob panelindeki 10dk/2 sıklık sınırını
+              harcamaz, gelir raporunda görünmez. Sınırı yalnız show harcar.
+           ⚠️ Doldurulamazsa geri çekilerek tekrar denenir (15s tabanlı ikiye
+              katlama, tavan 5 dk) — dolu olmayan envanteri dövmemek için. */
+        _intHazir: false,
+        _intYukleniyor: false,
+        _intTmr: null,
+        _intBekleme: 15000,
+        hazirlaInterstitial: function (gecikme) {
+          var self = this;
+          if (!this.inApp() || isPremium || !this.reklamIstenebilir) return;
+          if (this._intHazir || this._intYukleniyor) return;
+          var AdMob = this.plugin();
+          if (!AdMob || !AdMob.prepareInterstitial || !this.interstitialId()) return;
+          if (this._intTmr) {
+            clearTimeout(this._intTmr);
+            this._intTmr = null;
+          }
+          var basla = function () {
+            self._intTmr = null;
+            if (self._intHazir || self._intYukleniyor) return;
+            if (isPremium || !self.reklamIstenebilir) return;
+            self._intYukleniyor = true;
+            AdMob.prepareInterstitial({
+              adId: self.interstitialId(),
+              isTesting: self.AD_TESTING,
+            })
+              .then(function () {
+                self._intYukleniyor = false;
+                self._intHazir = true;
+                self._intBekleme = 15000;
+              })
+              .catch(function () {
+                self._intYukleniyor = false;
+                self._intHazir = false;
+                self._intBekleme = Math.min(self._intBekleme * 2, 300000);
+                self.hazirlaInterstitial(self._intBekleme);
+              });
+          };
+          if (gecikme > 0) this._intTmr = window.setTimeout(basla, gecikme);
+          else basla();
+        },
+        _rewHazir: false,
+        _rewYukleniyor: false,
+        _rewTmr: null,
+        _rewBekleme: 15000,
+        hazirlaRewarded: function (gecikme) {
+          var self = this;
+          if (!this.inApp() || isPremium || !this.reklamIstenebilir) return;
+          if (this._rewHazir || this._rewYukleniyor) return;
+          var AdMob = this.plugin();
+          if (!AdMob || !AdMob.prepareRewardVideoAd || !this.rewardedId()) return;
+          if (this._rewTmr) {
+            clearTimeout(this._rewTmr);
+            this._rewTmr = null;
+          }
+          var basla = function () {
+            self._rewTmr = null;
+            if (self._rewHazir || self._rewYukleniyor) return;
+            if (isPremium || !self.reklamIstenebilir) return;
+            self._rewYukleniyor = true;
+            AdMob.prepareRewardVideoAd({
+              adId: self.rewardedId(),
+              isTesting: self.AD_TESTING,
+            })
+              .then(function () {
+                self._rewYukleniyor = false;
+                self._rewHazir = true;
+                self._rewBekleme = 15000;
+              })
+              .catch(function () {
+                self._rewYukleniyor = false;
+                self._rewHazir = false;
+                self._rewBekleme = Math.min(self._rewBekleme * 2, 300000);
+                self.hazirlaRewarded(self._rewBekleme);
+              });
+          };
+          if (gecikme > 0) this._rewTmr = window.setTimeout(basla, gecikme);
+          else basla();
+        },
         // Geçiş reklamı (oylama sonucu / 2. çark). PRO'da hiç gösterilmez.
         showInterstitial: function () {
           var self = this;
@@ -15198,26 +15316,40 @@ function drawResultCard(opts) {
               try {
                 if (window.KM_VP) window.KM_VP.afterFullscreenAd();
               } catch (e) {}
+              // ⭐ 28 AĞU — reklam kapandı: bir sonrakini şimdiden yükle ki
+              // sıradaki sonuç ekranında bekleme olmasın.
+              self._intHazir = false;
+              self._intBekleme = 15000;
+              self.hazirlaInterstitial(1500);
               finish(true);
             });
             on("interstitialAdFailedToShow", function () {
+              self._intHazir = false;
+              self.hazirlaInterstitial(5000);
               finish(false);
             });
             on("interstitialAdFailedToLoad", function () {
+              self._intHazir = false;
               finish(false);
             });
-            AdMob.prepareInterstitial({
-              adId: self.interstitialId(),
-              isTesting: self.AD_TESTING,
-            })
-              .then(function () {
-                // 19 Ağu: reklam açılmadan ÖNCE kaydırma konumu + görünüm
-                // alanı yüksekliği kaydediliyor (dönüşte kurtarma için, bkz. KM_VP).
-                try {
-                  if (window.KM_VP) window.KM_VP.beforeFullscreenAd();
-                } catch (e) {}
-                return AdMob.showInterstitial();
-              })
+            // ⭐ 28 AĞU — hazır reklam varsa YÜKLEME BEKLEME, doğrudan göster.
+            // Hazır değilse eski yol (anında hazırla + göster) aynen korunuyor:
+            // ön-yükleme henüz bitmemiş olabilir, o durumda davranış eskisiyle bire bir.
+            var _gosterInt = function () {
+              // 19 Ağu: reklam açılmadan ÖNCE kaydırma konumu + görünüm
+              // alanı yüksekliği kaydediliyor (dönüşte kurtarma için, bkz. KM_VP).
+              try {
+                if (window.KM_VP) window.KM_VP.beforeFullscreenAd();
+              } catch (e) {}
+              self._intHazir = false; // bu kopya tüketiliyor
+              return AdMob.showInterstitial();
+            };
+            (self._intHazir && !self._intYukleniyor
+              ? Promise.resolve().then(_gosterInt)
+              : AdMob.prepareInterstitial({
+                  adId: self.interstitialId(),
+                  isTesting: self.AD_TESTING,
+                }).then(_gosterInt))
               .catch(function (e) {
                 console.log("Interstitial error", e);
                 // 20 AĞU: reklam AÇILAMADI → beforeFullscreenAd'in askıya aldığı
@@ -15374,6 +15506,12 @@ function drawResultCard(opts) {
             if (!isPremium && this.reklamIstenebilir) {
               this.showBanner();
               this.watchModals();
+              /* ⭐ 28 AĞU — İLK tam ekran reklamlar arka planda hazırlansın.
+                 Gecikmeler bilerek farklı: açılış anında banner isteği + ön-yükleme
+                 aynı saniyeye binerse ikisi de yavaşlar. Ödüllü video daha ağır
+                 (video varlığı) ve daha geç gerekir → sonraya. */
+              this.hazirlaInterstitial(4000);
+              this.hazirlaRewarded(9000);
             }
           } catch (e) {
             console.log("AdMob init error", e);
@@ -15457,6 +15595,29 @@ function drawResultCard(opts) {
               10 sn sonra boşluğun kapanmasıdır — reklam varsa olay da vardır.
            ⚠️ 45 sn'lik `_bosTmr` ile KARIŞTIRMA: o, BİR KEZ yüklenmiş banner'ın
               tazeleme hatasına ait. Bu bekçi ise HİÇ yüklenmemiş banner içindir. */
+        /* ⭐ 28 AĞU — BANNER DÜŞÜNCE YENİDEN İSTENSİN ("banner bazen boşa düşüyor").
+           Eski kodda bannerAdFailedToLoad geldiğinde rezerv bırakılıyor ama
+           yeni bir istek YAPILMIYORDU. AdMob'un kendi otomatik yenilemesi panelde
+           kapalıysa ya da istek askıda kaldıysa banner bandı oturum boyunca boş kalır.
+           ➜ 30s → 60s → 120s → 240s → 300s, en çok 5 deneme; reklam gelince sıfırlanır.
+           ⚠️ showBanner()'ı yeniden çağırmak banner'ı üst üste bindirmez (eklenti
+              mevcut görünümü kaldırıp yenisini kurar), ama deneme sayısı yine de
+              sınırlı: sonsuz istek AdMob tarafında geçersiz trafik olarak okunabilir. */
+        _bnDeneme: 0,
+        _bnTmr: null,
+        _bannerYenidenDene: function () {
+          var self = this;
+          if (!this.inApp() || isPremium || !this.reklamIstenebilir) return;
+          if (this._bnTmr || this._bannerYuklendi) return;
+          if (this._bnDeneme >= 5) return;
+          var bekle = Math.min(30000 * Math.pow(2, this._bnDeneme), 300000);
+          this._bnDeneme++;
+          this._bnTmr = window.setTimeout(function () {
+            self._bnTmr = null;
+            if (isPremium || self._bannerYuklendi || !self.reklamIstenebilir) return;
+            self.showBanner();
+          }, bekle);
+        },
         _ilkTmr: null,
         _bekciIptal: function () {
           if (this._ilkTmr) {
@@ -15473,6 +15634,7 @@ function drawResultCard(opts) {
             if (self._bannerH > 0) return; // gerçek yükseklik geldi → dokunma
             self._bannerH = 0; // "reklam yok" → rezervi bırak
             self._applyAdBottom();
+            self._bannerYenidenDene(); // ⭐ 28 Ağu: 10sn'de gelmedi → tekrar iste
           }, 10000);
         },
         showBanner: function () {
@@ -15555,6 +15717,7 @@ function drawResultCard(opts) {
                 if (h > 0) {
                   self._bekciIptal(); // gerçek yükseklik geldi → iyimser bekçi gereksiz
                   self._bannerYuklendi = true;
+                  self._bnDeneme = 0; // ⭐ 28 Ağu: reklam geldi → deneme sayacı sıfır
                 }
                 if (h > 0 && self._bosTmr) {
                   clearTimeout(self._bosTmr); // reklam geri geldi → bırakma sayacını iptal et
@@ -15577,6 +15740,7 @@ function drawResultCard(opts) {
               AdMob.addListener("bannerAdFailedToLoad", function () {
                 if (!self._bannerYuklendi) {
                   _setAd("0px");
+                  self._bannerYenidenDene(); // ⭐ 28 Ağu: boş bant kalıcı olmasın
                   return;
                 }
                 /* ⭐ 20 AĞU — ORTA YOL: "bannerlar bir süre sonra yok oluyor".
@@ -15592,11 +15756,14 @@ function drawResultCard(opts) {
                   self._bosTmr = null;
                   self._bannerYuklendi = false;
                   _setAd("0px");
+                  self._bnDeneme = 0; // yeni bir boşluk dönemi → sayaç sıfır
+                  self._bannerYenidenDene(); // ⭐ 28 Ağu: yeni reklam iste
                 }, 45000);
               });
               // Reklam geldi → rezerv dursun (kesin yükseklik sizeChanged'den gelir).
               AdMob.addListener("bannerAdLoaded", function () {
                 self._bekciIptal(); // reklam geldi → iyimser bekçiyi durdur
+                self._bnDeneme = 0; // ⭐ 28 Ağu: deneme sayacı sıfır
                 if (self._bosTmr) {
                   clearTimeout(self._bosTmr);
                   self._bosTmr = null;
@@ -15809,6 +15976,10 @@ function drawResultCard(opts) {
               try {
                 if (window.KM_VP) window.KM_VP.afterFullscreenAd();
               } catch (e) {}
+              // ⭐ 28 AĞU — bir sonraki ödüllü videoyu şimdiden yükle.
+              self._rewHazir = false;
+              self._rewBekleme = 15000;
+              self.hazirlaRewarded(1500);
               finish(rewarded);
             });
             on("onRewardedVideoAdFailedToShow", function () {
@@ -15821,18 +15992,21 @@ function drawResultCard(opts) {
             on("onRewardedVideoAdFailedToLoad", function () {
               finish(false);
             });
-            AdMob.prepareRewardVideoAd({
-              adId: self.rewardedId(),
-              isTesting: self.AD_TESTING,
-            })
-              .then(function () {
-                // 20 Ağu: interstitial ile aynı — açılmadan önce kaydırma konumu +
-                // görünüm alanı yüksekliği kaydedilsin (dönüşte kurtarma ölçüsü).
-                try {
-                  if (window.KM_VP) window.KM_VP.beforeFullscreenAd();
-                } catch (e) {}
-                return AdMob.showRewardVideoAd();
-              })
+            // ⭐ 28 AĞU — "📺 Reklam İzle" butonu artık donmuyor: ödüllü video
+            // arka planda hazır bekliyorsa anında açılır. Hazır değilse eski yol.
+            var _gosterRew = function () {
+              try {
+                if (window.KM_VP) window.KM_VP.beforeFullscreenAd();
+              } catch (e) {}
+              self._rewHazir = false; // bu kopya tüketiliyor
+              return AdMob.showRewardVideoAd();
+            };
+            (self._rewHazir && !self._rewYukleniyor
+              ? Promise.resolve().then(_gosterRew)
+              : AdMob.prepareRewardVideoAd({
+                  adId: self.rewardedId(),
+                  isTesting: self.AD_TESTING,
+                }).then(_gosterRew))
               .catch(function (e) {
                 console.log("Rewarded error", e);
                 // 20 AĞU: aynı sebep — interstitial catch'indeki nota bak.
@@ -28029,7 +28203,7 @@ function drawResultCard(opts) {
         </div>
         <div class="auth-perks">
           <div class="auth-perk">
-            <span class="auth-perk-icon">📍</span> Save your decision history and pick up where you left off
+            <span class="auth-perk-icon">📚</span> Save your decision history and pick up where you left off
           </div>
           <div class="auth-perk">
             <span class="auth-perk-icon">🎁</span>
