@@ -2165,17 +2165,20 @@ async function autoCloseExpiredRooms() {
 // yan etki koyulursa aynı bildirim birden çok kez gider.
 async function bildirOdaSonucu(code, nereden) {
   try {
-    const title = "Oylama sonuçlandı! 🐙";
-    const body = "Kazananı görmek için dokun 👀";
-    await sendPush({ topic: "oda_" + code, title, body, room: code });
-    await logPush({
-      title,
-      body,
-      topic: "oda_" + code,
-      by: "server",
-      kind: "result",
-      ok: true,
+    // ⭐ 28 AĞU — iki dile birden (bkz. ikiDildeGonder notu).
+    const gonderilen = await ikiDildeGonder("oda_" + code, "odaSonucu", {
+      room: code,
     });
+    for (const g of gonderilen) {
+      await logPush({
+        title: g.title,
+        body: g.body,
+        topic: g.topic,
+        by: "server",
+        kind: "result",
+        ok: true,
+      });
+    }
   } catch (e) {
     // Bildirim gitmezse oda yine de kapalı — akış bozulmaz.
     console.error(nereden + " push (" + code + "):", e.message);
@@ -4820,6 +4823,45 @@ const ADMIN_UIDS = [
 const isAdminUid = (u) => ADMIN_UIDS.includes(u);
 const TOPIC_ALL = "tum-kullanicilar";
 
+/* ⭐ 28 AĞU — BİLDİRİM DİLİ.
+   Topic'ler dile göre bölündü: Türkçe adlar AYNEN kaldı (mevcut aboneler
+   etkilenmesin), İngilizce için "_en" ekli ikizi açıldı. Client (KM_PUSH)
+   kendi arayüz diline karşılık gelen topic'e abone oluyor.
+   ⚠️ Buradaki son ek ile live-index.html içindeki KM_PUSH.roomTopic /
+      KM_PUSH.topicAll BİREBİR aynı olmak zorunda. Birini değiştirirsen
+      ötekini de değiştir, yoksa bildirim sessizce hiç kimseye gitmez. */
+const DIL_EKI = { tr: "", en: "_en" };
+const PUSH_DILLERI = ["tr", "en"];
+
+/* Bildirim metinleri. Yeni bir bildirim türü eklerken İKİ dili de doldur —
+   eksik dil sessizce Türkçeye düşer ve İngiliz kullanıcı Türkçe bildirim alır. */
+const PUSH_METIN = {
+  odaSonucu: {
+    tr: { title: "Oylama sonuçlandı! 🐙", body: "Kazananı görmek için dokun 👀" },
+    en: { title: "The vote is in! 🐙", body: "Tap to see who won 👀" },
+  },
+};
+
+/** Bir topic ailesine (ör. "oda_ABCD") her dilde kendi metniyle gönderir.
+ *  Dönen: gönderilen mesaj id'lerinin dizisi. Bir dil patlarsa ötekini ENGELLEMEZ.
+ *  ⚠️ Boş topic'e gönderim FCM'de hata değildir ve ücretsizdir. */
+async function ikiDildeGonder(temelTopic, anahtar, ekstra) {
+  const sonuc = [];
+  for (const dil of PUSH_DILLERI) {
+    const m = (PUSH_METIN[anahtar] || {})[dil] || (PUSH_METIN[anahtar] || {}).tr;
+    if (!m) continue;
+    try {
+      const id = await sendPush(
+        Object.assign({ topic: temelTopic + DIL_EKI[dil], title: m.title, body: m.body }, ekstra || {}),
+      );
+      sonuc.push({ dil, id, title: m.title, body: m.body, topic: temelTopic + DIL_EKI[dil] });
+    } catch (e) {
+      console.error("ikiDildeGonder(" + temelTopic + "/" + dil + "):", e.message);
+    }
+  }
+  return sonuc;
+}
+
 // FCM topic adı kuralı: [a-zA-Z0-9-_.~%]+ . Oda kodu dışarıdan geldiği için
 // beyaz listeyle temizlenir (enjeksiyon/geçersiz topic'e karşı).
 function safeTopic(t) {
@@ -5233,14 +5275,32 @@ app.post("/admin/push", rateLimit, async (req, res) => {
   const uid = await uidFromReq(req);
   if (!uid) return res.status(401).json({ error: "Oturum doğrulanamadı." });
   if (!isAdminUid(uid)) return res.status(403).json({ error: "Yetkin yok." });
-  const { title, body, url } = req.body || {};
+  const { title, body, url, titleEn, bodyEn } = req.body || {};
   const topic = safeTopic((req.body && req.body.topic) || TOPIC_ALL);
   if (!title || !body)
     return res.status(400).json({ error: "Başlık ve metin zorunlu." });
   try {
     const id = await sendPush({ topic, title, body, url });
     await logPush({ title, body, url: url || "", topic, by: "admin", ok: true });
-    res.json({ ok: true, id, topic });
+    /* ⭐ 28 AĞU — İNGİLİZCE DUYURU.
+       titleEn/bodyEn verilirse aynı duyuru "_en" topic'ine İngilizce gider.
+       VERİLMEZSE İNGİLİZCE KULLANICI HİÇBİR ŞEY ALMAZ — bilerek: Türkçe
+       duyuruyu İngiliz kullanıcıya göndermek, hiç göndermemekten kötüdür.
+       ⚠️ Panelde iki alanı da doldurmayı unutma. */
+    let idEn = null;
+    if (titleEn && bodyEn) {
+      const topicEn = safeTopic(topic + "_en");
+      try {
+        idEn = await sendPush({ topic: topicEn, title: titleEn, body: bodyEn, url });
+        await logPush({
+          title: titleEn, body: bodyEn, url: url || "",
+          topic: topicEn, by: "admin", ok: true,
+        });
+      } catch (e2) {
+        console.error("admin/push (en) hata:", e2.message);
+      }
+    }
+    res.json({ ok: true, id, idEn, topic });
   } catch (e) {
     console.error("admin/push hata:", e.message);
     await logPush({ title, body, topic, by: "admin", ok: false, err: e.message });
@@ -5309,11 +5369,16 @@ app.post("/room/notify", rateLimit, async (req, res) => {
     // sonucu ele verirse uygulamayı açmaya gerek kalmıyor: merak sönüyor,
     // kullanıcı gelmiyor, kutlama anı (konfeti + kart) kaçıyor.
     // Merakı canlı tut, sonucu uygulamada göster.
-    const title = "Oylama sonuçlandı! 🐙";
-    const body = "Kazananı görmek için dokun 👀";
-    const id = await sendPush({ topic: "oda_" + code, title, body, room: code });
-    await logPush({ title, body, topic: "oda_" + code, by: uid, kind, ok: true });
-    res.json({ ok: true, id });
+    // ⭐ 28 AĞU — iki dile birden. Metin sunucunun kendi kapanış yolundaki
+    // (bildirOdaSonucu) metinle AYNI tablodan geliyor: kullanıcı sonucu kimin
+    // kapattığına göre farklı bildirim görmemeli.
+    const gonderilen = await ikiDildeGonder("oda_" + code, "odaSonucu", {
+      room: code,
+    });
+    for (const g of gonderilen) {
+      await logPush({ title: g.title, body: g.body, topic: g.topic, by: uid, kind, ok: true });
+    }
+    res.json({ ok: true, id: (gonderilen[0] || {}).id, gonderilen: gonderilen.length });
   } catch (e) {
     console.error("room/notify hata:", e.message);
     res.status(500).json({ error: "Gönderilemedi." });
