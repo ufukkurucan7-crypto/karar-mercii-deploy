@@ -13845,12 +13845,27 @@ function drawResultCard(opts) {
           try {
             /* ⭐ 25 AĞU — dile göre. Sabit "tr-TR" iken Amerikalı kullanıcı USD fiyatı
                "$4,99" (virgüllü) görüyordu. TR'de ₺49 aynen kalır. */
-            return new Intl.NumberFormat(window.KM_LANG === "en" ? "en-US" : "tr-TR", {
+            /* ⭐ 28 AĞU — "TRY 33" / "₺49,00" TUTARSIZLIĞI (kullanıcı bildirdi).
+               Aylık kart mağazanın kendi dizesini basıyor ("₺49,00"), yıllık kartın
+               büyük rakamı ise buradan geliyordu. en-US yerelinde TRY'nin sembolü
+               tanımsız olduğu için Intl ISO kodunu basıyor → aynı ekranda ₺ ve TRY.
+               narrowSymbol sembolü zorlar: en-US/TRY → "₺33.25"; USD/EUR/GBP
+               zaten sembolliydi, DEĞİŞMEZ.
+               ⚠️ Eski motorlarda narrowSymbol RangeError atar → seçeneksiz tekrar. */
+            var _loc = window.KM_LANG === "en" ? "en-US" : "tr-TR";
+            var _opt = {
               style: "currency",
               currency: cur || "TRY",
               minimumFractionDigits: digits,
               maximumFractionDigits: digits,
-            }).format(v);
+              currencyDisplay: "narrowSymbol",
+            };
+            try {
+              return new Intl.NumberFormat(_loc, _opt).format(v);
+            } catch (e3) {
+              delete _opt.currencyDisplay;
+              return new Intl.NumberFormat(_loc, _opt).format(v);
+            }
           } catch (e) {
             return (digits ? v.toFixed(2) : Math.round(v)) + "₺";
           }
@@ -15114,6 +15129,33 @@ function drawResultCard(opts) {
         } catch (e) {}
       }
 
+      /* ⭐ 28 AĞU — DİLE BAĞLI KISA BİÇİMLER (çeviri boru hattının ULAŞAMADIĞI yer).
+         "sn" / "dk" / "saat" gibi 2-4 harflik JS dizileri cikar.js tarafından
+         'kod' sınıfına konuyor; uret.js 'kod'a çeviri UYGULAMIYOR. Bu yüzden
+         İngilizce sürümde geri sayım "14m 44sn", oda süresi "30 dk" çıkıyordu.
+         ➜ Çeviri değil, ÇALIŞMA ZAMANI seçimi. KM_LANG'i uret.js dosyaya yazıyor.
+         ⚠️ Yeni bir kısaltma eklersen SÖZLÜĞE de ekle, yoksa sessizce Türkçe kalır. */
+      function kmZamanKis(k) {
+        if (window.KM_LANG !== "en") return k;
+        var EN = { sn: "s", dk: "m", saat: "h", sa: "h", gun: "d" };
+        return Object.prototype.hasOwnProperty.call(EN, k) ? EN[k] : k;
+      }
+      /* ⭐ 28 AĞU — SAAT GÖSTERİMİ. Karar geçmişi saati "21:24" diye KAYDEDİLİYOR
+         (getHours + dakika). Tarih dile göre biçimlenirken saat ham kalıyordu →
+         Amerikalı kullanıcı "8/25/2026 21:24" görüyordu.
+         ⚠️ KAYIT biçimi DEĞİŞMİYOR, yalnız GÖSTERİM çevriliyor: Firestore'daki
+            eski kayıtlar da doğru görünür ve liste içinde karışık biçim oluşmaz.
+         ⚠️ Tanımadığı biçimi OLDUĞU GİBİ döndürür (bozuk veri ekranı kırmasın). */
+      function kmSaatGoster(t) {
+        if (window.KM_LANG !== "en") return t;
+        var m = String(t == null ? "" : t).match(/^(\d{1,2}):(\d{2})$/);
+        if (!m) return t;
+        var h = +m[1];
+        if (h > 23) return t;
+        var ap = h < 12 ? "AM" : "PM";
+        var h12 = h % 12 === 0 ? 12 : h % 12;
+        return h12 + ":" + m[2] + " " + ap;
+      }
       var KM_AD = {
         // Production'a çıkarken bunu false yap. Kapalı test boyunca true kalsın
         // (kendi hesabını banlamamak için Google'ın test reklamları gösterilir).
@@ -23412,7 +23454,9 @@ function drawResultCard(opts) {
           var m = Math.floor(seconds / 60),
             s = seconds % 60;
           el.textContent =
-            (m > 0 ? m + "dk " : "") + String(s).padStart(2, "0") + "sn";
+            (m > 0 ? m + "dk " : "") +
+            String(s).padStart(2, "0") +
+            kmZamanKis("sn");
           if (seconds <= 30) el.classList.add("urgent");
           seconds--;
         }
@@ -25541,7 +25585,7 @@ function drawResultCard(opts) {
           (_last.emoji ? _last.emoji + " " : "") +
           (_last.item || "") +
           (_tar ? " · " + _tar : "") +
-          (_last.t ? " " + _last.t : "");
+          (_last.t ? " " + kmSaatGoster(_last.t) : ""); // 28 Ağu: EN'de 9:24 PM
         var _note = document.getElementById("hist-note-tx");
         if (_note) _note.textContent = histSummary();
         var _cnt = document.getElementById("hist-count");
@@ -25581,7 +25625,7 @@ function drawResultCard(opts) {
               ? '<div class="hist-cmt">"' + _kmEsc(h.comment) + '"</div>'
               : "") +
             '</div><span class="hist-time">' +
-            _kmEsc(h.t) +
+            _kmEsc(kmSaatGoster(h.t)) +
             "</span>";
           list.appendChild(d);
         });
@@ -26159,8 +26203,9 @@ function drawResultCard(opts) {
       // 90 dk gibi "yuvarlak olmayan" süreler dakika kalır — makette de öyle.
       function kmDurParts(min) {
         min = Math.round(+min || 0);
-        if (min < 60 || min % 60 !== 0) return { n: min, u: "dk" };
-        return { n: min / 60, u: "saat" };
+        // ⚠️ 28 Ağu: birim EKRANA yazılıyor (km-m-duru + kalem hapı) → dile göre.
+        if (min < 60 || min % 60 !== 0) return { n: min, u: kmZamanKis("dk") };
+        return { n: min / 60, u: kmZamanKis("saat") };
       }
       // ✏️ hapının içini maketteki iki satırlı yapıya çevirir.
       // big === null → hapı boş kalem hâline döndürür.
