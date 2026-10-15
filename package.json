@@ -1,0 +1,14 @@
+{
+  "name": "karar-mercii-server",
+  "private": true,
+  "scripts": {
+    "build": "sh render/build.sh",
+    "start": "node render/server.js"
+  },
+  "engines": { "node": "24.x" },
+  "dependencies": {
+    "@anthropic-ai/sdk": "0.26.1",
+    "express": "4.22.2",
+    "firebase-admin": "14.0.0"
+  }
+}
